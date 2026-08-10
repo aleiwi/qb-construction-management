@@ -1,0 +1,363 @@
+# PAGES_DOCUMENTATION.md — Quantum Build (نظام إدارة المقاولات المتكامل)
+
+This document describes every page, route, component, and API integration in the current system.
+
+---
+
+## 1. Architecture Overview
+
+- **Frontend:** React 18 + Vite + Tailwind CSS + Framer Motion + Recharts
+- **Backend:** FastAPI + SQLAlchemy async + JWT (RBAC)
+- **State Management:** React Context (useAuth) + local state + direct API calls via axios
+- **Persistence:** PostgreSQL (via FastAPI); SQLite for dev/testing
+- **Auth Flow:** JWT access token stored in localStorage; `ProtectedRoute` wrapper
+- **Routing:** React Router v6 with lazy-loaded pages (code-splitting)
+- **Error Handling:** Global `ErrorBoundary` wrapping all routes
+
+---
+
+## 2. Route Table
+
+| Page | Route | File | Backend Router | RBAC |
+|------|-------|------|----------------|------|
+| Login | `/` | `LoginPage.jsx` | `auth.py` | Public |
+| Dashboard | `/dashboard` | `DashboardPage.jsx` | `users.py` | All authenticated |
+| Projects | `/projects` | `ProjectsPage.jsx` | `projects.py` | All except contractor |
+| Project Detail | `/projects/:projectId` | `ProjectDetailPage.jsx` | `buildings.py`, `stages.py` | All except contractor |
+| Contractors | `/contractors` | `ContractorsPage.jsx` | `contractors.py` | Admin, PM, Engineer, Accountant |
+| Contracts | `/contracts` | `ContractsPage.jsx` | `contracts.py` | Admin, PM, Accountant |
+| Drawings (CAD) | `/drawings` | `DrawingsPage.jsx` | `drawings.py` | Admin, PM, Engineer |
+| BOQ Review | `/boq-review` | `BOQReviewPage.jsx` | `boq_elements.py` | Admin, PM, Engineer |
+| Payments | `/payments` | `PaymentsPage.jsx` | `payments.py`, `retentions.py` | Admin, PM, Accountant |
+| Quality Checks | `/quality-checks` | `QualityChecksPage.jsx` | `quality_checks.py` | Admin, PM, Engineer |
+| Employees (HR) | `/employees` | `EmployeesPage.jsx` | `employees.py` | Admin, PM |
+| Reports & KPIs | `/reports` | `ReportsPage.jsx` | `reports.py` | Admin, PM, Accountant |
+| Completion % | `/completion-percentage` | `CompletionPercentagePage.jsx` | `completion_reports.py` | Admin, PM, Engineer, Accountant |
+| Audit Logs | `/audit-logs` | `AuditLogsPage.jsx` | `audit_logs.py` | Admin only |
+
+---
+
+## 3. Page Details
+
+### 3.1 LoginPage (`/`)
+- Route: `/` (root)
+- Purpose: User authentication with JWT
+- Features:
+  - Email/password form with validation
+  - 5 demo account quick-buttons (admin, pm, engineer, accountant, contractor)
+  - Role-colored labels on demo buttons
+  - Error handling via `react-hot-toast`
+  - Redirects to `/dashboard` on success
+- Auth: Uses `AuthContext.signIn()` calling `POST /api/v1/auth/login`
+
+### 3.2 DashboardPage (`/dashboard`)
+- Route: `/dashboard`
+- Purpose: Central hub with role-specific views and admin panel
+- Features:
+  - User info header with role badge
+  - Permission banner showing RBAC status (canManageUsers, canManageProjects, etc.)
+  - Contractor restricted view notice (row-level security)
+  - **Admin section:** User management table with create user form
+  - **Module grid:** Cards linking to all 7 modules + reports + completion % + audit logs
+  - Each card has unique color identity per module
+- Auth: `ProtectedRoute` — requires valid JWT
+
+### 3.3 ProjectsPage (`/projects`)
+- Route: `/projects`
+- Purpose: List and manage construction projects
+- Features:
+  - Project list with status badges
+  - Create/edit project modal
+  - Click navigates to `ProjectDetailPage`
+- API: `projectsApi`
+
+### 3.4 ProjectDetailPage (`/projects/:projectId`)
+- Route: `/projects/:projectId`
+- Purpose: View and manage a single project's buildings and stages
+- Features:
+  - Buildings list within the project
+  - Stages per building with progress tracking
+  - Weight percent management for stages
+- API: `buildingsApi`, `stagesApi`
+
+### 3.5 ContractorsPage (`/contractors`)
+- Route: `/contractors`
+- Purpose: Manage contractors and their specializations
+- Features:
+  - Contractor list with contact info
+  - Create/edit contractor modal
+  - Specialization tags (هدم, تربة, صحي, كهرباء, جبس, تهوية, حديد, إطفاء, واجهات, عزل)
+  - Status tracking
+- API: `contractorsApi`
+
+### 3.6 ContractsPage (`/contracts`)
+- Route: `/contracts`
+- Purpose: Manage contracts linking contractors to buildings
+- Features:
+  - Contract list with status, value, retention %
+  - Create/edit contract modal (contractor, building, title, value, retention, dates, status)
+  - Status badges: draft (مسودة), active (نشط), completed (مكتمل), terminated (ملغي)
+- API: `contractsApi`
+
+### 3.7 DrawingsPage (`/drawings`)
+- Route: `/drawings`
+- Purpose: Upload and manage CAD drawings (DXF/DWG)
+- Features:
+  - Drag & drop file upload
+  - Drawing list with auto-extraction status
+  - Click to extract BOQ elements
+- API: `boqApi`
+- Backend: `ezdxf` library for CAD parsing
+
+### 3.8 BOQReviewPage (`/boq-review`)
+- Route: `/boq-review`
+- Purpose: Manual review and classification of extracted BOQ elements
+- Features:
+  - Elements grouped by source layer
+  - One-click classification buttons (جدار, عمود, بلاطة, كمرة, أساس, باب, نافذة, درج, سقف, حاجز, فتحة, أخرى)
+  - Select/deselect all
+  - Progress tracking of classified vs unclassified
+- API: `boqApi`
+
+### 3.9 PaymentsPage (`/payments`)
+- Route: `/payments`
+- Purpose: Financial payments and retention releases
+- Features:
+  - **Payments tab:** List payments by contract with approval/pay workflow
+  - **Retentions tab:** List held retentions with release button
+  - Contract selector to filter by contract
+  - Payment amount, retention amount, net amount display
+  - QC gate: approval blocked if stage QC not passed
+- API: `paymentsApi`, `retentionsApi`
+
+### 3.10 QualityChecksPage (`/quality-checks`)
+- Route: `/quality-checks`
+- Purpose: Quality inspection management
+- Features:
+  - Create QC inspections per stage
+  - Pass/fail/pending status tracking
+  - Inspector assignment
+  - Mandatory gate before payment approval
+- API: `qualityChecksApi`
+
+### 3.11 EmployeesPage (`/employees`)
+- Route: `/employees`
+- Purpose: HR management — employees and attendance
+- Features:
+  - **Employees tab:** List, create, edit employees
+  - **Attendance tab:** Daily attendance tracking (present/absent/leave)
+  - Employee fields: name, national ID, phone, job title, monthly salary, hire date
+  - Attendance with check-in/check-out times
+- API: `employeesApi`
+
+### 3.12 ReportsPage (`/reports`)
+- Route: `/reports`
+- Purpose: KPI dashboard with charts
+- Features:
+  - 6 KPI cards: Projects, Contractors, Payments, QC, Employees, BOQ
+  - Radial bar chart for average progress
+  - Pie charts for payment distribution and QC results
+  - Bar charts for financial status and BOQ classification
+  - Area chart for contracts overview
+  - HR breakdown bar chart
+  - All charts use Recharts with responsive containers
+- API: `reportsApi` → `GET /api/v1/reports/kpis`
+
+### 3.13 CompletionPercentagePage (`/completion-percentage`)
+- Route: `/completion-percentage`
+- Purpose: Comprehensive completion report with snapshot inheritance
+- Features:
+  - Project picker with quick-create for no-projects state
+  - Historical report snapshots navigation bar
+  - Clone previous report for new periods (Snapshot Inheritance)
+  - Dashboard view (read-only report)
+  - Edit view (progress input form)
+  - Three progress indicators: structure, finishing, overall
+  - Delta comparison with previous period
+  - Save (create/update) to backend
+  - Demo mode when no project selected
+  - Confirm modals for reset and project switch
+- Components: `ProgressInputForm`, `ProgressDashboard`, `NewPeriodModal`, `QuickCreateProjectModal`, `ConfirmModal`
+- State: Tracks dirty/saving/saved/error/offline states
+- API: `completionReportsApi` → CRUD + clone-previous
+
+### 3.14 AuditLogsPage (`/audit-logs`)
+- Route: `/audit-logs`
+- Purpose: Full audit trail for financial operations
+- Features:
+  - Filter by entity type (payment, contract) and entity ID
+  - Table with action, entity, user, old/new values, timestamp
+  - JSON pretty-print for structured values
+  - Admin-only access (redirects non-admin users)
+- API: `GET /api/v1/audit-logs`
+
+---
+
+## 4. UI Components
+
+### 4.1 Shared (`components/ui/`)
+| Component | Purpose |
+|-----------|---------|
+| `ErrorBoundary.jsx` | React error boundary wrapping all routes; shows reset button, Arabic error message, dev-mode details |
+| `ConfirmModal.jsx` | Generic confirmation dialog (used for reset, project switch) |
+
+### 4.2 Completion Report (`components/completion/`)
+| Component | Purpose |
+|-----------|---------|
+| `ProgressInputForm.jsx` | Editable form for structure/finishing items |
+| `ProgressDashboard.jsx` | Read-only report view |
+| `NewPeriodModal.jsx` | Form to create new report period (clone) |
+| `QuickCreateProjectModal.jsx` | Quick project creation from completion page |
+| `defaultCompletionData.js` | Default mock data for demo mode (58 items + 9 payments) |
+
+---
+
+## 5. Feature Modules (API Layer)
+
+| Feature | API File | Endpoints |
+|---------|----------|-----------|
+| Auth | `features/auth/` (via AuthContext) | `POST /auth/login`, `POST /auth/refresh` |
+| Projects | `features/projects/projectsApi.js` | CRUD `/projects` |
+| Buildings | `features/projects/useBuildings.js` | CRUD `/buildings` |
+| Stages | `features/projects/useStages.js` | CRUD `/stages` |
+| Contractors | `features/contractors/contractorsApi.js` | CRUD `/contractors` |
+| Contracts | `features/contractors/contractorsApi.js` | CRUD `/contracts` |
+| Drawings/BOQ | `features/boq/boqApi.js` | Upload, extract, classify |
+| Payments | `features/payments/paymentsApi.js` | CRUD `/payments`, `/retention-releases` |
+| Quality | `features/quality/qualityChecksApi.js` | CRUD `/quality-checks` |
+| Employees | `features/hr/employeesApi.js` | CRUD `/employees` |
+| Reports | `features/reports/reportsApi.js` | `GET /reports/kpis` |
+| Completion Reports | `features/reports/completionReportsApi.js` | CRUD `/completion-reports`, clone-previous |
+
+---
+
+## 6. Design Conventions
+
+- **All user-facing text is in Arabic**
+- Code, logs, API fields, and comments are in English
+- Dark theme with slate-950 background
+- Cards use `bg-slate-900/80` with `border-slate-800`
+- Each module has a unique accent color:
+  - Dashboard: blue
+  - Projects: indigo
+  - Contractors: amber
+  - Contracts: emerald
+  - Drawings: indigo
+  - Payments: purple
+  - QC: teal
+  - HR: rose
+  - Reports: cyan
+  - Completion: amber
+  - Audit: orange
+- Buttons use `rounded-xl` with hover transitions
+- Loading states use spinner animation
+- Modals use `backdrop-blur-sm` overlay
+- All icons from `lucide-react`
+- Animations via `framer-motion` (stagger, fade, scale)
+
+---
+
+## 7. Backend Service Layer Mapping
+
+| Service | File | Responsibility |
+|---------|------|----------------|
+| `auth_service.py` | `app/services/auth_service.py` | Login, token generation, refresh |
+| `user_service.py` | `app/services/user_service.py` | User CRUD |
+| `project_service.py` | `app/services/project_service.py` | Project CRUD |
+| `building_service.py` | `app/services/building_service.py` | Building CRUD |
+| `stage_service.py` | `app/services/stage_service.py` | Stage CRUD with progress tracking |
+| `contractor_service.py` | `app/services/contractor_service.py` | Contractor CRUD |
+| `contract_service.py` | `app/services/contract_service.py` | Contract CRUD |
+| `drawing_service.py` | `app/services/drawing_service.py` | Drawing upload/storage |
+| `boq_extraction_service.py` | `app/services/boq_extraction_service.py` | DXF parsing & classification |
+| `boq_element_service.py` | `app/services/boq_element_service.py` | BOQ element CRUD & classification |
+| `boq_item_service.py` | `app/services/boq_item_service.py` | BOQ item pricing linkage |
+| `price_library_service.py` | `app/services/price_library_service.py` | Unit price library |
+| `payment_service.py` | `app/services/payment_service.py` | Payment processing with QC gate |
+| `retention_service.py` | `app/services/retention_service.py` | Retention release management |
+| `quality_check_service.py` | `app/services/quality_check_service.py` | QC inspection CRUD |
+| `employee_service.py` | `app/services/employee_service.py` | Employee & attendance CRUD |
+| `completion_report_service.py` | `app/services/completion_report_service.py` | Report snapshots with clone-previous |
+| `reports_service.py` | `app/services/reports_service.py` | KPI aggregation across all modules |
+| `audit_log_service.py` | `app/services/audit_log_service.py` | Financial audit trail |
+
+---
+
+## 8. Test Coverage
+
+| Test File | Type | Scenarios |
+|-----------|------|-----------|
+| `test_auth.py` | Integration | Login, token refresh, invalid credentials |
+| `test_payments.py` | Integration | Payment create, approve, mark paid, RBAC |
+| `test_qc_gate.py` | Integration | QC gate blocks/permits payment approval |
+| `test_completion_reports_clone.py` | Integration | Clone creates draft, links parent, chain works |
+| `test_audit_log.py` | Integration | Audit log creation on payment actions |
+| `test_rbac_matrix.py` | Integration | Every endpoint × every role (enforced) |
+| `test_security_audit.py` | Static | Code patterns: no hardcoded secrets, HTTPS, input validation |
+
+---
+
+## 9. File Structure
+
+```
+frontend/src/
+├── api/
+│   └── axios.js                          # Axios instance with JWT interceptor
+├── components/
+│   ├── completion/
+│   │   ├── defaultCompletionData.js      # 58 demo items + 9 payments
+│   │   ├── NewPeriodModal.jsx
+│   │   ├── ProgressDashboard.jsx
+│   │   ├── ProgressInputForm.jsx
+│   │   └── QuickCreateProjectModal.jsx
+│   └── ui/
+│       ├── ConfirmModal.jsx
+│       └── ErrorBoundary.jsx
+├── contexts/
+│   └── AuthContext.jsx                    # Auth state provider
+├── features/
+│   ├── boq/
+│   │   └── boqApi.js
+│   ├── contractors/
+│   │   ├── contractorsApi.js
+│   │   └── useContractors.js
+│   ├── hr/
+│   │   └── employeesApi.js
+│   ├── payments/
+│   │   └── paymentsApi.js
+│   ├── projects/
+│   │   ├── projectsApi.js
+│   │   ├── useBuildings.js
+│   │   ├── useProjects.js
+│   │   └── useStages.js
+│   ├── quality/
+│   │   └── qualityChecksApi.js
+│   └── reports/
+│       ├── completionReportsApi.js
+│       └── reportsApi.js
+├── hooks/
+│   ├── useAuth.js
+│   └── usePermissions.js
+├── pages/
+│   ├── AuditLogsPage.jsx
+│   ├── BOQReviewPage.jsx
+│   ├── CompletionPercentagePage.jsx
+│   ├── ContractsPage.jsx
+│   ├── ContractorsPage.jsx
+│   ├── DashboardPage.jsx
+│   ├── DrawingsPage.jsx
+│   ├── EmployeesPage.jsx
+│   ├── LoginPage.jsx
+│   ├── PaymentsPage.jsx
+│   ├── ProjectDetailPage.jsx
+│   ├── ProjectsPage.jsx
+│   ├── QualityChecksPage.jsx
+│   └── ReportsPage.jsx
+├── App.jsx                               # Routes + lazy loading + error boundary
+├── main.jsx                              # Entry point
+└── index.css                             # Tailwind base styles
+```
+
+---
+
+*Generated: 2026-07-27 — Reflects the current production codebase. All 14 pages are wired to FastAPI backends with full RBAC enforcement.*
