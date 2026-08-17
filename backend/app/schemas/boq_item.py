@@ -10,6 +10,7 @@ class BOQItemBase(BaseModel):
 class BOQItemCreate(BOQItemBase):
     boq_element_id: int
     price_ref_id: int
+    unit_price: Optional[float] = Field(None, ge=0)
 
 
 class BOQItemUpdate(BaseModel):

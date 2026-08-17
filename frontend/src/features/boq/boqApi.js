@@ -14,10 +14,15 @@ export const drawingsApi = {
   upload: async (buildingId, file) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await api.post(`/drawings?building_id=${buildingId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data;
+    try {
+      const res = await api.post(`/drawings?building_id=${buildingId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      return res.data;
+    } catch (err) {
+      return err.response?.data || { success: false, data: null, message: null, error: { code: 'ERROR', message: err.message || 'فشل الرفع' } };
+    }
   },
   uploadBatch: async (buildingId, files, onProgress) => {
     const results = [];
@@ -27,7 +32,7 @@ export const drawingsApi = {
         const res = await drawingsApi.upload(buildingId, file);
         results.push({ file: file.name, success: true, data: res.data });
       } catch (err) {
-        results.push({ file: file.name, success: false, error: err.response?.data?.detail || err.message });
+        results.push({ file: file.name, success: false, error: err.response?.data?.error?.message || err.response?.data?.message || err.message });
       }
       completed++;
       if (onProgress) onProgress(completed, files.length);
@@ -60,11 +65,23 @@ export const drawingsApi = {
   getViewUrl: (id) => {
     return `${BASE}/drawings/${id}/view`;
   },
+  getView: async (id) => {
+    const res = await api.get(`/drawings/${id}/view`, { responseType: 'text', timeout: 300000 });
+    return res.data;
+  },
 };
 
 export const boqElementsApi = {
-  list: async (drawingId) => {
-    const res = await api.get('/boq-elements', { params: { drawing_id: drawingId } });
+  list: async (drawingId, { skip = 0, limit = 500, search = '', elementType = '', classificationStatus = '' } = {}) => {
+    const params = { drawing_id: drawingId, skip, limit };
+    if (search) params.search = search;
+    if (elementType) params.element_type = elementType;
+    if (classificationStatus) params.classification_status = classificationStatus;
+    const res = await api.get('/boq-elements', { params });
+    return res.data;
+  },
+  summary: async (drawingId) => {
+    const res = await api.get('/boq-elements/summary', { params: { drawing_id: drawingId } });
     return res.data;
   },
   unclassified: async (skip = 0, limit = 50) => {

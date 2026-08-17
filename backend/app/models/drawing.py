@@ -33,6 +33,6 @@ class Drawing(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     building: Mapped["Building"] = relationship("Building")
-    batch_job: Mapped["BatchJob"] = relationship("BatchJob", back_populates="drawings", lazy="selectin")
+    batch_job: Mapped["BatchJob"] = relationship("BatchJob", back_populates="drawings")
     uploaded_by_user: Mapped["User"] = relationship("User")
-    boq_elements: Mapped[list["BOQElement"]] = relationship("BOQElement", back_populates="drawing", lazy="selectin")
+    boq_elements: Mapped[list["BOQElement"]] = relationship("BOQElement", back_populates="drawing")

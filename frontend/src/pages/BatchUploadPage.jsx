@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { drawingsApi } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import {
   UploadCloud, X, FileText, CheckCircle2, AlertCircle, AlertTriangle,
   Clock, ArrowRight, Loader2, Trash2, Upload, Eye
@@ -129,6 +131,7 @@ export const BatchUploadPage = () => {
               {files.length} ملف
             </span>
           </div>
+          <LogoutButton compact />
         </div>
       </header>
 

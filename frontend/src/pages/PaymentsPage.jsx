@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { paymentsApi, retentionsApi } from '../features/payments/paymentsApi';
 import { contractsApi } from '../features/contractors/contractorsApi';
 import {
@@ -200,6 +202,7 @@ export const PaymentsPage = () => {
                 <span>دفعة جديدة</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

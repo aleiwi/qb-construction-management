@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { contractsApi, contractorsApi } from '../features/contractors/contractorsApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import {
@@ -160,7 +162,7 @@ export const ContractsPage = () => {
       if (initialContractorId) params.contractor_id = initialContractorId;
       const [contractsRes, contractorsRes, buildingsRes] = await Promise.all([
         contractsApi.list(params),
-        contractorsApi.list(1, 1000),
+        contractorsApi.list(1, 100),
         buildingsApi.list(),
       ]);
       if (contractsRes.success) setContracts(contractsRes.data);
@@ -229,6 +231,7 @@ export const ContractsPage = () => {
                 <span>عقد جديد</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

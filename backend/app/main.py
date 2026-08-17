@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError, HTTPException
 from contextlib import asynccontextmanager
-import os
+import logging
+import uuid
+
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base, AsyncSessionLocal
@@ -31,6 +33,12 @@ from app.models.boq_project import BOQProject, BOQProjectStatus
 from app.models.classification_training import ClassificationTraining
 from app.core.security import get_password_hash
 from sqlalchemy.future import select
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("qb")
 
 SEED_USERS = [
     ("admin@qb.com",       "admin123",      "مدير النظام الرئيسي",        UserRole.ADMIN),
@@ -150,14 +158,33 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    trace_id = uuid.uuid4().hex[:12]
+    logger.exception(
+        "Unhandled exception trace_id=%s method=%s path=%s",
+        trace_id, request.method, request.url.path,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=APIResponse.fail(code="INTERNAL_SERVER_ERROR", message=f"حدث خطأ غير متوقع: {str(exc)}").model_dump()
+        headers={"X-Trace-Id": trace_id},
+        content=APIResponse.fail(
+            code="INTERNAL_SERVER_ERROR",
+            message="حدث خطأ غير متوقع، الرجاء المحاولة لاحقًا"
+        ).model_dump()
     )
 
-# Serve uploaded files as static
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+@app.get("/api/v1/health")
+async def health_check():
+    db_status = "ok"
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Health check failed: database unreachable")
+        db_status = "error"
+    return APIResponse.ok(
+        data={"status": db_status, "environment": settings.ENVIRONMENT, "version": "1.0.0"},
+        message="Health check",
+    )
 
 # Include API Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)

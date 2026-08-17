@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useContractors } from '../features/contractors/useContractors';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import {
   HardHat, Plus, RefreshCw, Edit2, Trash2, ArrowRight, ArrowLeft,
   Building2, X, CheckCircle2, AlertCircle, ChevronRight, UserCheck, Phone, Mail
@@ -208,6 +210,7 @@ export const ContractorsPage = () => {
                 <span>مقاول جديد</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

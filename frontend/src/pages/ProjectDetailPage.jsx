@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { projectsApi, buildingsApi, stagesApi } from '../features/projects/projectsApi';
 import api from '../api/axios';
 import {
   Building2, Plus, RefreshCw, Edit2, Trash2, ArrowRight, ArrowLeft,
   Layers, X, CheckCircle2, AlertCircle, ChevronDown, ChevronLeft, Save,
-  FileText, BarChart3, DollarSign, BrainCircuit
+  FileText, BarChart3, DollarSign, BrainCircuit, MapPin
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -442,6 +444,7 @@ export const ProjectDetailPage = () => {
                 <span>إضافة مبنى</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

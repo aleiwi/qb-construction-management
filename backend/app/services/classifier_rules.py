@@ -178,7 +178,7 @@ def _geometry_match(geometry_type: str, dims: dict) -> Optional[RuleMatch]:
         return RuleMatch(ElementType.BEAM, 0.40, "short line → beam")
 
     # Large polygonal areas → slabs or roofs
-    if geometry_type in ("LWPOLYLINE, POLYLINE, SPLINE") and area > 10.0:
+    if geometry_type in ("LWPOLYLINE", "POLYLINE", "SPLINE", "POLYGON") and area > 10.0:
         return RuleMatch(ElementType.SLAB, 0.50, "large polygon → slab")
 
     return None

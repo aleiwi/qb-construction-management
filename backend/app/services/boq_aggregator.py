@@ -98,7 +98,7 @@ async def aggregate_project_boq(
             }
 
         by_type[et_key]["count"] += 1
-        by_type[et_key]["total_quantity"] += el.quantity
+        by_type[et_key]["total_quantity"] += float(el.quantity or 0)
 
         # Compute quantity in primary unit
         try:
@@ -136,7 +136,7 @@ async def aggregate_project_boq(
             }
         by_drawing[d_id]["elements_count"] += 1
         by_drawing[d_id]["classified_count"] += 1 if el.classification_status != ClassificationStatus.UNCLASSIFIED else 0
-        by_drawing[d_id]["total_quantity"] += el.quantity
+        by_drawing[d_id]["total_quantity"] += float(el.quantity or 0)
         if item:
             by_drawing[d_id]["base_cost"] += float(item.total_price or 0)
 

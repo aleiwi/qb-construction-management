@@ -4,13 +4,30 @@ from sqlalchemy.future import select
 from sqlalchemy import func
 from app.models.boq_element import BOQElement, ClassificationStatus, ElementType
 from app.models.boq_item import BOQItem
+from app.models.building import Building
 from app.models.drawing import Drawing
 from app.models.price_library import PriceLibrary
 
 
 async def generate_comparison_report(db: AsyncSession, project_id: int) -> Dict:
+    buildings_result = await db.execute(
+        select(Building.id).filter(Building.project_id == project_id)
+    )
+    building_ids = buildings_result.scalars().all()
+
+    if not building_ids:
+        return {
+            "project_id": project_id,
+            "total_elements": 0,
+            "auto_elements": 0,
+            "manual_elements": 0,
+            "unclassified_elements": 0,
+            "comparisons": [],
+            "summary": {"type_variance": 0, "qty_variance": 0, "cost_variance": 0},
+        }
+
     drawings_result = await db.execute(
-        select(Drawing).filter(Drawing.project_id == project_id)
+        select(Drawing).filter(Drawing.building_id.in_(building_ids))
     )
     drawings = drawings_result.scalars().all()
     drawing_ids = [d.id for d in drawings]

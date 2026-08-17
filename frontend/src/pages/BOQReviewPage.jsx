@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { boqElementsApi } from '../features/boq/boqApi';
 import {
   Layers, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Tag,
@@ -156,6 +158,7 @@ export const BOQReviewPage = () => {
               <ArrowRight className="w-3.5 h-3.5" />
               <span>المخططات</span>
             </button>
+            <LogoutButton compact />
           </div>
         </div>
       </header>

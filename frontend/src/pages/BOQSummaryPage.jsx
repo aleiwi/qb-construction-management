@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { projectsApi } from '../features/projects/projectsApi';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import api from '../api/axios';
 import {
   ArrowRight, FileText, BarChart3, RefreshCw, Download, Printer,
@@ -112,6 +114,7 @@ export const BOQSummaryPage = () => {
                 </div>
               )}
             </div>
+            <LogoutButton compact />
           </div>
         </div>
       </header>

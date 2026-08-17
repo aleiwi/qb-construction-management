@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../features/projects/useProjects';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import {
   Building2, Plus, RefreshCw, Edit2, Trash2, ArrowRight,
   MapPin, Layers, X, CheckCircle2, AlertCircle, ChevronRight
@@ -181,6 +183,7 @@ export const ProjectsPage = () => {
                 <span>مشروع جديد</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

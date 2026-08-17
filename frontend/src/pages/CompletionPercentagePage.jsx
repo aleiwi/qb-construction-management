@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import {
   ArrowRight, BarChart3, FileText, Edit3, RotateCcw, Save,
   Cloud, CloudOff, AlertCircle, Building2, Loader2, CheckCircle2,
@@ -297,6 +299,7 @@ export const CompletionPercentagePage = () => {
                 <button onClick={() => setActiveView('edit')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeView === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}><Edit3 className="w-4 h-4" /> التحرير</button>
               </div>
             </div>
+            <LogoutButton compact />
           </div>
         </div>
       </header>

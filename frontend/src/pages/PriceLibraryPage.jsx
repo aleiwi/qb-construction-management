@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { priceLibraryApi } from '../features/boq/boqApi';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { DollarSign, Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw } from 'lucide-react';
 
 const UNIT_OPTIONS = ['م2', 'م3', 'م', 'عدد', 'كجم', 'طن', 'م2.سقف', 'م2.جدار'];
@@ -98,6 +100,7 @@ export const PriceLibraryPage = () => {
               <Plus className="w-4 h-4" />
               إضافة سعر
             </button>
+            <LogoutButton compact />
           </div>
         </div>
       </header>

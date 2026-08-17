@@ -15,15 +15,50 @@ from app.models.boq_element import ClassificationStatus
 router = APIRouter(prefix="/boq-elements", tags=["BOQ Elements"])
 
 
-@router.get("", response_model=APIResponse[List[BOQElementOut]])
+@router.get("", response_model=APIResponse)
 async def list_boq_elements(
+    drawing_id: int = Query(...),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=2000),
+    search: Optional[str] = Query(None),
+    element_type: Optional[str] = Query(None),
+    classification_status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
+):
+    service = BOQElementService(db)
+    elements = await service.get_by_drawing(
+        drawing_id,
+        skip=skip,
+        limit=limit,
+        search=search,
+        element_type=element_type,
+        classification_status=classification_status,
+    )
+    total = await service.count_by_drawing(
+        drawing_id,
+        search=search,
+        element_type=element_type,
+        classification_status=classification_status,
+    )
+    return APIResponse.ok(
+        data={
+            "items": [BOQElementOut.model_validate(e) for e in elements],
+            "total": total,
+        },
+        message="تم جلب العناصر بنجاح",
+    )
+
+
+@router.get("/summary", response_model=APIResponse)
+async def get_drawing_elements_summary(
     drawing_id: int = Query(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
     service = BOQElementService(db)
-    elements = await service.get_by_drawing(drawing_id)
-    return APIResponse.ok(data=[BOQElementOut.model_validate(e) for e in elements], message="تم جلب العناصر بنجاح")
+    data = await service.get_drawing_summary(drawing_id)
+    return APIResponse.ok(data=data, message="تم جلب ملخص العناصر بنجاح")
 
 
 @router.get("/unclassified", response_model=APIResponse[List[BOQElementReviewOut]])

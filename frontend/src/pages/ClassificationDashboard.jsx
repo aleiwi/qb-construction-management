@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { boqElementsApi } from '../features/boq/boqApi';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import {
   BarChart3, PieChart, RefreshCw, Layers, CheckCircle2, AlertTriangle,
   BrainCircuit, Target, AlertCircle
@@ -57,6 +59,7 @@ export const ClassificationDashboard = () => {
           <button onClick={fetchStats} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          <LogoutButton compact />
         </div>
       </header>
 

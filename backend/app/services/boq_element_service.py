@@ -2,6 +2,7 @@ import json
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from app.models.boq_element import BOQElement, ClassificationStatus, ElementType
 from app.schemas.boq_element import BOQElementClassify
 from app.services.auto_learner import record_classification
@@ -16,13 +17,70 @@ class BOQElementService:
         result = await self.db.execute(select(BOQElement).filter(BOQElement.id == element_id))
         return result.scalars().first()
 
-    async def get_by_drawing(self, drawing_id: int) -> List[BOQElement]:
+    def _apply_filters(self, stmt, search=None, element_type=None, classification_status=None):
+        if search:
+            stmt = stmt.filter(BOQElement.source_layer_name.ilike(f"%{search}%"))
+        if element_type:
+            stmt = stmt.filter(BOQElement.element_type == element_type)
+        if classification_status:
+            stmt = stmt.filter(BOQElement.classification_status == classification_status)
+        return stmt
+
+    async def get_by_drawing(
+        self,
+        drawing_id: int,
+        skip: int = 0,
+        limit: int = 500,
+        search: Optional[str] = None,
+        element_type: Optional[str] = None,
+        classification_status: Optional[str] = None,
+    ) -> List[BOQElement]:
+        stmt = self._apply_filters(
+            select(BOQElement).filter(BOQElement.drawing_id == drawing_id),
+            search, element_type, classification_status,
+        )
         result = await self.db.execute(
-            select(BOQElement)
-            .filter(BOQElement.drawing_id == drawing_id)
-            .order_by(BOQElement.created_at.asc())
+            stmt.order_by(BOQElement.created_at.asc()).offset(skip).limit(limit)
         )
         return result.scalars().all()
+
+    async def count_by_drawing(
+        self,
+        drawing_id: int,
+        search: Optional[str] = None,
+        element_type: Optional[str] = None,
+        classification_status: Optional[str] = None,
+    ) -> int:
+        stmt = self._apply_filters(
+            select(func.count(BOQElement.id)).filter(BOQElement.drawing_id == drawing_id),
+            search, element_type, classification_status,
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar() or 0
+
+    async def get_drawing_summary(self, drawing_id: int) -> dict:
+        rows = await self.db.execute(
+            select(
+                BOQElement.element_type,
+                BOQElement.classification_status,
+                func.count(BOQElement.id).label("cnt"),
+            )
+            .filter(BOQElement.drawing_id == drawing_id)
+            .group_by(BOQElement.element_type, BOQElement.classification_status)
+        )
+        by_type = {}
+        classified = 0
+        unclassified = 0
+        for row in rows.all():
+            etype = row[0] if isinstance(row[0], str) else (row[0].value if row[0] else "other")
+            status = row[1] if isinstance(row[1], str) else (row[1].value if row[1] else "unclassified")
+            by_type.setdefault(etype, 0)
+            by_type[etype] += row[2]
+            if status == ClassificationStatus.UNCLASSIFIED:
+                unclassified += row[2]
+            else:
+                classified += row[2]
+        return {"by_type": by_type, "classified": classified, "unclassified": unclassified, "total": classified + unclassified}
 
     async def get_unclassified(self, skip: int = 0, limit: int = 50) -> List[BOQElement]:
         result = await self.db.execute(

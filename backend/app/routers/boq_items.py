@@ -34,11 +34,20 @@ async def link_boq_item(
     if not element:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="عنصر BOQ غير موجود")
 
+    if item_in.unit_price is None:
+        from app.services.price_library_service import PriceLibraryService
+        price_ref = await PriceLibraryService(db).get_by_id(item_in.price_ref_id)
+        if not price_ref:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="السعر المرجعي غير موجود")
+        unit_price = float(price_ref.unit_price)
+    else:
+        unit_price = float(item_in.unit_price)
+
     item_service = BOQItemService(db)
     item = await item_service.create_or_update(
         boq_element_id=item_in.boq_element_id,
         price_ref_id=item_in.price_ref_id,
-        unit_price=element.quantity * float(item_in.unit_price) if item_in.unit_price else 0,
+        unit_price=unit_price,
         quantity=element.quantity,
     )
     return APIResponse.ok(data=BOQItemOut.model_validate(item), message="تم ربط العنصر بالسعر بنجاح")

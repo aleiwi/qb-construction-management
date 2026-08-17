@@ -29,10 +29,12 @@ class BOQItemService:
             )
         )
         existing_item = existing.scalars().first()
+        qty = float(quantity)
+        up = float(unit_price)
         if existing_item:
             existing_item.quantity = quantity
             existing_item.unit_price = unit_price
-            existing_item.total_price = round(quantity * unit_price, 2)
+            existing_item.total_price = round(qty * up, 2)
             self.db.add(existing_item)
             await self.db.commit()
             await self.db.refresh(existing_item)
@@ -43,7 +45,7 @@ class BOQItemService:
             price_ref_id=price_ref_id,
             quantity=quantity,
             unit_price=unit_price,
-            total_price=round(quantity * unit_price, 2),
+            total_price=round(qty * up, 2),
         )
         self.db.add(item)
         await self.db.commit()

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { qualityChecksApi } from '../features/quality/qualityChecksApi';
 import { stagesApi, buildingsApi } from '../features/projects/projectsApi';
 import {
@@ -214,6 +216,7 @@ export const QualityChecksPage = () => {
                 <span>فحص جديد</span>
               </button>
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>

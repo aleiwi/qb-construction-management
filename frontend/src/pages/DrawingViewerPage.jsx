@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { drawingsApi } from '../features/boq/boqApi';
+import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
+import DxfCanvas, { computeDxfViewBox, collectDxfLayers } from '../components/dxf/DxfCanvas';
 import {
   ArrowRight, Download, ZoomIn, ZoomOut,
   FileText, CheckCircle2, AlertTriangle, Clock, Loader2, Eye, Crosshair,
@@ -67,7 +70,21 @@ export const DrawingViewerPage = () => {
   const { drawingId } = useParams();
   const navigate = useNavigate();
   const [drawing, setDrawing] = useState(null);
+  const [elements, setElements] = useState([]);
+  const [elementsSummary, setElementsSummary] = useState(null);
+  const [elementsTotal, setElementsTotal] = useState(0);
+  const [elementsLoading, setElementsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [skip, setSkip] = useState(0);
+  const [filteredTotal, setFilteredTotal] = useState(0);
+  const PAGE_SIZE = 500;
   const [svgContent, setSvgContent] = useState(null);
+  const [dxfText, setDxfText] = useState(null);
+  const [layers, setLayers] = useState(null);
+  const [layerVisibility, setLayerVisibility] = useState(null);
+  const [showLayers, setShowLayers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [svgLoading, setSvgLoading] = useState(true);
   const [svgError, setSvgError] = useState(false);
@@ -133,48 +150,113 @@ export const DrawingViewerPage = () => {
     }
   }, []);
 
+  const fetchElementsData = useCallback(async (id, opts = {}) => {
+    setElementsLoading(true);
+    try {
+      const [elemsRes, summaryRes] = await Promise.all([
+        boqElementsApi.list(id, {
+          skip: opts.skip ?? 0,
+          limit: PAGE_SIZE,
+          search: opts.search || '',
+          elementType: opts.type || '',
+          classificationStatus: opts.status || '',
+        }),
+        boqElementsApi.summary(id),
+      ]);
+      if (elemsRes.success) {
+        const data = elemsRes.data || {};
+        setElements(data.items || []);
+        setFilteredTotal(data.total ?? 0);
+      }
+      if (summaryRes.success) {
+        const s = summaryRes.data;
+        setElementsSummary(s);
+        setElementsTotal(s?.total ?? 0);
+      }
+    } catch (e) {
+      setElements([]);
+      setElementsSummary(null);
+      setElementsTotal(0);
+      setFilteredTotal(0);
+    } finally {
+      setElementsLoading(false);
+    }
+  }, []);
+
   const fetchPreview = useCallback(async (id) => {
     setSvgLoading(true);
     setSvgError(false);
     try {
-      const res = await drawingsApi.getPreview(id);
-      if (res.success && res.data?.svg) {
-        setSvgContent(res.data.svg);
-        viewBoxRef.current = parseViewBox(res.data.svg);
+      const raw = await drawingsApi.getView(id);
+      if (raw && raw.length > 0) {
+        const vb = computeDxfViewBox(raw);
+        if (!vb) throw new Error('تعذر قراءة هندسة الملف');
+        setDxfText(raw);
+        setLayers(collectDxfLayers(raw));
+        setLayerVisibility(null);
+        viewBoxRef.current = vb;
         return true;
       }
-      setSvgContent(null);
+      setDxfText(null);
       setSvgError(true);
       return false;
     } catch (e) {
-      setSvgContent(null);
-      setSvgError(true);
+      setDxfText(null);
+      const raw = e.response?.data;
+      const data = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+      setSvgError(
+        data?.error?.message
+        || data?.detail
+        || true
+      );
       return false;
     } finally {
       setSvgLoading(false);
     }
-  }, [parseViewBox]);
+  }, []);
 
   useEffect(() => {
     if (!drawingId) return;
     setLoading(true);
     fetchDrawing(parseInt(drawingId)).then(d => {
       setLoading(false);
-      if (d && (d.status === 'completed' || d.status === 'failed')) {
-        fetchPreview(d.id);
-      }
     });
-  }, [drawingId, fetchDrawing, fetchPreview]);
+  }, [drawingId, fetchDrawing]);
+
+  useEffect(() => {
+    if (!drawingId) return;
+    const id = parseInt(drawingId);
+    if (drawing && (drawing.status === 'completed' || drawing.status === 'failed')) {
+      fetchPreview(id);
+    }
+  }, [drawingId, drawing, fetchPreview]);
+
+  useEffect(() => {
+    if (!drawingId) return;
+    const id = parseInt(drawingId);
+    if (drawing && drawing.status === 'completed') {
+      fetchElementsData(id, { skip, search: searchQuery, type: typeFilter, status: statusFilter });
+    }
+  }, [drawingId, drawing, skip, searchQuery, typeFilter, statusFilter, fetchElementsData]);
 
   useEffect(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setShowElements(false);
     setElementFilter('');
+    setSearchQuery('');
+    setTypeFilter('');
+    setStatusFilter('');
+    setSkip(0);
+    setFilteredTotal(0);
     setExpandedGroups(new Set());
     setCursorSvg(null);
     setShowShortcuts(false);
     setSvgContent(null);
+    setDxfText(null);
+    setLayers(null);
+    setLayerVisibility(null);
+    setShowLayers(false);
     setSvgLoading(true);
     setSvgError(false);
     setError('');
@@ -186,6 +268,8 @@ export const DrawingViewerPage = () => {
   }, [drawingId]);
 
   const pollStatusRef = useRef(null);
+
+  const isProcessing = drawing && (drawing.status === 'pending' || drawing.status === 'processing');
 
   useEffect(() => {
     if (!drawing) return;
@@ -201,24 +285,32 @@ export const DrawingViewerPage = () => {
       if (!updated) return;
       pollStatusRef.current = updated.status;
       setDrawing(updated);
-      if (updated.status === 'completed') {
-        fetchPreview(id);
-      } else if (updated.status === 'failed') {
-        setSvgLoading(false);
-      }
     }, 3000);
     return () => clearInterval(interval);
-  }, [drawing?.id, fetchDrawing, fetchPreview]);
+  }, [drawing?.id, fetchDrawing]);
 
   const startTimeRef = useRef(null);
   const wasProcessingRef = useRef(false);
 
   useEffect(() => {
-    if (wasProcessingRef.current && !isProcessing && drawing?.boq_elements?.length > 0) {
+    if (!elementFilter) {
+      setSearchQuery('');
+      setSkip(0);
+      return;
+    }
+    const t = setTimeout(() => {
+      setSearchQuery(elementFilter);
+      setSkip(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [elementFilter]);
+
+  useEffect(() => {
+    if (wasProcessingRef.current && !isProcessing && elements.length > 0) {
       setShowElements(true);
     }
     wasProcessingRef.current = isProcessing;
-  }, [isProcessing, drawing?.boq_elements?.length]);
+  }, [isProcessing, elements.length]);
 
   useEffect(() => {
     if (isProcessing) {
@@ -310,11 +402,18 @@ export const DrawingViewerPage = () => {
     const relY = clientY - rect.top;
     const p = panRef.current;
     const z = zoomRef.current;
+    // undo zoom/pan (transform is translate(pan) scale(zoom) around center)
     const cx = (relX - rect.width / 2 - p.x) / z;
     const cy = (relY - rect.height / 2 - p.y) / z;
+    const px = cx + rect.width / 2;
+    const py = cy + rect.height / 2;
+    // fit: aspect-preserving scale + centering (same as DxfCanvas)
+    const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
+    const ox = (rect.width - vb.width * scale) / 2;
+    const oy = (rect.height - vb.height * scale) / 2;
     return {
-      x: vb.minX + ((cx + rect.width / 2) / rect.width) * vb.width,
-      y: vb.minY + ((cy + rect.height / 2) / rect.height) * vb.height,
+      x: vb.minX + (px - ox) / scale,
+      y: vb.minY + (py - oy) / scale,
     };
   }, []);
 
@@ -497,30 +596,25 @@ export const DrawingViewerPage = () => {
 
   const statusCfg = drawing ? STATUS_CONFIG[drawing.status] || STATUS_CONFIG.pending : null;
 
-  const groupedElements = drawing?.boq_elements?.reduce((acc, el) => {
+  const groupedElements = elements.reduce((acc, el) => {
     const key = el.element_type || 'other';
     if (!acc[key]) acc[key] = [];
     acc[key].push(el);
     return acc;
   }, {}) || {};
 
-  const filteredGroupedElements = elementFilter
-    ? Object.entries(groupedElements).reduce((acc, [type, items]) => {
-        const filtered = items.filter(el =>
-          (el.source_layer_name || '').toLowerCase().includes(elementFilter.toLowerCase())
-        );
-        if (filtered.length) acc[type] = filtered;
-        return acc;
-      }, {})
-    : groupedElements;
+  const elementTypeCounts = Object.entries(elementsSummary?.by_type || {}).reduce((acc, [type, count]) => {
+    const key = ELEMENT_TYPE_MAP[type] ? type : 'other';
+    const existing = acc.find(i => i.type === key);
+    if (existing) {
+      existing.count += count;
+    } else {
+      acc.push({ type: key, count, config: ELEMENT_TYPE_MAP[key] || ELEMENT_TYPE_MAP.other });
+    }
+    return acc;
+  }, []);
 
-  const elementTypeCounts = Object.entries(groupedElements).map(([type, items]) => ({
-    type,
-    count: items.length,
-    config: ELEMENT_TYPE_MAP[type] || ELEMENT_TYPE_MAP.other,
-  }));
-
-  const isProcessing = drawing && (drawing.status === 'pending' || drawing.status === 'processing');
+  const hasActiveFilters = !!(elementFilter || typeFilter || statusFilter);
 
   if (loading) {
     return (
@@ -564,7 +658,7 @@ export const DrawingViewerPage = () => {
               <div className="min-w-0">
                 <h1 className="text-sm font-bold text-white truncate">{drawing?.file_name}</h1>
                 <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                  <span>{drawing?.boq_elements?.length ?? drawing?.elements_count ?? 0} عناصر</span>
+                  <span>{elementsTotal || drawing?.elements_count || 0} عناصر</span>
                   <span>•</span>
                   {statusCfg && (
                     <span className={`flex items-center gap-1 ${statusCfg.color} ${statusCfg.pulse ? 'animate-pulse' : ''}`}>
@@ -577,12 +671,19 @@ export const DrawingViewerPage = () => {
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto shrink-0">
               <button
+                onClick={() => setShowLayers(v => !v)}
+                className={`p-1.5 rounded-lg transition shrink-0 ${showLayers ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                title="الطبقات"
+              >
+                <Layers className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => setShowElements(v => !v)}
                 className={`p-1.5 rounded-lg transition shrink-0 relative ${showElements ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                 title="قائمة العناصر"
               >
                 {showElements ? <PanelRightClose className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
-                {!showElements && drawing?.boq_elements?.length > 0 && (
+                {!showElements && elementsTotal > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-400 rounded-full" />
                 )}
               </button>
@@ -662,6 +763,7 @@ export const DrawingViewerPage = () => {
                 </button>
               )}
             </div>
+            <LogoutButton compact />
           </div>
         </header>
       )}
@@ -728,7 +830,7 @@ export const DrawingViewerPage = () => {
                 <p className="text-xs text-slate-500">جارٍ إنشاء المعاينة...</p>
               </div>
             </div>
-          ) : svgContent ? (
+          ) : svgContent || dxfText ? (
             <div
               ref={zoomContainerRef}
               className="absolute inset-0 flex items-center justify-center overflow-hidden"
@@ -742,8 +844,17 @@ export const DrawingViewerPage = () => {
               <div
                 className="pointer-events-none"
                 style={{ width: '100%', height: '100%' }}
-                dangerouslySetInnerHTML={{ __html: svgContent }}
+                dangerouslySetInnerHTML={{ __html: svgContent || '' }}
               />
+              {dxfText && viewBoxRef.current && (
+                <div className="absolute inset-0" style={{ overflow: 'hidden' }}>
+                  <DxfCanvas
+                    dxfText={dxfText}
+                    viewBox={viewBoxRef.current}
+                    layerVisibility={layerVisibility}
+                  />
+                </div>
+              )}
               {(measuring || measureEnd) && measureStart && viewBoxRef.current && (
                 <svg
                   className="absolute inset-0 pointer-events-none"
@@ -778,9 +889,9 @@ export const DrawingViewerPage = () => {
                 <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-slate-400 mb-2">تعذر عرض المخطط</h3>
                 <p className="text-sm text-slate-500 mb-6">
-                  {svgError && drawing?.status === 'completed'
-                    ? 'تمت معالجة المخطط ولكن تعذر إنشاء معاينة SVG. قد يكون الملف غير مدعوم أو تالفًا.'
-                    : 'لا يمكن إنشاء معاينة SVG لهذا الملف.'}
+                  {typeof svgError === 'string'
+                    ? svgError
+                    : 'لا يمكن إنشاء عرض لهذا الملف. تأكد من أن الملف بصيغة DXF وأنه غير تالف.'}
                 </p>
                 <div className="flex items-center justify-center gap-3">
                   <button
@@ -803,9 +914,39 @@ export const DrawingViewerPage = () => {
           )}
         </div>
 
-        {showElements && drawing && drawing.boq_elements?.length > 0 && !isProcessing && (
+        {showLayers && layers && layers.length > 0 && (
           <div className="w-64 shrink-0 border-r border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-y-auto transition-all duration-300">
-            <div className="p-3 border-b border-slate-800 space-y-2">
+            <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-300">الطبقات</h3>
+              <button
+                onClick={() => setLayerVisibility(null)}
+                className="text-[9px] px-1.5 py-0.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition"
+              >إظهار الكل</button>
+            </div>
+            <div className="p-2 space-y-0.5">
+              {layers.map(l => (
+                <label key={l.name} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-800/40 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={layerVisibility ? layerVisibility[l.name] !== false : true}
+                    onChange={e => setLayerVisibility(prev => {
+                      const next = prev ? { ...prev } : Object.fromEntries(layers.map(x => [x.name, true]));
+                      next[l.name] = e.target.checked;
+                      return next;
+                    })}
+                    className="accent-blue-500 w-3 h-3"
+                  />
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: l.color }} />
+                  <span className="text-[10px] text-slate-400 truncate" dir="ltr">{l.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showElements && drawing && elementsTotal > 0 && !isProcessing && (
+          <div className="w-72 shrink-0 border-r border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden transition-all duration-300 flex flex-col">
+            <div className="p-3 border-b border-slate-800 space-y-2 shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-300">عناصر المخطط</h3>
                 <div className="flex items-center gap-1">
@@ -820,9 +961,9 @@ export const DrawingViewerPage = () => {
                     title="طي الكل"
                   >طي</button>
                   <span className="text-[10px] text-slate-500">
-                    {elementFilter
-                      ? `${Object.values(filteredGroupedElements).reduce((s, a) => s + a.length, 0)} من ${drawing.boq_elements.length}`
-                      : `${drawing.boq_elements.length} عنصر`}
+                    {filteredTotal > 0 || hasActiveFilters
+                      ? `${elements.length} من ${filteredTotal}`
+                      : `${elementsTotal} عنصر`}
                   </span>
                 </div>
               </div>
@@ -835,7 +976,7 @@ export const DrawingViewerPage = () => {
                   type="text"
                   value={elementFilter}
                   onChange={e => setElementFilter(e.target.value)}
-                  placeholder="بحث..."
+                  placeholder="بحث في كل العناصر..."
                   className="w-full pr-7 pl-2 py-1 text-[11px] bg-slate-800/60 border border-slate-700/50 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition"
                 />
                 {elementFilter && (
@@ -849,12 +990,59 @@ export const DrawingViewerPage = () => {
                   </button>
                 )}
               </div>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => setTypeFilter('')}
+                  className={`px-2 py-0.5 rounded-full text-[9px] font-medium transition ${
+                    !typeFilter ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40' : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'
+                  }`}
+                >الكل</button>
+                {elementTypeCounts.map(({ type, count, config }) => (
+                  <button
+                    key={type}
+                    onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-medium transition ${config.bg} ${
+                      typeFilter === type ? `ring-1 ${config.text}` : config.text
+                    }`}
+                  >
+                    {config.label} ({count.toLocaleString('en-US')})
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                {[
+                  ['', 'الكل'],
+                  ['classified', 'مصنف'],
+                  ['unclassified', 'غير مصنف'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setStatusFilter(value)}
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-medium transition ${
+                      statusFilter === value
+                        ? value === 'classified'
+                          ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                          : value === 'unclassified'
+                            ? 'bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/40'
+                            : 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40'
+                        : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="p-2 space-y-1">
-              {Object.entries(filteredGroupedElements).length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {elementsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-6">
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                  <span className="text-[10px] text-slate-500">جارٍ التحميل...</span>
+                </div>
+              ) : Object.keys(groupedElements).length === 0 ? (
                 <p className="text-[10px] text-slate-500 text-center py-4">لا توجد نتائج للبحث</p>
               ) : (
-                Object.entries(filteredGroupedElements).map(([type, items]) => {
+                Object.entries(groupedElements).map(([type, items]) => {
                 const config = ELEMENT_TYPE_MAP[type] || ELEMENT_TYPE_MAP.other;
                 const isOpen = expandedGroups.has(type);
                 return (
@@ -872,19 +1060,25 @@ export const DrawingViewerPage = () => {
                     {isOpen && (
                       <div className="mt-1 space-y-0.5 mr-2">
                         {items.map((el) => (
-                          <div key={el.id} className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-800/30">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                              <span className="text-[10px] text-slate-400 truncate">{el.source_layer_name || '—'}</span>
+                          <div key={el.id} className="flex flex-col gap-0.5 px-2.5 py-1 rounded-lg bg-slate-800/30">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                              <span className="text-[10px] text-slate-400 truncate" dir="ltr">{el.source_layer_name || '—'}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                                el.classification_status === 'classified' ? 'bg-emerald-500/10 text-emerald-400' :
+                                el.classification_status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                                'bg-slate-500/10 text-slate-400'
+                              }`}>
+                                {el.classification_status === 'classified' ? 'مصنف' :
+                                 el.classification_status === 'pending' ? 'معلق' : '—'}
+                              </span>
                             </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                              el.classification_status === 'classified' ? 'bg-emerald-500/10 text-emerald-400' :
-                              el.classification_status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                              'bg-slate-500/10 text-slate-400'
-                            }`}>
-                              {el.classification_status === 'classified' ? 'مصنف' :
-                               el.classification_status === 'pending' ? 'معلق' : '—'}
-                            </span>
+                            {(el.quantity !== undefined && el.quantity !== null && el.quantity > 0) && (
+                              <div className="flex items-center gap-1 text-[9px] text-slate-500">
+                                <span className={`w-1 h-1 rounded-full ${config.dot}`} />
+                                <span dir="ltr">{Number(el.quantity).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                                {el.unit ? <span>{el.unit}</span> : null}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -893,6 +1087,23 @@ export const DrawingViewerPage = () => {
                 );
               }))}
             </div>
+            {filteredTotal > PAGE_SIZE && (
+              <div className="shrink-0 p-2 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  onClick={() => setSkip(s => Math.max(0, s - PAGE_SIZE))}
+                  disabled={skip === 0}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-800/60 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >السابق</button>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {skip / PAGE_SIZE + 1} / {Math.ceil(filteredTotal / PAGE_SIZE)}
+                </span>
+                <button
+                  onClick={() => setSkip(s => s + PAGE_SIZE)}
+                  disabled={skip + PAGE_SIZE >= filteredTotal}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-800/60 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >التالي</button>
+              </div>
+            )}
           </div>
         )}
       </div>

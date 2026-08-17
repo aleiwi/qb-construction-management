@@ -3,19 +3,25 @@ import io
 import logging
 import re
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
-from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, BackgroundTasks
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
 from app.schemas.drawing import DrawingUploadResponse, DrawingOut, DrawingListOut, BatchJobOut, BatchJobItemOut
 from app.schemas.response import APIResponse
 from app.services.drawing_service import DrawingService
+from app.services.dwg_converter import ensure_dxf
 from app.dependencies.auth import get_current_user, require_roles
 from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/drawings", tags=["Drawings"])
+
+# ج8: حد أقصى لمعالجة مخطط واحد في الخلفية في كل مرة — الملفات الضخمة (DWG)
+# تستهلك CPU وكتابة ضخمة، وتزاحم المعالجات المتعددة تحجب الخادم عن الطلبات الأخرى.
+import asyncio
+_drawings_process_semaphore = asyncio.Semaphore(1)
 
 
 @router.get("", response_model=APIResponse[List[DrawingListOut]])
@@ -40,6 +46,7 @@ async def list_drawings(
 async def upload_drawing(
     building_id: int = Query(...),
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
@@ -52,11 +59,32 @@ async def upload_drawing(
 
     drawing_service = DrawingService(db)
     try:
-        drawing = await drawing_service.process_upload(building_id, file.filename, content, current_user.id)
+        drawing = await drawing_service.process_upload(
+            building_id, file.filename, content, current_user.id, defer_extraction=True
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    background_tasks.add_task(process_drawing_background, drawing.id)
+
     return APIResponse.ok(data=DrawingUploadResponse.model_validate(drawing), message="تم رفع المخطط وبدء المعالجة")
+
+
+async def process_drawing_background(drawing_id: int) -> None:
+    """ج8: معالجة المخطط في الخلفية بجلسة DB مستقلة حتى لا تُحجب الاستجابة عن المستخدم."""
+    async with _drawings_process_semaphore:
+        async with AsyncSessionLocal() as session:
+            service = DrawingService(session)
+            drawing = await service.get_by_id(drawing_id)
+            if not drawing:
+                return
+            try:
+                await service._run_extraction(drawing)
+            except Exception as e:
+                logger.exception("فشلت معالجة المخطط %s", drawing_id)
+                drawing.status = "failed"
+                drawing.error_message = str(e)
+                await session.commit()
 
 
 @router.get("/{drawing_id}", response_model=APIResponse[DrawingOut])
@@ -186,6 +214,45 @@ async def download_drawing(
     if not os.path.exists(drawing.file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ملف المخطط غير موجود على الخادم")
     return FileResponse(drawing.file_path, filename=drawing.file_name, media_type="application/octet-stream")
+
+
+@router.get("/{drawing_id}/view")
+async def view_drawing_raw(
+    drawing_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
+):
+    """ج8: يعيد محتوى ملف DXF الخام لعرضه احترافيًا في المتصفح (Canvas)."""
+    drawing_service = DrawingService(db)
+    drawing = await drawing_service.get_by_id(drawing_id)
+    if not drawing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="المخطط غير موجود")
+    if not os.path.exists(drawing.file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ملف المخطط غير موجود على الخادم")
+
+    ext = os.path.splitext(drawing.file_name)[1].lower()
+    if ext == ".dwg":
+        cached_path = drawing.file_path + ".dxf"
+        if os.path.exists(cached_path):
+            return FileResponse(cached_path, media_type="application/dxf; charset=utf-8")
+        with open(drawing.file_path, "rb") as f:
+            dwg_content = f.read()
+        dxf_content = ensure_dxf(dwg_content, drawing.file_name)
+        if dxf_content and not dxf_content.startswith(b"AC10"):
+            try:
+                with open(cached_path, "wb") as f:
+                    f.write(dxf_content)
+            except OSError:
+                pass
+            return Response(content=dxf_content, media_type="application/dxf; charset=utf-8")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="صيغة DWG غير مدعومة للعرض. ثبّت ODA File Converter على الخادم أو ارفع الملف بصيغة DXF.",
+        )
+    if ext != ".dxf":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"صيغة الملف غير مدعومة للعرض: {ext}")
+
+    return FileResponse(drawing.file_path, media_type="application/dxf; charset=utf-8")
 
 
 @router.delete("/{drawing_id}", response_model=APIResponse)

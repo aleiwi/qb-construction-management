@@ -188,7 +188,7 @@ def _build_html(d: Dict[str, Any]) -> str:
     pending_val = sum((p.get("totalVal") or (p.get("contractorVal", 0) + p.get("devVal", 0))) for p in payments if not p.get("paid"))
     paid_count = sum(1 for p in payments if p.get("paid"))
     unpaid_count = len(payments) - paid_count
-    paid_ratio = round(paid_val / budget * 100) if budget else 0
+    paid_ratio = max(0, min(100, round(paid_val / budget * 100))) if budget else 0
 
     # ── Page 1: Executive overview + project info ───────────────────────────
     kpi_cells = [

@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { PAGE_ROLES } from './config/roleAccess';
+import { PAGE_ROLES, ROLE_LANDING } from './config/roleAccess';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
@@ -33,7 +34,19 @@ const PageLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ roles, children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <PageLoader />;
+  }
+  if (!user) {
+    return <Navigate to="/" replace state={{ from: location.pathname }} />;
+  }
+  if (roles && !roles.includes(user.role)) {
+    return <Navigate to={ROLE_LANDING[user.role] || '/dashboard'} replace />;
+  }
   return children;
 };
 

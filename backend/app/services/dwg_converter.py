@@ -1,14 +1,31 @@
+import glob
 import os
 import subprocess
 import tempfile
 from typing import Optional
 
 
-ODA_CONVERTER_PATH = os.environ.get(
-    "ODA_CONVERTER_PATH",
-    # Common install paths for ODA File Converter
-    r"C:\Program Files\ODA\ODAFileConverter\ODAFileConverter.exe",
-)
+def _default_oda_path() -> str:
+    """Locate ODAFileConverter.exe across common install paths (versioned or not)."""
+    candidates = [
+        os.environ.get("ODA_CONVERTER_PATH"),
+        r"C:\Program Files\ODA\ODAFileConverter\ODAFileConverter.exe",
+        r"C:\Program Files (x86)\ODA\ODAFileConverter\ODAFileConverter.exe",
+        r"C:\Program Files\ODA\TeighaFileConverter\TeighaFileConverter.exe",
+    ]
+    for pattern in (
+        r"C:\Program Files\ODA\ODAFileConverter*\ODAFileConverter.exe",
+        r"C:\Program Files (x86)\ODA\ODAFileConverter*\ODAFileConverter.exe",
+        r"C:\Program Files\ODA\TeighaFileConverter*\TeighaFileConverter.exe",
+    ):
+        candidates.extend(sorted(glob.glob(pattern)))
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+    return candidates[1] if candidates[1] else ""
+
+
+ODA_CONVERTER_PATH = _default_oda_path()
 
 
 def ensure_dxf(file_content: bytes, file_name: str) -> bytes:
@@ -60,7 +77,7 @@ def _convert_via_oda(dwg_content: bytes) -> Optional[bytes]:
                 f.write(dwg_content)
 
             result = subprocess.run(
-                [ODA_CONVERTER_PATH, input_dir, output_dir, "DXF", "ACAD2018", "0", "1"],
+                [ODA_CONVERTER_PATH, input_dir, output_dir, "ACAD2018", "DXF", "0", "1"],
                 capture_output=True,
                 text=True,
                 timeout=120,

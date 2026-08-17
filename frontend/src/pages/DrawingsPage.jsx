@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import {
@@ -261,6 +263,7 @@ export const DrawingsPage = () => {
               <Layers className="w-4 h-4" />
               <span>مراجعة غير المصنفة</span>
             </button>
+            <LogoutButton compact />
           </div>
         </div>
       </header>

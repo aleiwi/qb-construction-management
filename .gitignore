@@ -32,3 +32,10 @@ Thumbs.db
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# SQLite WAL/SHM
+*.db-shm
+*.db-wal
+
+# Playwright MCP artifacts
+.playwright-mcp/

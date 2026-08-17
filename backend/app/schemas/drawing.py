@@ -70,7 +70,6 @@ class DrawingOut(DrawingBase):
     uploaded_by: Optional[int]
     created_at: datetime
     updated_at: datetime
-    boq_elements: Optional[List[BOQElementRef]] = []
 
     model_config = ConfigDict(from_attributes=True)
 

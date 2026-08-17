@@ -5,11 +5,12 @@ import time
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from app.models.drawing import Drawing, DrawingStatus
 from app.models.boq_element import BOQElement, ClassificationStatus
 from app.models.batch_job import BatchJob, BatchJobStatus
 from app.services.boq_extraction_service import extract_elements_from_dxf
-from app.services.dwg_converter import ensure_dxf
+from app.services.dwg_converter import ensure_dxf, ODA_CONVERTER_PATH
 from sqlalchemy import update
 
 
@@ -20,8 +21,11 @@ class DrawingService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, drawing_id: int) -> Optional[Drawing]:
-        result = await self.db.execute(select(Drawing).filter(Drawing.id == drawing_id))
+    async def get_by_id(self, drawing_id: int, with_elements: bool = False) -> Optional[Drawing]:
+        stmt = select(Drawing).filter(Drawing.id == drawing_id)
+        if with_elements:
+            stmt = stmt.options(selectinload(Drawing.boq_elements))
+        result = await self.db.execute(stmt)
         return result.scalars().first()
 
     async def get_by_building(self, building_id: int) -> List[Drawing]:
@@ -48,10 +52,17 @@ class DrawingService:
         file_content: bytes,
         user_id: int,
         batch_job_id: Optional[int] = None,
+        defer_extraction: bool = False,
     ) -> Drawing:
         ext = os.path.splitext(file_name)[1].lower()
         if ext not in self.ALLOWED_EXTENSIONS:
             raise ValueError(f"File type {ext} not allowed. Only .dxf and .dwg are supported.")
+        # ج8: DWG يتطلب محول ODA File Converter — بدونها تفشل المعالجة وتظهر رسائل غامضة.
+        if ext == ".dwg" and not os.path.exists(ODA_CONVERTER_PATH):
+            raise ValueError(
+                "صيغة DWG غير مدعومة لأن محول ODA File Converter غير مثبت على الخادم. "
+                "ثبّته (https://www.opendesign.com) ثم أعد المحاولة، أو ارفع الملف بصيغة DXF."
+            )
 
         stored_name = f"{uuid.uuid4()}{ext}"
         os.makedirs(self.UPLOAD_DIR, exist_ok=True)
@@ -73,12 +84,13 @@ class DrawingService:
         await self.db.commit()
         await self.db.refresh(drawing)
 
-        try:
-            await self._run_extraction(drawing)
-        except Exception as e:
-            drawing.status = DrawingStatus.FAILED
-            drawing.error_message = str(e)
-            await self.db.commit()
+        if not defer_extraction:
+            try:
+                await self._run_extraction(drawing)
+            except Exception as e:
+                drawing.status = DrawingStatus.FAILED
+                drawing.error_message = str(e)
+                await self.db.commit()
 
         return drawing
 
@@ -133,47 +145,58 @@ class DrawingService:
 
         # For DWG files, convert to DXF first and save to temp
         ext = os.path.splitext(drawing.file_name)[1].lower()
-        if ext == ".dwg":
-            with open(drawing.file_path, "rb") as f:
-                content = f.read()
-            dxf_content = ensure_dxf(content, drawing.file_name)
-            # Write converted DXF to a temporary file for ezdxf
-            import tempfile
-            tmp = tempfile.NamedTemporaryFile(suffix=".dxf", delete=False)
-            tmp.write(dxf_content)
-            tmp.close()
-            dxf_path = tmp.name
-        else:
-            dxf_path = drawing.file_path
 
-        extracted = extract_elements_from_dxf(dxf_path)
+        # ج8: المعالجة الثقيلة (تحويل DWG + استخراج العناصر) تُنفَّذ في thread pool
+        # حتى لا يُحجَب event loop عن بقية الطلبات أثناء معالجة الملفات الكبيرة.
+        def _heavy_work() -> list:
+            if ext == ".dwg":
+                with open(drawing.file_path, "rb") as f:
+                    content = f.read()
+                dxf_content = ensure_dxf(content, drawing.file_name)
+                import tempfile
+                tmp = tempfile.NamedTemporaryFile(suffix=".dxf", delete=False)
+                tmp.write(dxf_content)
+                tmp.close()
+                dxf_path = tmp.name
+            else:
+                dxf_path = drawing.file_path
 
-        # Clean up temp file if created
-        if ext == ".dwg":
             try:
-                os.unlink(dxf_path)
-            except Exception:
-                pass
+                return extract_elements_from_dxf(dxf_path)
+            finally:
+                if ext == ".dwg":
+                    try:
+                        os.unlink(dxf_path)
+                    except Exception:
+                        pass
+
+        import asyncio
+        extracted = await asyncio.to_thread(_heavy_work)
 
         classified_count = 0
         unclassified_count = 0
 
-        for item in extracted:
-            element = BOQElement(
-                drawing_id=drawing.id,
-                element_type=item["element_type"],
-                classification_status=item["classification_status"],
-                source_layer_name=item["source_layer_name"],
-                quantity=item["quantity"],
-                unit=item["unit"],
-                dimensions_json=item.get("dimensions_json"),
-            )
-            self.db.add(element)
+        # ج8: الكتابة على دفعات (batch commit) لتقليل مدة قفل قاعدة البيانات
+        # أثناء معالجة الملفات الضخمة حتى لا تعلق الطلبات الأخرى.
+        BATCH_SIZE = 500
+        for batch_start in range(0, len(extracted), BATCH_SIZE):
+            for item in extracted[batch_start:batch_start + BATCH_SIZE]:
+                element = BOQElement(
+                    drawing_id=drawing.id,
+                    element_type=item["element_type"],
+                    classification_status=item["classification_status"],
+                    source_layer_name=item["source_layer_name"],
+                    quantity=item["quantity"],
+                    unit=item["unit"],
+                    dimensions_json=item.get("dimensions_json"),
+                )
+                self.db.add(element)
 
-            if item["classification_status"] == ClassificationStatus.UNCLASSIFIED:
-                unclassified_count += 1
-            else:
-                classified_count += 1
+                if item["classification_status"] == ClassificationStatus.UNCLASSIFIED:
+                    unclassified_count += 1
+                else:
+                    classified_count += 1
+            await self.db.commit()
 
         drawing.elements_count = len(extracted)
         drawing.classified_count = classified_count

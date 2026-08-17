@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
+import { LogoutButton } from '../components/ui/LogoutButton';
 import { employeesApi, attendanceApi } from '../features/hr/employeesApi';
 import {
   Users, Plus, RefreshCw, ArrowRight, X, CheckCircle2, AlertCircle,
@@ -293,6 +295,7 @@ export const EmployeesPage = () => {
                 </button>
               )
             )}
+            <LogoutButton compact />
           </div>
         </div>
       </header>
