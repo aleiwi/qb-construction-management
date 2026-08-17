@@ -2,11 +2,24 @@ import json
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.models.boq_element import BOQElement, ClassificationStatus, ElementType
 from app.schemas.boq_element import BOQElementClassify
 from app.services.auto_learner import record_classification
 from app.services.audit_log_service import AuditLogService
+
+# ج9: أسماء الأنواع بالعربية (وبعض المرادفات الشائعة) للبحث من الواجهة العربية
+_ARABIC_TYPE_ALIASES = {
+    "جدار": "wall", "حائط": "wall", "جدران": "wall",
+    "عمود": "column", "أعمدة": "column", "اعمدة": "column",
+    "بلاطة": "slab", "بلاطات": "slab", "سقف": "slab", "أسقف": "slab", "اسقف": "slab",
+    "جسر": "beam", "كمرة": "beam", "كمرات": "beam",
+    "قاعدة": "footing", "قواعد": "footing", "أساس": "footing", "اساس": "footing",
+    "باب": "door", "أبواب": "door", "ابواب": "door",
+    "نافذة": "window", "نوافذ": "window", "شباك": "window", "شبابيك": "window",
+    "درج": "staircase", "سلم": "staircase", "سلالم": "staircase",
+    "أخرى": "other", "اخرى": "other",
+}
 
 
 class BOQElementService:
@@ -19,7 +32,20 @@ class BOQElementService:
 
     def _apply_filters(self, stmt, search=None, element_type=None, classification_status=None):
         if search:
-            stmt = stmt.filter(BOQElement.source_layer_name.ilike(f"%{search}%"))
+            s = search.strip()
+            layer_like = BOQElement.source_layer_name.ilike(f"%{s}%")
+            # البحث يطابق اسم الطبقة أيضًا، أو نوع العنصر (بالإنجليزية أو العربية)
+            matching_types = set()
+            lower = s.lower()
+            if lower in {et.value for et in ElementType}:
+                matching_types.add(lower)
+            for alias, et in _ARABIC_TYPE_ALIASES.items():
+                if alias in s or s in alias:
+                    matching_types.add(et)
+            if matching_types:
+                stmt = stmt.filter(or_(layer_like, BOQElement.element_type.in_(list(matching_types))))
+            else:
+                stmt = stmt.filter(layer_like)
         if element_type:
             stmt = stmt.filter(BOQElement.element_type == element_type)
         if classification_status:

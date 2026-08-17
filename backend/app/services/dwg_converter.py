@@ -1,8 +1,12 @@
 import glob
+import logging
 import os
 import subprocess
 import tempfile
+import threading
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _default_oda_path() -> str:
@@ -39,8 +43,11 @@ def ensure_dxf(file_content: bytes, file_name: str) -> bytes:
         dxf_content = _convert_dwg_to_dxf(file_content)
         if dxf_content:
             return dxf_content
-        # If conversion fails, try reading as DXF anyway (some DWG files work)
-        return file_content
+        # ج9: لا نُعيد محتوى DWG الخام كما لو كان DXF — كان هذا يسبب فشلًا مضللًا
+        # ("not a DXF file") للمستخدم بدل إظهار السبب الحقيقي لفشل التحويل.
+        raise ValueError(
+            "تعذر تحويل ملف DWG إلى DXF. تأكد من سلامة الملف، أو ثبّت ODA File Converter على الخادم."
+        )
 
     raise ValueError(f"Unsupported file type: {ext}")
 
@@ -60,9 +67,13 @@ def _convert_dwg_to_dxf(dwg_content: bytes) -> Optional[bytes]:
     return None
 
 
+_ODA_LOCK = threading.Lock()
+
+
 def _convert_via_oda(dwg_content: bytes) -> Optional[bytes]:
     """Convert using ODA File Converter CLI."""
     if not os.path.exists(ODA_CONVERTER_PATH):
+        logger.warning("ODA File Converter غير مثبت في: %s", ODA_CONVERTER_PATH)
         return None
 
     try:
@@ -76,19 +87,26 @@ def _convert_via_oda(dwg_content: bytes) -> Optional[bytes]:
             with open(dwg_path, "wb") as f:
                 f.write(dwg_content)
 
-            result = subprocess.run(
-                [ODA_CONVERTER_PATH, input_dir, output_dir, "ACAD2018", "DXF", "0", "1"],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
+            # ج9: ODA File Converter لا يدعم التنفيذ المتزامن (قفل على ملفات
+            # الإعدادات) — تشغيلان معًا يُفشلان التحويل. نُسلسل التنفيذ عالميًا.
+            with _ODA_LOCK:
+                result = subprocess.run(
+                    [ODA_CONVERTER_PATH, input_dir, output_dir, "ACAD2018", "DXF", "0", "1"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
 
             dxf_path = os.path.join(output_dir, "input.dxf")
             if os.path.exists(dxf_path):
                 with open(dxf_path, "rb") as f:
                     return f.read()
-    except Exception:
-        pass
+            logger.warning(
+                "ODA لم ينتج ملف DXF. returncode=%s stderr=%s",
+                result.returncode, (result.stderr or "")[:300],
+            )
+    except Exception as e:
+        logger.warning("فشل تحويل ODA: %s", e)
 
     return None
 

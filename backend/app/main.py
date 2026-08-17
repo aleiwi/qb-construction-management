@@ -97,6 +97,21 @@ async def init_db_seed():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db_seed()
+    # ج9: أي مخطط عالق بحالة processing من تشغيل سابق (ضاعت مهمة الخلفية عند
+    # إعادة تشغيل الخادم) يُعلَّم كفاشل برسالة واضحة بدل أن ينتظر المستخدم للأبد.
+    from sqlalchemy import update
+    async with AsyncSessionLocal() as session:
+        stuck = await session.execute(
+            update(Drawing)
+            .where(Drawing.status == DrawingStatus.PROCESSING)
+            .values(
+                status=DrawingStatus.FAILED,
+                error_message="انقطعت المعالجة بسبب إعادة تشغيل الخادم. أعد رفع المخطط للمحاولة مجددًا.",
+            )
+        )
+        if stuck.rowcount:
+            await session.commit()
+            logger.info("تم إعادة تعيين %s مخططًا عالقًا بحالة processing", stuck.rowcount)
     # Load classification training data into memory
     from app.services.auto_learner import load_training_data
     async with AsyncSessionLocal() as session:

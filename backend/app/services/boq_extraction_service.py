@@ -299,42 +299,67 @@ def _chain_lines_into_polylines(lines: List[dict]) -> List[dict]:
 
     الخطوط التي تلتقي endpoints (بتسامح 1مم) تُدمج في كيان واحد.
     يعيد قائمة كيانات بالصيغة نفسها المستخدمة للـ polyline.
+    ج9: أُعيدت الكتابة بمؤشر مكاني (دلو مم صحيح) بدل المسح الخطي O(n²) —
+    كانت المخططات الضخمة (مئات آلاف الخطوط) تستغرق ساعات في هذه الدالة.
     """
-    # كل خط: {'start': (x,y), 'end': (x,y), 'dims': {...}}
+    def _bucket(p) -> tuple:
+        return (int(round(p[0] * 1000)), int(round(p[1] * 1000)))
+
     remaining = [{"start": l["start"], "end": l["end"], "dims": l.get("dimensions", {}), "length": l.get("length", l.get("quantity", 0))} for l in lines]
+
+    # فهرس مكاني: دلو (مم) -> قائمة خطوط تبدأ/تنتهي عند تلك النقطة
+    start_index: Dict[tuple, List[dict]] = {}
+    end_index: Dict[tuple, List[dict]] = {}
+    consumed = set()
+    for ln in remaining:
+        start_index.setdefault(_bucket(ln["start"]), []).append(ln)
+        end_index.setdefault(_bucket(ln["end"]), []).append(ln)
+
+    def _take(bucket, use_start: bool):
+        """يرجع خطًا غير مستهلك من الدلو أو None."""
+        index = start_index if use_start else end_index
+        bucket_list = index.get(bucket)
+        if not bucket_list:
+            return None
+        for cand in bucket_list:
+            if id(cand) not in consumed:
+                consumed.add(id(cand))
+                return cand
+        return None
+
     chains: List[List[dict]] = []
 
-    while remaining:
-        current = remaining.pop(0)
-        chain = [current]
-        changed = True
-        while changed:
-            changed = False
+    for first in remaining:
+        if id(first) in consumed:
+            continue
+        consumed.add(id(first))
+        chain = [first]
+        while True:
             chain_start = chain[0]["start"]
             chain_end = chain[-1]["end"]
-            for idx, cand in enumerate(remaining):
-                if _dist(chain_end, cand["start"]) <= _TOLERANCE:
-                    chain.append(cand)
-                    remaining.pop(idx)
-                    changed = True
-                    break
-                if _dist(chain_end, cand["end"]) <= _TOLERANCE:
-                    cand["start"], cand["end"] = cand["end"], cand["start"]
-                    chain.append(cand)
-                    remaining.pop(idx)
-                    changed = True
-                    break
-                if _dist(chain_start, cand["end"]) <= _TOLERANCE:
-                    chain.insert(0, cand)
-                    remaining.pop(idx)
-                    changed = True
-                    break
-                if _dist(chain_start, cand["start"]) <= _TOLERANCE:
-                    cand["start"], cand["end"] = cand["end"], cand["start"]
-                    chain.insert(0, cand)
-                    remaining.pop(idx)
-                    changed = True
-                    break
+            end_bucket = _bucket(chain_end)
+
+            cand = _take(end_bucket, use_start=True)
+            if cand is not None:
+                chain.append(cand)
+                continue
+            cand = _take(end_bucket, use_start=False)
+            if cand is not None:
+                cand["start"], cand["end"] = cand["end"], cand["start"]
+                chain.append(cand)
+                continue
+
+            start_bucket = _bucket(chain_start)
+            cand = _take(start_bucket, use_start=False)
+            if cand is not None:
+                cand["start"], cand["end"] = cand["end"], cand["start"]
+                chain.insert(0, cand)
+                continue
+            cand = _take(start_bucket, use_start=True)
+            if cand is not None:
+                chain.insert(0, cand)
+                continue
+            break
         chains.append(chain)
 
     results = []
