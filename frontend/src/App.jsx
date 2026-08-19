@@ -27,6 +27,7 @@ const DrawingViewerPage = lazy(() => import('./pages/DrawingViewerPage').then(m 
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+const OAuthSuccessPage = lazy(() => import('./pages/OAuthSuccessPage').then(m => ({ default: m.OAuthSuccessPage })));
 const UsersPage = lazy(() => import('./pages/UsersPage').then(m => ({ default: m.UsersPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
@@ -75,6 +76,7 @@ const AppRoutes = () => {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/oauth-success" element={<OAuthSuccessPage />} />
           <Route path="/users" element={
             <ProtectedRoute roles={getRouteRoles('/users')}><UsersPage /></ProtectedRoute>
           } />

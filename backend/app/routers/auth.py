@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.database import get_db
 from app.core.rate_limit import check_login_rate_limit
+from app.core.config import settings
 from app.schemas.auth import (
     LoginRequest, TokenResponse, RefreshTokenRequest,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
@@ -20,6 +23,80 @@ from app.models.contractor import Contractor
 from app.models.contract import Contract
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+class OAuthTokenRequest(BaseModel):
+    access_token: str
+
+
+@router.get("/oauth/providers")
+async def list_oauth_providers():
+    """قائمة مزودات تسجيل الدخول الخارجي المفعّلة (لأزرار الواجهة)."""
+    from app.services.social_auth_service import configured_providers
+    return APIResponse.ok(data=configured_providers(), message="تم جلب المزودات بنجاح")
+
+
+@router.get("/oauth/{provider}", include_in_schema=False)
+async def oauth_authorize(provider: str):
+    """تحويل المتصفح إلى صفحة تفويض المزود الخارجي."""
+    from app.services.social_auth_service import build_authorize_url, OAuthNotConfiguredError
+    try:
+        url = build_authorize_url(provider)
+    except OAuthNotConfiguredError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return RedirectResponse(url=url)
+
+
+@router.get("/oauth/{provider}/callback", include_in_schema=False)
+async def oauth_callback(
+    provider: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """نقطة الرجوع من المزود: تبادل الرمز، الدخول/الربط/الإنشاء، ثم إعادة التوجيه للواجهة بالرموز."""
+    from app.services.social_auth_service import (
+        verify_state_token, exchange_code, social_login, issue_tokens,
+        OAuthStateError, OAuthExchangeError, OAuthNotConfiguredError,
+    )
+    frontend_base = settings.FRONTEND_URL.rstrip("/")
+    if error or not code or not state:
+        return RedirectResponse(url=f"{frontend_base}/oauth-success?error=oauth_denied")
+    try:
+        verify_state_token(state, provider)
+        provider_user_id, email, name = await exchange_code(provider, code)
+        user, _ = await social_login(db, provider, provider_user_id, email, name)
+    except (OAuthStateError, OAuthExchangeError, OAuthNotConfiguredError) as e:
+        return RedirectResponse(url=f"{frontend_base}/oauth-success?error=oauth_failed&message={str(e)}")
+
+    tokens = issue_tokens(user)
+    return RedirectResponse(url=(
+        f"{frontend_base}/oauth-success?access_token={tokens.access_token}"
+        f"&refresh_token={tokens.refresh_token}"
+    ))
+
+
+@router.post("/oauth/{provider}/token", response_model=APIResponse[TokenResponse])
+async def oauth_token_flow(
+    provider: str,
+    body: OAuthTokenRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """SPA flow: الواجهة تحصل على access_token من المزود وترسله هنا للدخول."""
+    from app.services.social_auth_service import fetch_profile, social_login, issue_tokens, OAuthExchangeError, OAuthNotConfiguredError
+    forwarded = request.headers.get("x-forwarded-for")
+    ip_address = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None)
+    try:
+        provider_user_id, email, name = await fetch_profile(provider, body.access_token)
+        user, created = await social_login(db, provider, provider_user_id, email, name, ip_address=ip_address)
+    except (OAuthExchangeError, OAuthNotConfiguredError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return APIResponse.ok(
+        data=issue_tokens(user),
+        message="تم إنشاء الحساب وربطه بنجاح" if created else "تم تسجيل الدخول بنجاح",
+    )
 
 @router.post("/login", response_model=APIResponse[TokenResponse])
 async def login(

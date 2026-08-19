@@ -44,6 +44,19 @@ class Settings(BaseSettings):
     EMAIL_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # OAuth2 social login (Google / Facebook / Microsoft / GitHub)
+    # Empty CLIENT_ID + CLIENT_SECRET = provider disabled.
+    PUBLIC_API_URL: str = "http://127.0.0.1:8000"
+    OAUTH_STATE_EXPIRE_MINUTES: int = 10
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    FACEBOOK_CLIENT_ID: str = ""
+    FACEBOOK_CLIENT_SECRET: str = ""
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+
     # CORS
     ALLOWED_ORIGINS: str = (
     "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002"

@@ -2,7 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LANDING } from '../config/roleAccess';
+import api from '../api/axios';
 import { Building2, Lock, Mail, Shield, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+
+const PROVIDER_LABELS = {
+  google: { label: 'غوغل', color: 'hover:bg-red-50', border: 'border-red-200', text: 'text-red-600' },
+  facebook: { label: 'فيسبوك', color: 'hover:bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
+  microsoft: { label: 'مايكروسوفت', color: 'hover:bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-600' },
+  github: { label: 'جيت هب', color: 'hover:bg-slate-100', border: 'border-slate-300', text: 'text-slate-700' },
+};
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -12,6 +20,18 @@ export const LoginPage = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDemo, setShowDemo] = useState(true);
+  const [oauthProviders, setOauthProviders] = useState([]);
+
+  useEffect(() => {
+    api.get('/auth/oauth/providers')
+      .then((res) => setOauthProviders(res?.data?.data || []))
+      .catch(() => setOauthProviders([]));
+  }, []);
+
+  const handleOAuth = (provider) => {
+    const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+    window.location.href = `${base}/auth/oauth/${provider}`;
+  };
 
   useEffect(() => {
     if (user) navigate(ROLE_LANDING[user.role] || '/dashboard', { replace: true });
@@ -108,6 +128,31 @@ export const LoginPage = () => {
             )}
           </button>
         </form>
+
+        {oauthProviders.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-slate-800" />
+              <span className="text-xs text-slate-500">أو سجل الدخول عبر</span>
+              <div className="flex-1 h-px bg-slate-800" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {oauthProviders.map((provider) => {
+                const meta = PROVIDER_LABELS[provider] || { label: provider, color: '', border: 'border-slate-300', text: 'text-slate-700' };
+                return (
+                  <button
+                    key={provider}
+                    type="button"
+                    onClick={() => handleOAuth(provider)}
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border ${meta.border} ${meta.color} text-sm font-semibold ${meta.text} bg-white transition`}
+                  >
+                    <span>{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 text-center">
           <Link to="/forgot-password" className="text-xs text-slate-500 hover:text-blue-400 transition">
