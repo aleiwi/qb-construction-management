@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { projectsApi } from '../features/projects/projectsApi';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import api from '../api/axios';
 import {
-  ArrowRight, FileText, BarChart3, RefreshCw, Download, Printer,
+  FileText, BarChart3, RefreshCw, Download, Printer,
   Building2, Layers, DollarSign, PieChart as PieChartIcon, TrendingUp, Percent, AlertCircle
 } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -75,21 +75,11 @@ export const BOQSummaryPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/projects')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-xl flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">BOQ المشروع</h1>
-              <p className="text-[11px] text-slate-400">{project?.name || `مشروع #${projectId}`}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <PageHeader
+        title="BOQ المشروع"
+        subtitle={project?.name || `مشروع #${projectId}`}
+        actions={
+          <>
             <button onClick={fetchBoq} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -114,10 +104,9 @@ export const BOQSummaryPage = () => {
                 </div>
               )}
             </div>
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {loading && !boq && (

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useContractors } from '../features/contractors/useContractors';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import {
-  HardHat, Plus, RefreshCw, Edit2, Trash2, ArrowRight, ArrowLeft,
+  Plus, RefreshCw, Edit2, Trash2, ArrowLeft,
   Building2, X, CheckCircle2, AlertCircle, ChevronRight, UserCheck, Phone, Mail
 } from 'lucide-react';
 
@@ -178,44 +178,30 @@ export const ContractorsPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
+      <PageHeader
+        title="المقاولون والعقود"
+        subtitle="إدارة المقاولين وتتبع عقودهم"
+        actions={<>
+          <button onClick={() => navigate('/contracts')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-2 text-xs font-semibold">
+            <Building2 className="w-3.5 h-3.5" />
+            <span>العقود</span>
+          </button>
+          <button onClick={fetchContractors} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          {(permissions.isAdmin || permissions.isProjectManager) && (
+            <button
+              onClick={() => { setEditingContractor(null); setShowModal(true); }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-lg shadow-blue-600/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>مقاول جديد</span>
             </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-amber-600 to-orange-500 rounded-xl flex items-center justify-center">
-              <HardHat className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">المقاولون والعقود</h1>
-              <p className="text-[11px] text-slate-400">إدارة المقاولين وتتبع عقودهم</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/contracts')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-2 text-xs font-semibold">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>العقود</span>
-            </button>
-            <button onClick={fetchContractors} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            {(permissions.isAdmin || permissions.isProjectManager) && (
-              <button
-                onClick={() => { setEditingContractor(null); setShowModal(true); }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-lg shadow-blue-600/20"
-              >
-                <Plus className="w-4 h-4" />
-                <span>مقاول جديد</span>
-              </button>
-            )}
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          )}
+        </>}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6 mt-5">
         {/* Action feedback */}
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">
@@ -338,7 +324,7 @@ export const ContractorsPage = () => {
             })}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Modal */}
       {showModal && (

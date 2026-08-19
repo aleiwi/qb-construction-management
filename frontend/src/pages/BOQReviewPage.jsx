@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import { boqElementsApi } from '../features/boq/boqApi';
 import {
-  Layers, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Tag,
+  ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Tag,
   CheckSquare, Square, X, Info, Brain, Loader2
 } from 'lucide-react';
 
@@ -121,21 +121,11 @@ export const BOQReviewPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/drawings')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-xl flex items-center justify-center">
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">مراجعة العناصر غير المصنفة</h1>
-              <p className="text-[11px] text-slate-400">حدد النوع يدوياً لكل عنصر من القائمة</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <PageHeader
+        title="مراجعة العناصر غير المصنفة"
+        subtitle="حدد النوع يدوياً لكل عنصر من القائمة"
+        actions={
+          <>
             <button
               onClick={async () => {
                 setIsReclassifying(true);
@@ -158,10 +148,9 @@ export const BOQReviewPage = () => {
               <ArrowRight className="w-3.5 h-3.5" />
               <span>المخططات</span>
             </button>
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {actionMsg && (

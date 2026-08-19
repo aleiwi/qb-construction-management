@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { reportsApi } from '../features/reports/reportsApi';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar
 } from 'recharts';
 import {
-  BarChart3, RefreshCw, ArrowRight, AlertCircle, Building2, HardHat,
+  RefreshCw, AlertCircle, Building2, HardHat,
   Wallet, ShieldCheck, Users, FileText, TrendingUp, CheckCircle2
 } from 'lucide-react';
 
@@ -125,26 +125,17 @@ export const ReportsPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} aria-label="العودة إلى لوحة التحكم" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
+      <PageHeader
+        title="لوحة التقارير والمؤشرات KPI"
+        subtitle="مؤشرات الأداء العامة عبر كل الوحدات"
+        actions={
+          <>
+            <button onClick={fetchKpis} title="تحديث المؤشرات" aria-label="تحديث المؤشرات" className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">لوحة التقارير والمؤشرات KPI</h1>
-              <p className="text-[11px] text-slate-400">مؤشرات الأداء العامة عبر كل الوحدات</p>
-            </div>
-          </div>
-          <button onClick={fetchKpis} title="تحديث المؤشرات" aria-label="تحديث المؤشرات" className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <LogoutButton compact />
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {loading && !kpis ? (

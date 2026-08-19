@@ -1,10 +1,11 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PAGE_ROLES, ROLE_LANDING } from './config/roleAccess';
+import AppLayout from './layouts/AppLayout';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
@@ -53,7 +54,7 @@ const ProtectedRoute = ({ roles, children }) => {
   if (roles && !roles.includes(user.role)) {
     return <Navigate to={ROLE_LANDING[user.role] || '/dashboard'} replace />;
   }
-  return children;
+  return children ?? <Outlet />;
 };
 
 function getRouteRoles(path) {
@@ -77,69 +78,73 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/oauth-success" element={<OAuthSuccessPage />} />
-          <Route path="/users" element={
-            <ProtectedRoute roles={getRouteRoles('/users')}><UsersPage /></ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute roles={getRouteRoles('/profile')}><ProfilePage /></ProtectedRoute>
-          } />
 
-          <Route path="/dashboard" element={
-            <ProtectedRoute roles={getRouteRoles('/dashboard')}><DashboardPage /></ProtectedRoute>
-          } />
-          <Route path="/projects" element={
-            <ProtectedRoute roles={getRouteRoles('/projects')}><ProjectsPage /></ProtectedRoute>
-          } />
-          <Route path="/projects/:projectId" element={
-            <ProtectedRoute roles={getRouteRoles('/projects/:projectId')}><ProjectDetailPage /></ProtectedRoute>
-          } />
-          <Route path="/contractors" element={
-            <ProtectedRoute roles={getRouteRoles('/contractors')}><ContractorsPage /></ProtectedRoute>
-          } />
-          <Route path="/contracts" element={
-            <ProtectedRoute roles={getRouteRoles('/contracts')}><ContractsPage /></ProtectedRoute>
-          } />
-          <Route path="/drawings" element={
-            <ProtectedRoute roles={getRouteRoles('/drawings')}><DrawingsPage /></ProtectedRoute>
-          } />
-          <Route path="/boq-review" element={
-            <ProtectedRoute roles={getRouteRoles('/boq-review')}><BOQReviewPage /></ProtectedRoute>
-          } />
-          <Route path="/payments" element={
-            <ProtectedRoute roles={getRouteRoles('/payments')}><PaymentsPage /></ProtectedRoute>
-          } />
-          <Route path="/quality-checks" element={
-            <ProtectedRoute roles={getRouteRoles('/quality-checks')}><QualityChecksPage /></ProtectedRoute>
-          } />
-          <Route path="/employees" element={
-            <ProtectedRoute roles={getRouteRoles('/employees')}><EmployeesPage /></ProtectedRoute>
-          } />
-          <Route path="/reports" element={
-            <ProtectedRoute roles={getRouteRoles('/reports')}><ReportsPage /></ProtectedRoute>
-          } />
-          <Route path="/completion-percentage" element={
-            <ProtectedRoute roles={getRouteRoles('/completion-percentage')}><CompletionPercentagePage /></ProtectedRoute>
-          } />
-          <Route path="/audit-logs" element={
-            <ProtectedRoute roles={getRouteRoles('/audit-logs')}><AuditLogsPage /></ProtectedRoute>
-          } />
-          <Route path="/boq-summary/:projectId" element={
-            <ProtectedRoute roles={getRouteRoles('/boq-summary/:projectId')}><BOQSummaryPage /></ProtectedRoute>
-          } />
-          <Route path="/price-library" element={
-            <ProtectedRoute roles={getRouteRoles('/price-library')}><PriceLibraryPage /></ProtectedRoute>
-          } />
-          <Route path="/boq-analytics" element={
-            <ProtectedRoute roles={getRouteRoles('/boq-analytics')}><ClassificationDashboard /></ProtectedRoute>
-          } />
-          <Route path="/drawings/batch" element={
-            <ProtectedRoute roles={getRouteRoles('/drawings/batch')}><BatchUploadPage /></ProtectedRoute>
-          } />
-          <Route path="/drawings/:drawingId" element={
-            <ProtectedRoute roles={getRouteRoles('/drawings/:drawingId')}><DrawingViewerPage /></ProtectedRoute>
-          } />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/drawings/:drawingId" element={
+              <ProtectedRoute roles={getRouteRoles('/drawings/:drawingId')}><DrawingViewerPage /></ProtectedRoute>
+            } />
+            <Route element={<AppLayout />}>
+              <Route path="/users" element={
+                <ProtectedRoute roles={getRouteRoles('/users')}><UsersPage /></ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute roles={getRouteRoles('/profile')}><ProfilePage /></ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute roles={getRouteRoles('/dashboard')}><DashboardPage /></ProtectedRoute>
+              } />
+              <Route path="/projects" element={
+                <ProtectedRoute roles={getRouteRoles('/projects')}><ProjectsPage /></ProtectedRoute>
+              } />
+              <Route path="/projects/:projectId" element={
+                <ProtectedRoute roles={getRouteRoles('/projects/:projectId')}><ProjectDetailPage /></ProtectedRoute>
+              } />
+              <Route path="/contractors" element={
+                <ProtectedRoute roles={getRouteRoles('/contractors')}><ContractorsPage /></ProtectedRoute>
+              } />
+              <Route path="/contracts" element={
+                <ProtectedRoute roles={getRouteRoles('/contracts')}><ContractsPage /></ProtectedRoute>
+              } />
+              <Route path="/drawings" element={
+                <ProtectedRoute roles={getRouteRoles('/drawings')}><DrawingsPage /></ProtectedRoute>
+              } />
+              <Route path="/boq-review" element={
+                <ProtectedRoute roles={getRouteRoles('/boq-review')}><BOQReviewPage /></ProtectedRoute>
+              } />
+              <Route path="/payments" element={
+                <ProtectedRoute roles={getRouteRoles('/payments')}><PaymentsPage /></ProtectedRoute>
+              } />
+              <Route path="/quality-checks" element={
+                <ProtectedRoute roles={getRouteRoles('/quality-checks')}><QualityChecksPage /></ProtectedRoute>
+              } />
+              <Route path="/employees" element={
+                <ProtectedRoute roles={getRouteRoles('/employees')}><EmployeesPage /></ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute roles={getRouteRoles('/reports')}><ReportsPage /></ProtectedRoute>
+              } />
+              <Route path="/completion-percentage" element={
+                <ProtectedRoute roles={getRouteRoles('/completion-percentage')}><CompletionPercentagePage /></ProtectedRoute>
+              } />
+              <Route path="/audit-logs" element={
+                <ProtectedRoute roles={getRouteRoles('/audit-logs')}><AuditLogsPage /></ProtectedRoute>
+              } />
+              <Route path="/boq-summary/:projectId" element={
+                <ProtectedRoute roles={getRouteRoles('/boq-summary/:projectId')}><BOQSummaryPage /></ProtectedRoute>
+              } />
+              <Route path="/price-library" element={
+                <ProtectedRoute roles={getRouteRoles('/price-library')}><PriceLibraryPage /></ProtectedRoute>
+              } />
+              <Route path="/boq-analytics" element={
+                <ProtectedRoute roles={getRouteRoles('/boq-analytics')}><ClassificationDashboard /></ProtectedRoute>
+              } />
+              <Route path="/drawings/batch" element={
+                <ProtectedRoute roles={getRouteRoles('/drawings/batch')}><BatchUploadPage /></ProtectedRoute>
+              } />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Route>
         </Routes>
       </Suspense>
     </ErrorBoundary>

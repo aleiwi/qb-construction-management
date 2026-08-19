@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import { qualityChecksApi } from '../features/quality/qualityChecksApi';
 import { stagesApi, buildingsApi } from '../features/projects/projectsApi';
 import {
-  ShieldCheck, Plus, RefreshCw, ArrowRight,
-  X, CheckCircle2, AlertCircle, Building2, ClipboardCheck
+  ShieldCheck, Plus, RefreshCw,
+  X, CheckCircle2, AlertCircle, ClipboardCheck
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -189,21 +189,11 @@ export const QualityChecksPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/projects')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-teal-600 to-emerald-500 rounded-xl flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">فحوصات الجودة QC</h1>
-              <p className="text-[11px] text-slate-400">فحوصات جودة إلزامية لكل مرحلة</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <PageHeader
+        title="فحوصات الجودة QC"
+        subtitle="فحوصات جودة إلزامية لكل مرحلة"
+        actions={
+          <>
             <button onClick={fetchData} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -216,10 +206,9 @@ export const QualityChecksPage = () => {
                 <span>فحص جديد</span>
               </button>
             )}
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {actionMsg && (

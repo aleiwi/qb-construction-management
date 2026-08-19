@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { priceLibraryApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import { confirmDialog } from '../utils/alerts';
-import { DollarSign, Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw } from 'lucide-react';
 
 const UNIT_OPTIONS = ['م2', 'م3', 'م', 'عدد', 'كجم', 'طن', 'م2.سقف', 'م2.جدار'];
 
@@ -82,18 +82,11 @@ export const PriceLibraryPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">المكتبة السعرية</h1>
-              <p className="text-[11px] text-slate-400">إدارة أسعار الوحدات للعناصر الإنشائية</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <PageHeader
+        title="المكتبة السعرية"
+        subtitle="إدارة أسعار الوحدات للعناصر الإنشائية"
+        actions={
+          <>
             <button onClick={fetchPrices} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -101,10 +94,9 @@ export const PriceLibraryPage = () => {
               <Plus className="w-4 h-4" />
               إضافة سعر
             </button>
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (

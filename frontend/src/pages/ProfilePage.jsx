@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import { showAlert, toast } from '../utils/alerts';
 import api from '../api/axios';
-import { ArrowRight, User, Mail, Shield, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { User, Mail, Shield, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 const ROLE_LABELS = {
   admin: 'مدير النظام',
@@ -53,23 +53,10 @@ export const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-sm">الملف الشخصي</h1>
-              <p className="text-[10px] text-slate-400">بياناتك وتغيير كلمة المرور</p>
-            </div>
-          </div>
-          <LogoutButton />
-        </div>
-      </header>
+      <PageHeader
+        title="الملف الشخصي"
+        subtitle="بياناتك وتغيير كلمة المرور"
+      />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid md:grid-cols-2 gap-6">
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">

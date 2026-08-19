@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { boqElementsApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import {
   BarChart3, PieChart, RefreshCw, Layers, CheckCircle2, AlertTriangle,
   BrainCircuit, Target, AlertCircle
@@ -45,23 +45,15 @@ export const ClassificationDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white">تحليلات التصنيف</h1>
-              <p className="text-[11px] text-slate-400">إحصائيات دقة التصنيف وتوزيع العناصر</p>
-            </div>
-          </div>
+      <PageHeader
+        title="تحليلات التصنيف"
+        subtitle="إحصائيات دقة التصنيف وتوزيع العناصر"
+        actions={
           <button onClick={fetchStats} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <LogoutButton compact />
-        </div>
-      </header>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
 import api from '../api/axios';
-import { ArrowRight, History, Filter, RefreshCw } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Filter, RefreshCw } from 'lucide-react';
 
 const ACTION_LABELS = {
   'payment.approve': { label: 'اعتماد دفعة', color: 'text-emerald-400' },
@@ -79,18 +80,10 @@ export const AuditLogsPage = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition" aria-label="رجوع">
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          <div className="w-11 h-11 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-400">
-            <History className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">سجل التتبع (Audit Log)</h1>
-            <p className="text-xs text-slate-400">سجل كامل لكل العمليات المالية الحساسة — من نفّذها، متى، القيمة القديمة والجديدة.</p>
-          </div>
-        </div>
+        <PageHeader
+          title="سجل التتبع (Audit Log)"
+          subtitle="سجل كامل لكل العمليات المالية الحساسة — من نفّذها، متى، القيمة القديمة والجديدة."
+        />
 
         {!permissions.isAdmin ? (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl p-6 text-sm">

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import {
-  ArrowRight, BarChart3, FileText, Edit3, RotateCcw, Save,
+  BarChart3, FileText, Edit3, RotateCcw, Save,
   Cloud, CloudOff, AlertCircle, Building2, Loader2, CheckCircle2,
   Copy, ChevronRight, History, Rocket, Calendar
 } from 'lucide-react';
@@ -261,48 +261,36 @@ export const CompletionPercentagePage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 print:bg-white print:text-black">
-      <header className="print:hidden border-b border-slate-800 bg-slate-900/90 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-2xl transition shrink-0"><ArrowRight className="w-5 h-5" /></button>
-              <div className="w-12 h-12 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-3xl flex items-center justify-center shrink-0"><BarChart3 className="w-6 h-6 text-white" /></div>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold text-white truncate">تقرير نسب الإنجاز الشامل</h1>
-                <p className="text-sm text-slate-400 truncate">
-                  {selectedProject ? `${selectedProject.name} · ${activeReport?.report_period || 'تقرير جديد'}` : 'ابدأ باختيار مشروع أو إنشاء مشروع جديد'}
-                </p>
+      <PageHeader
+        title="تقرير نسب الإنجاز الشامل"
+        subtitle={selectedProject ? `${selectedProject.name} · ${activeReport?.report_period || 'تقرير جديد'}` : 'ابدأ باختيار مشروع أو إنشاء مشروع جديد'}
+        actions={
+          <>
+            {selectedProjectId !== null && (
+              <div className="flex items-center gap-2 rounded-2xl bg-slate-800/90 px-3 py-2 border border-slate-700">
+                <StatusIcon className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+                <span className={`text-xs font-semibold ${StatusCfg.color}`}>{StatusCfg.label}</span>
               </div>
+            )}
+            {selectedProjectId !== null && (
+              <button onClick={handleSave} disabled={isSaving || !dirty || !selectedProjectId}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-2xl text-xs font-bold transition flex items-center gap-2">
+                <Save className="w-4 h-4" /> حفظ
+              </button>
+            )}
+            {selectedProjectId !== null && (
+              <button onClick={() => setConfirmReset(true)} title="استعادة الافتراضي"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl text-xs font-semibold transition flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" /> إعادة ضبط
+              </button>
+            )}
+            <div className="flex bg-slate-800/80 border border-slate-700 rounded-2xl p-1">
+              <button onClick={() => setActiveView('dashboard')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}><FileText className="w-4 h-4" /> التقرير</button>
+              <button onClick={() => setActiveView('edit')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeView === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}><Edit3 className="w-4 h-4" /> التحرير</button>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {selectedProjectId !== null && (
-                <div className="flex items-center gap-2 rounded-2xl bg-slate-800/90 px-3 py-2 border border-slate-700">
-                  <StatusIcon className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
-                  <span className={`text-xs font-semibold ${StatusCfg.color}`}>{StatusCfg.label}</span>
-                </div>
-              )}
-              {selectedProjectId !== null && (
-                <button onClick={handleSave} disabled={isSaving || !dirty || !selectedProjectId}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-2xl text-xs font-bold transition flex items-center gap-2">
-                  <Save className="w-4 h-4" /> حفظ
-                </button>
-              )}
-              {selectedProjectId !== null && (
-                <button onClick={() => setConfirmReset(true)} title="استعادة الافتراضي"
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl text-xs font-semibold transition flex items-center gap-2">
-                  <RotateCcw className="w-4 h-4" /> إعادة ضبط
-                </button>
-              )}
-              <div className="flex bg-slate-800/80 border border-slate-700 rounded-2xl p-1">
-                <button onClick={() => setActiveView('dashboard')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}><FileText className="w-4 h-4" /> التقرير</button>
-                <button onClick={() => setActiveView('edit')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeView === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}><Edit3 className="w-4 h-4" /> التحرير</button>
-              </div>
-            </div>
-            <LogoutButton compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:p-0 print:m-0 print:max-w-none">
         {selectedProjectId === null ? (

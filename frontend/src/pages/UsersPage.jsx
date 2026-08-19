@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LogoutButton } from '../components/ui/LogoutButton';
+import { PageHeader } from '../components/ui/PageHeader';
 import { confirmDialog, showAlert, toast } from '../utils/alerts';
 import { projectsApi } from '../features/projects/projectsApi';
 import api from '../api/axios';
 import {
-  Users, UserPlus, ArrowRight, Search, Mail, Shield, RefreshCw,
+  UserPlus, Search, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, X, Eye, EyeOff,
 } from 'lucide-react';
 
@@ -105,28 +105,17 @@ export const UsersPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition mr-2">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-sm">إدارة المستخدمين</h1>
-              <p className="text-[10px] text-slate-400">إنشاء الحسابات، الأدوار، وصلاحيات المشاريع</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <PageHeader
+        title="إدارة المستخدمين"
+        subtitle="إنشاء الحسابات، الأدوار، وصلاحيات المشاريع"
+        actions={
+          <>
             <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
               <UserPlus className="w-4 h-4" /> مستخدم جديد
             </button>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center gap-3 mb-4">
