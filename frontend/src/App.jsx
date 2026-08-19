@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'rea
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
+import { LandingPage } from './pages/LandingPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PAGE_ROLES, ROLE_LANDING } from './config/roleAccess';
 import AppLayout from './layouts/AppLayout';
@@ -49,7 +50,7 @@ const ProtectedRoute = ({ roles, children }) => {
     return <PageLoader />;
   }
   if (!user) {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
   if (roles && !roles.includes(user.role)) {
     return <Navigate to={ROLE_LANDING[user.role] || '/dashboard'} replace />;
@@ -73,7 +74,8 @@ const AppRoutes = () => {
     <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />

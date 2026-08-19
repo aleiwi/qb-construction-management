@@ -115,7 +115,7 @@ export const ResetPasswordPage = () => {
         )}
 
         <div className="mt-6 text-center">
-          <button onClick={() => navigate('/')} className="text-xs text-slate-500 hover:text-slate-300 transition">
+          <button onClick={() => navigate('/login')} className="text-xs text-slate-500 hover:text-slate-300 transition">
             العودة إلى تسجيل الدخول
           </button>
         </div>

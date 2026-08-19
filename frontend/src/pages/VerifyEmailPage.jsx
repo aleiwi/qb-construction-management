@@ -69,7 +69,7 @@ export const VerifyEmailPage = () => {
 
         {status !== 'loading' && (
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
             className="mt-6 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition"
           >
             الذهاب إلى تسجيل الدخول

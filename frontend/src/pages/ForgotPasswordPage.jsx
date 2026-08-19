@@ -91,7 +91,7 @@ export const ForgotPasswordPage = () => {
         )}
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-xs text-slate-500 hover:text-slate-300 transition">
+          <Link to="/login" className="text-xs text-slate-500 hover:text-slate-300 transition">
             العودة إلى تسجيل الدخول
           </Link>
         </div>
