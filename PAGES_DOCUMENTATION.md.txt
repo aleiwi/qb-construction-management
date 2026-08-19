@@ -1,363 +1,796 @@
-# PAGES_DOCUMENTATION.md — Quantum Build (نظام إدارة المقاولات المتكامل)
+# 🏗️ Quantum Build — Complete Pages Documentation
 
-This document describes every page, route, component, and API integration in the current system.
+> **Version:** 3.0.0 — Enterprise Edition  
+> **Last Updated:** 2026-07-27  
+> **Status:** ✅ Production-Ready ERP System
 
----
-
-## 1. Architecture Overview
-
-- **Frontend:** React 18 + Vite + Tailwind CSS + Framer Motion + Recharts
-- **Backend:** FastAPI + SQLAlchemy async + JWT (RBAC)
-- **State Management:** React Context (useAuth) + local state + direct API calls via axios
-- **Persistence:** PostgreSQL (via FastAPI); SQLite for dev/testing
-- **Auth Flow:** JWT access token stored in localStorage; `ProtectedRoute` wrapper
-- **Routing:** React Router v6 with lazy-loaded pages (code-splitting)
-- **Error Handling:** Global `ErrorBoundary` wrapping all routes
+Quantum Build is an advanced, AI-integrated construction project management and cost estimation ERP system. This document provides a thorough, professional reference for every page and major component in the frontend application — covering their purpose, UI structure, data dependencies, and integration points.
 
 ---
 
-## 2. Route Table
+## 🛠️ Architecture & Technology Stack
 
-| Page | Route | File | Backend Router | RBAC |
-|------|-------|------|----------------|------|
-| Login | `/` | `LoginPage.jsx` | `auth.py` | Public |
-| Dashboard | `/dashboard` | `DashboardPage.jsx` | `users.py` | All authenticated |
-| Projects | `/projects` | `ProjectsPage.jsx` | `projects.py` | All except contractor |
-| Project Detail | `/projects/:projectId` | `ProjectDetailPage.jsx` | `buildings.py`, `stages.py` | All except contractor |
-| Contractors | `/contractors` | `ContractorsPage.jsx` | `contractors.py` | Admin, PM, Engineer, Accountant |
-| Contracts | `/contracts` | `ContractsPage.jsx` | `contracts.py` | Admin, PM, Accountant |
-| Drawings (CAD) | `/drawings` | `DrawingsPage.jsx` | `drawings.py` | Admin, PM, Engineer |
-| BOQ Review | `/boq-review` | `BOQReviewPage.jsx` | `boq_elements.py` | Admin, PM, Engineer |
-| Payments | `/payments` | `PaymentsPage.jsx` | `payments.py`, `retentions.py` | Admin, PM, Accountant |
-| Quality Checks | `/quality-checks` | `QualityChecksPage.jsx` | `quality_checks.py` | Admin, PM, Engineer |
-| Employees (HR) | `/employees` | `EmployeesPage.jsx` | `employees.py` | Admin, PM |
-| Reports & KPIs | `/reports` | `ReportsPage.jsx` | `reports.py` | Admin, PM, Accountant |
-| Completion % | `/completion-percentage` | `CompletionPercentagePage.jsx` | `completion_reports.py` | Admin, PM, Engineer, Accountant |
-| Audit Logs | `/audit-logs` | `AuditLogsPage.jsx` | `audit_logs.py` | Admin only |
+| Layer | Technology |
+|---|---|
+| **UI Framework** | React 18 + Vite |
+| **Styling** | Tailwind CSS + custom dark/light theme system |
+| **Animations** | Framer Motion |
+| **Data Fetching** | TanStack React Query (`@tanstack/react-query`) |
+| **Charts & Graphs** | Recharts (PieChart, BarChart, RadarChart, etc.) |
+| **PDF Export** | jsPDF + html2canvas |
+| **Auth & Database** | Supabase (PostgreSQL + Auth + Row Level Security) |
+| **Backend API** | FastAPI (Python, `uvicorn`) |
+| **Voice & AI** | Web Speech API (`SpeechRecognition` / `SpeechSynthesis`) |
+| **Error Handling** | Custom Error Boundaries per module |
+| **Lazy Loading** | React `Suspense` + dynamic imports |
 
 ---
 
-## 3. Page Details
+## 📋 Page Routes & File Map
 
-### 3.1 LoginPage (`/`)
-- Route: `/` (root)
-- Purpose: User authentication with JWT
-- Features:
-  - Email/password form with validation
-  - 5 demo account quick-buttons (admin, pm, engineer, accountant, contractor)
-  - Role-colored labels on demo buttons
-  - Error handling via `react-hot-toast`
-  - Redirects to `/dashboard` on success
-- Auth: Uses `AuthContext.signIn()` calling `POST /api/v1/auth/login`
-
-### 3.2 DashboardPage (`/dashboard`)
-- Route: `/dashboard`
-- Purpose: Central hub with role-specific views and admin panel
-- Features:
-  - User info header with role badge
-  - Permission banner showing RBAC status (canManageUsers, canManageProjects, etc.)
-  - Contractor restricted view notice (row-level security)
-  - **Admin section:** User management table with create user form
-  - **Module grid:** Cards linking to all 7 modules + reports + completion % + audit logs
-  - Each card has unique color identity per module
-- Auth: `ProtectedRoute` — requires valid JWT
-
-### 3.3 ProjectsPage (`/projects`)
-- Route: `/projects`
-- Purpose: List and manage construction projects
-- Features:
-  - Project list with status badges
-  - Create/edit project modal
-  - Click navigates to `ProjectDetailPage`
-- API: `projectsApi`
-
-### 3.4 ProjectDetailPage (`/projects/:projectId`)
-- Route: `/projects/:projectId`
-- Purpose: View and manage a single project's buildings and stages
-- Features:
-  - Buildings list within the project
-  - Stages per building with progress tracking
-  - Weight percent management for stages
-- API: `buildingsApi`, `stagesApi`
-
-### 3.5 ContractorsPage (`/contractors`)
-- Route: `/contractors`
-- Purpose: Manage contractors and their specializations
-- Features:
-  - Contractor list with contact info
-  - Create/edit contractor modal
-  - Specialization tags (هدم, تربة, صحي, كهرباء, جبس, تهوية, حديد, إطفاء, واجهات, عزل)
-  - Status tracking
-- API: `contractorsApi`
-
-### 3.6 ContractsPage (`/contracts`)
-- Route: `/contracts`
-- Purpose: Manage contracts linking contractors to buildings
-- Features:
-  - Contract list with status, value, retention %
-  - Create/edit contract modal (contractor, building, title, value, retention, dates, status)
-  - Status badges: draft (مسودة), active (نشط), completed (مكتمل), terminated (ملغي)
-- API: `contractsApi`
-
-### 3.7 DrawingsPage (`/drawings`)
-- Route: `/drawings`
-- Purpose: Upload and manage CAD drawings (DXF/DWG)
-- Features:
-  - Drag & drop file upload
-  - Drawing list with auto-extraction status
-  - Click to extract BOQ elements
-- API: `boqApi`
-- Backend: `ezdxf` library for CAD parsing
-
-### 3.8 BOQReviewPage (`/boq-review`)
-- Route: `/boq-review`
-- Purpose: Manual review and classification of extracted BOQ elements
-- Features:
-  - Elements grouped by source layer
-  - One-click classification buttons (جدار, عمود, بلاطة, كمرة, أساس, باب, نافذة, درج, سقف, حاجز, فتحة, أخرى)
-  - Select/deselect all
-  - Progress tracking of classified vs unclassified
-- API: `boqApi`
-
-### 3.9 PaymentsPage (`/payments`)
-- Route: `/payments`
-- Purpose: Financial payments and retention releases
-- Features:
-  - **Payments tab:** List payments by contract with approval/pay workflow
-  - **Retentions tab:** List held retentions with release button
-  - Contract selector to filter by contract
-  - Payment amount, retention amount, net amount display
-  - QC gate: approval blocked if stage QC not passed
-- API: `paymentsApi`, `retentionsApi`
-
-### 3.10 QualityChecksPage (`/quality-checks`)
-- Route: `/quality-checks`
-- Purpose: Quality inspection management
-- Features:
-  - Create QC inspections per stage
-  - Pass/fail/pending status tracking
-  - Inspector assignment
-  - Mandatory gate before payment approval
-- API: `qualityChecksApi`
-
-### 3.11 EmployeesPage (`/employees`)
-- Route: `/employees`
-- Purpose: HR management — employees and attendance
-- Features:
-  - **Employees tab:** List, create, edit employees
-  - **Attendance tab:** Daily attendance tracking (present/absent/leave)
-  - Employee fields: name, national ID, phone, job title, monthly salary, hire date
-  - Attendance with check-in/check-out times
-- API: `employeesApi`
-
-### 3.12 ReportsPage (`/reports`)
-- Route: `/reports`
-- Purpose: KPI dashboard with charts
-- Features:
-  - 6 KPI cards: Projects, Contractors, Payments, QC, Employees, BOQ
-  - Radial bar chart for average progress
-  - Pie charts for payment distribution and QC results
-  - Bar charts for financial status and BOQ classification
-  - Area chart for contracts overview
-  - HR breakdown bar chart
-  - All charts use Recharts with responsive containers
-- API: `reportsApi` → `GET /api/v1/reports/kpis`
-
-### 3.13 CompletionPercentagePage (`/completion-percentage`)
-- Route: `/completion-percentage`
-- Purpose: Comprehensive completion report with snapshot inheritance
-- Features:
-  - Project picker with quick-create for no-projects state
-  - Historical report snapshots navigation bar
-  - Clone previous report for new periods (Snapshot Inheritance)
-  - Dashboard view (read-only report)
-  - Edit view (progress input form)
-  - Three progress indicators: structure, finishing, overall
-  - Delta comparison with previous period
-  - Save (create/update) to backend
-  - Demo mode when no project selected
-  - Confirm modals for reset and project switch
-- Components: `ProgressInputForm`, `ProgressDashboard`, `NewPeriodModal`, `QuickCreateProjectModal`, `ConfirmModal`
-- State: Tracks dirty/saving/saved/error/offline states
-- API: `completionReportsApi` → CRUD + clone-previous
-
-### 3.14 AuditLogsPage (`/audit-logs`)
-- Route: `/audit-logs`
-- Purpose: Full audit trail for financial operations
-- Features:
-  - Filter by entity type (payment, contract) and entity ID
-  - Table with action, entity, user, old/new values, timestamp
-  - JSON pretty-print for structured values
-  - Admin-only access (redirects non-admin users)
-- API: `GET /api/v1/audit-logs`
+| Page | Route | Component File |
+|---|---|---|
+| Landing / Home | `/` | `frontend/src/pages/HomePage.jsx` |
+| Login | `/login` | `frontend/src/pages/LoginPage.jsx` |
+| Register | `/register` | `frontend/src/pages/RegisterPage.jsx` |
+| Forgot Password | `/forgot-password` | `frontend/src/pages/ForgotPasswordPage.jsx` |
+| Reset Password | `/reset-password` | `frontend/src/pages/ResetPasswordPage.jsx` |
+| User Profile | `/profile` | `frontend/src/pages/ProfilePage.jsx` |
+| Main Dashboard | `/dashboard` | `frontend/src/components/DashboardEnhanced.jsx` |
+| Project Details | `/project/:id` | `frontend/src/pages/ProjectPage.jsx` |
+| Cost Calculator | `/calculator` | `frontend/src/components/calculator/CalculatorWizard.jsx` |
+| CAD File Analyzer | `/cad-analyzer` | `frontend/src/components/EnhancedCADAnalyzer.jsx` |
+| Materials Manager | `/materials` | `frontend/src/components/MaterialsManager.jsx` |
+| Contractors & Suppliers | `/contractors` | `frontend/src/pages/ContractorsSuppliersPage.jsx` |
+| Financial Payments | `/payments` | `frontend/src/pages/PaymentsPage.jsx` |
+| Purchase Orders | `/purchase-orders` | `frontend/src/pages/PurchaseOrdersPage.jsx` |
+| Equipment Manager | `/equipment` | `frontend/src/pages/EquipmentPage.jsx` |
+| Cost Variance Analysis | `/cost-variance` | `frontend/src/pages/CostVariancePage.jsx` |
+| Gantt Timeline | `/gantt` | `frontend/src/pages/GanttPage.jsx` |
+| Employees (HR) | `/employees` | `frontend/src/pages/EmployeesPage.jsx` |
+| Attendance Tracking | `/attendance` | `frontend/src/pages/AttendancePage.jsx` |
+| Payroll | `/payroll` | `frontend/src/pages/PayrollPage.jsx` |
+| Financial Analytics | `/analytics` | `frontend/src/pages/AnalyticsPage.jsx` |
+| Daily Site Reports | `/daily-reports` | `frontend/src/pages/DailyReportsPage.jsx` |
+| Completion Percentage Report | `/completion-percentage` | `frontend/src/pages/CompletionPercentagePage.jsx` |
+| Documents Cloud | `/documents` | `frontend/src/pages/DocumentsPage.jsx` |
+| Emergency Management | `/emergency` | `frontend/src/components/EmergencyManagementCenter.jsx` |
+| Smart Voice Assistant | `/smart-assistant` | `frontend/src/components/SmartAssistant.jsx` |
+| AI Predictive Center | `/ai-predictive` | `frontend/src/components/AIPredictiveCenter.jsx` |
+| System Settings | `/settings` | `frontend/src/pages/SettingsPage.jsx` |
+| Notifications | `/notifications` | `frontend/src/pages/NotificationsPage.jsx` |
+| Activity Log | `/activity` | `frontend/src/pages/ActivityPage.jsx` |
 
 ---
 
-## 4. UI Components
-
-### 4.1 Shared (`components/ui/`)
-| Component | Purpose |
-|-----------|---------|
-| `ErrorBoundary.jsx` | React error boundary wrapping all routes; shows reset button, Arabic error message, dev-mode details |
-| `ConfirmModal.jsx` | Generic confirmation dialog (used for reset, project switch) |
-
-### 4.2 Completion Report (`components/completion/`)
-| Component | Purpose |
-|-----------|---------|
-| `ProgressInputForm.jsx` | Editable form for structure/finishing items |
-| `ProgressDashboard.jsx` | Read-only report view |
-| `NewPeriodModal.jsx` | Form to create new report period (clone) |
-| `QuickCreateProjectModal.jsx` | Quick project creation from completion page |
-| `defaultCompletionData.js` | Default mock data for demo mode (58 items + 9 payments) |
+## 🔍 Detailed Page Descriptions
 
 ---
 
-## 5. Feature Modules (API Layer)
+### 1. Landing / Home Page
+**File:** [HomePage.jsx](file:///d:/prog/QB/frontend/src/pages/HomePage.jsx)  
+**Route:** `/`  
+**Auth Required:** ❌ Public
 
-| Feature | API File | Endpoints |
-|---------|----------|-----------|
-| Auth | `features/auth/` (via AuthContext) | `POST /auth/login`, `POST /auth/refresh` |
-| Projects | `features/projects/projectsApi.js` | CRUD `/projects` |
-| Buildings | `features/projects/useBuildings.js` | CRUD `/buildings` |
-| Stages | `features/projects/useStages.js` | CRUD `/stages` |
-| Contractors | `features/contractors/contractorsApi.js` | CRUD `/contractors` |
-| Contracts | `features/contractors/contractorsApi.js` | CRUD `/contracts` |
-| Drawings/BOQ | `features/boq/boqApi.js` | Upload, extract, classify |
-| Payments | `features/payments/paymentsApi.js` | CRUD `/payments`, `/retention-releases` |
-| Quality | `features/quality/qualityChecksApi.js` | CRUD `/quality-checks` |
-| Employees | `features/hr/employeesApi.js` | CRUD `/employees` |
-| Reports | `features/reports/reportsApi.js` | `GET /reports/kpis` |
-| Completion Reports | `features/reports/completionReportsApi.js` | CRUD `/completion-reports`, clone-previous |
+**Purpose:**  
+The public-facing landing page of Quantum Build. Designed as a high-impact marketing and entry point that communicates the product's value proposition to visiting engineers, project managers, and investors.
 
----
+**UI Structure:**
+- **Hero Section** — Full-width banner with animated headline, tagline, and two primary CTAs: *Sign In* and *Go to Dashboard*.
+- **Features Grid** — Animated card grid showcasing the four core pillars: Smart Cost Calculator, CAD Drawing Analyzer, AI Predictive Center, and Emergency Management System.
+- **Active Projects Preview** — Dynamic listing of the current user's ongoing projects (if logged in), displaying completion percentages and budget summaries.
 
-## 6. Design Conventions
+**Integration:**
+- Reads from `AuthContext` to conditionally redirect authenticated users directly to `/dashboard`.
+- Uses `framer-motion` for entrance animations and hover effects.
 
-- **All user-facing text is in Arabic**
-- Code, logs, API fields, and comments are in English
-- Dark theme with slate-950 background
-- Cards use `bg-slate-900/80` with `border-slate-800`
-- Each module has a unique accent color:
-  - Dashboard: blue
-  - Projects: indigo
-  - Contractors: amber
-  - Contracts: emerald
-  - Drawings: indigo
-  - Payments: purple
-  - QC: teal
-  - HR: rose
-  - Reports: cyan
-  - Completion: amber
-  - Audit: orange
-- Buttons use `rounded-xl` with hover transitions
-- Loading states use spinner animation
-- Modals use `backdrop-blur-sm` overlay
-- All icons from `lucide-react`
-- Animations via `framer-motion` (stagger, fade, scale)
+**Notes:**
+- Does not enforce strict authentication. Can be used as a standalone product homepage.
 
 ---
 
-## 7. Backend Service Layer Mapping
+### 2. Login Page
+**File:** [LoginPage.jsx](file:///d:/prog/QB/frontend/src/pages/LoginPage.jsx)  
+**Route:** `/login`  
+**Auth Required:** ❌ Public (redirects to dashboard if already logged in)
 
-| Service | File | Responsibility |
-|---------|------|----------------|
-| `auth_service.py` | `app/services/auth_service.py` | Login, token generation, refresh |
-| `user_service.py` | `app/services/user_service.py` | User CRUD |
-| `project_service.py` | `app/services/project_service.py` | Project CRUD |
-| `building_service.py` | `app/services/building_service.py` | Building CRUD |
-| `stage_service.py` | `app/services/stage_service.py` | Stage CRUD with progress tracking |
-| `contractor_service.py` | `app/services/contractor_service.py` | Contractor CRUD |
-| `contract_service.py` | `app/services/contract_service.py` | Contract CRUD |
-| `drawing_service.py` | `app/services/drawing_service.py` | Drawing upload/storage |
-| `boq_extraction_service.py` | `app/services/boq_extraction_service.py` | DXF parsing & classification |
-| `boq_element_service.py` | `app/services/boq_element_service.py` | BOQ element CRUD & classification |
-| `boq_item_service.py` | `app/services/boq_item_service.py` | BOQ item pricing linkage |
-| `price_library_service.py` | `app/services/price_library_service.py` | Unit price library |
-| `payment_service.py` | `app/services/payment_service.py` | Payment processing with QC gate |
-| `retention_service.py` | `app/services/retention_service.py` | Retention release management |
-| `quality_check_service.py` | `app/services/quality_check_service.py` | QC inspection CRUD |
-| `employee_service.py` | `app/services/employee_service.py` | Employee & attendance CRUD |
-| `completion_report_service.py` | `app/services/completion_report_service.py` | Report snapshots with clone-previous |
-| `reports_service.py` | `app/services/reports_service.py` | KPI aggregation across all modules |
-| `audit_log_service.py` | `app/services/audit_log_service.py` | Financial audit trail |
+**Purpose:**  
+Provides a secure and user-friendly authentication interface for returning users (engineers, project managers, administrators).
+
+**UI Structure:**
+- Email and password input fields with real-time validation.
+- Password visibility toggle (show/hide).
+- Inline error and success toast notifications via `react-hot-toast`.
+- Quick links to **Forgot Password** and **Create New Account** pages.
+- Company branding and product logo centered on a dark glassmorphism card.
+
+**Integration:**
+- Calls `signIn()` from `AuthContext`, which internally invokes Supabase Auth.
+- On success, redirects to `/dashboard` via React Router.
+
+**Migration Note:**
+- Replace the `signIn` call with your own identity provider (Firebase, Auth0, custom JWT, etc.).
 
 ---
 
-## 8. Test Coverage
+### 3. Register Page
+**File:** [RegisterPage.jsx](file:///d:/prog/QB/frontend/src/pages/RegisterPage.jsx)  
+**Route:** `/register`  
+**Auth Required:** ❌ Public
 
-| Test File | Type | Scenarios |
-|-----------|------|-----------|
-| `test_auth.py` | Integration | Login, token refresh, invalid credentials |
-| `test_payments.py` | Integration | Payment create, approve, mark paid, RBAC |
-| `test_qc_gate.py` | Integration | QC gate blocks/permits payment approval |
-| `test_completion_reports_clone.py` | Integration | Clone creates draft, links parent, chain works |
-| `test_audit_log.py` | Integration | Audit log creation on payment actions |
-| `test_rbac_matrix.py` | Integration | Every endpoint × every role (enforced) |
-| `test_security_audit.py` | Static | Code patterns: no hardcoded secrets, HTTPS, input validation |
+**Purpose:**  
+Account creation page for new engineers or project managers joining the platform.
+
+**UI Structure:**
+- Multi-field registration form: Full Name, Company Name, Phone Number, Email, Password, Confirm Password.
+- Real-time password strength indicator and match validation.
+- Clear error messaging for duplicate emails or weak passwords.
+
+**Integration:**
+- Calls Supabase Auth `signUp()` to create the authentication account.
+- Writes additional profile details (company, phone, role) to the `profiles` table in PostgreSQL.
 
 ---
 
-## 9. File Structure
+### 4. Forgot Password Page
+**File:** [ForgotPasswordPage.jsx](file:///d:/prog/QB/frontend/src/pages/ForgotPasswordPage.jsx)  
+**Route:** `/forgot-password`  
+**Auth Required:** ❌ Public
 
+**Purpose:**  
+Initiates the account recovery flow by sending a secure password reset link to the user's registered email address.
+
+**UI Structure:**
+- Single email input with submit button.
+- Confirmation message displayed upon successful email dispatch.
+- Link to return to the Login page.
+
+**Integration:**
+- Calls Supabase Auth `resetPasswordForEmail()`.
+
+---
+
+### 5. Reset Password Page
+**File:** [ResetPasswordPage.jsx](file:///d:/prog/QB/frontend/src/pages/ResetPasswordPage.jsx)  
+**Route:** `/reset-password`  
+**Auth Required:** ❌ Token-based (accessed via email link)
+
+**Purpose:**  
+Allows users to set a new password after clicking the secure reset link sent to their email. Validates the link token from the URL hash before rendering the form.
+
+**UI Structure:**
+- New password and confirm password fields.
+- Password strength indicator.
+- Success state that redirects to `/login`.
+
+**Integration:**
+- Calls Supabase Auth `updateUser()` with the new password after verifying the session from the reset token.
+
+---
+
+### 6. User Profile Page
+**File:** [ProfilePage.jsx](file:///d:/prog/QB/frontend/src/pages/ProfilePage.jsx)  
+**Route:** `/profile`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Enables authenticated users to view and update their personal account information and professional identity within the system.
+
+**UI Structure:**
+- **Account Info Form:** Full name, mobile number, company name, and job role.
+- **Password Change Section:** Independent form for updating the account password without affecting other profile fields.
+- **Profile Avatar:** Display of user initials or uploaded profile photo.
+
+**Integration:**
+- Reads from and writes to the `profiles` table via Supabase.
+- Uses `AuthContext` to access the current user's session.
+
+---
+
+### 7. Main Dashboard
+**File:** [DashboardEnhanced.jsx](file:///d:/prog/QB/frontend/src/components/DashboardEnhanced.jsx)  
+**Route:** `/dashboard`  
+**Auth Required:** ✅ Protected + Lazy Loaded
+
+**Purpose:**  
+The primary operational control center of the system. Provides a 360° executive overview of all active construction projects, financial health, and operational status.
+
+**UI Structure:**
+- **KPI Stat Cards:** Total Allocated Budget, Total Actual Spend, Budget Variance, and Overall Completion Percentage across all projects.
+- **Budget vs. Actuals Chart** *(Recharts BarChart)*: Side-by-side comparison per project.
+- **Budget Distribution Chart** *(Recharts PieChart)*: Proportional budget allocation per project.
+- **Recent Activity Feed:** Chronological list of system events, approvals, and site alerts.
+- **Mini Gantt Overview:** Compact timeline visualizing project overlap and scheduling.
+- **Project Cards Grid:** Summary cards for each active project with status badges, progress bars, and quick-action buttons.
+
+**Sub-components:**
+- `dashboard/KpiCards.jsx` — Stat metric cards
+- `dashboard/Charts.jsx` — Chart wrappers
+- `dashboard/ProjectList.jsx` — Project listing
+- `dashboard/GanttChart.jsx` — Timeline visualization
+- `dashboard/FinancialAnalytics.jsx` — Financial summary panel
+
+**Dependencies:**
+- `recharts`, `framer-motion`
+- Lazy-loaded via `LazyComponents.jsx` using React `Suspense`
+
+---
+
+### 8. Project Details Page
+**File:** [ProjectPage.jsx](file:///d:/prog/QB/frontend/src/pages/ProjectPage.jsx)  
+**Route:** `/project/:id`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A deep-dive view into a single construction project, providing all relevant data organized in navigable tabs.
+
+**UI Structure:**
+- **Tab Navigation:**
+  - *Overview* — Project metadata (client, location, dates, budget) and status indicators.
+  - *Tasks* — Team task list with progress sliders and assignee fields. Includes a form to add new tasks.
+  - *Financial Extracts* — Payment certificates linked to this project.
+  - *Daily Reports* — Filtered feed of daily site reports for this project.
+  - *Gantt Chart* — Project-specific interactive Gantt timeline.
+- **Status Header Bar:** Displays project health indicators and overall completion at a glance.
+
+**Integration:**
+- Calls `projectService.getProjectById()`, `projectService.updateTask()`, and related service functions.
+- Shares data with `PaymentsPage` and `DailyReportsPage` via the project ID.
+
+---
+
+### 9. Smart Engineering Cost Calculator
+**File:** [CalculatorWizard.jsx](file:///d:/prog/QB/frontend/src/components/calculator/CalculatorWizard.jsx)  
+**Route:** `/calculator` or embedded in `/project/:id/edit`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A sophisticated multi-step (wizard-style) cost estimation engine for construction projects. Provides engineers with granular, itemized cost breakdowns across all construction disciplines.
+
+**Wizard Steps / Stages:**
+1. **Project Dimensions** — Floor area, number of floors, height parameters.
+2. **Concrete Works** — Slab, columns, and beam volume calculations.
+3. **Rebar / Steel Works** — Reinforcement tonnage estimation.
+4. **Masonry & Walls** — Block quantities and mortar volumes.
+5. **Waterproofing & Insulation** — Surface area treatment costs.
+6. **Plumbing & Sanitary** — Pipe runs, fixtures, drainage.
+7. **Electrical Works** — Wiring, panels, conduit, lighting.
+8. **Finishing & Fit-out** — Flooring, plastering, tiling, painting.
+
+**UI Features:**
+- Step-by-step progress indicator (NavigationBar).
+- Editable unit price fields per line item.
+- **Live Results Summary:** Itemized cost table updating in real time as inputs change.
+- **Profit Margin & VAT Configurator:** Apply percentage-based markups to the base cost.
+- **PDF Export:** Full cost estimate exportable as a professional PDF document.
+
+**Sub-components:**
+- `CalculatorItemsTable.jsx` — Editable BOM (Bill of Materials) table
+- `CalculatorResults.jsx` — Final cost summary report
+- `ProjectSettings.jsx` — Project metadata for the estimate
+- `AdvancedEngineeringStandards.jsx` — Regional/international code references
+- `useCalculatorEngine.js` — Core computational logic (custom React hook)
+
+**Migration Note:**
+- The entire `components/calculator/` folder must be migrated together to preserve mathematical integrity.
+
+---
+
+### 10. CAD Drawing Analyzer
+**File:** [EnhancedCADAnalyzer.jsx](file:///d:/prog/QB/frontend/src/components/EnhancedCADAnalyzer.jsx)  
+**Route:** `/cad-analyzer`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+An intelligent drawing analysis module that processes uploaded architectural and engineering files (DXF, PDF, images) to extract geometric data, area measurements, and quantity take-offs for rapid cost estimation.
+
+**UI Structure:**
+- **Drag & Drop Upload Zone:** Accepts DXF, PDF, JPG, PNG up to 50 MB. Validates file type and size client-side before upload.
+- **Tab 1 — Data Preview** *(DataPreviewTabContent)*: Displays extracted measurements, room areas, structural elements, and allows manual correction of extracted values.
+- **Tab 2 — Calculations** *(CalculationsTabContent)*: Multiplies extracted areas against unit prices for finishing trades (paint, ceramic, electrical fixtures, sanitary) to generate an instant building quotation.
+
+**Integration:**
+- Calls `cadAnalyzerService` which sends the file to the FastAPI backend for processing.
+- Results are cached via React Query for fast re-access.
+
+---
+
+### 11. Materials Price Manager
+**File:** [MaterialsManager.jsx](file:///d:/prog/QB/frontend/src/components/MaterialsManager.jsx)  
+**Route:** `/materials`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A centralized materials and pricing registry that serves as the single source of truth for all cost calculations across the system (Calculator, CAD Analyzer, Purchase Orders).
+
+**UI Features:**
+- Add, edit, and delete material records with fields: material name, category, unit (m³, ton, piece, m²), base price, and current market price.
+- **Category Classification:** Concrete, Steel/Rebar, Blockwork, Electrical, Plumbing, Finishing, Miscellaneous.
+- **Supplier Linkage:** Associate each material with a supplier from the Contractors & Suppliers registry.
+- **Price Variance Indicator:** Highlights materials where current price deviates significantly from base price.
+- Search and filter by category or supplier.
+
+---
+
+### 12. Contractors & Suppliers Directory
+**File:** [ContractorsSuppliersPage.jsx](file:///d:/prog/QB/frontend/src/pages/ContractorsSuppliersPage.jsx)  
+**Route:** `/contractors`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A comprehensive business directory for managing relationships with subcontractors and material suppliers involved across the organization's projects.
+
+**Contractor Cards Include:**
+- Trade specialty (Civil, Plumbing, Electrical, Finishing, Steel, etc.)
+- Star performance rating (1–5)
+- Number of completed projects
+- Trade license number and expiry
+- Contact info and quick-call button
+
+**Supplier Cards Include:**
+- Material categories supplied
+- Average lead time (days)
+- Current price list link
+- Reliability rating
+
+**Integration:**
+- Uses `contractorSupplierService` for CRUD operations.
+- Supplier records are referenced by `MaterialsManager` for supplier-material linkage.
+
+---
+
+### 13. Financial Payments & Certificates Page
+**File:** [PaymentsPage.jsx](file:///d:/prog/QB/frontend/src/pages/PaymentsPage.jsx)  
+**Route:** `/payments`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Manages the full lifecycle of financial payment certificates (Interim Payment Certificates) submitted by subcontractors and approved by the project owner, including all financial deductions and adjustments.
+
+**Key Capabilities:**
+
+**Certificate Preparation:**
+- Enter completed works value for the current period.
+- Automatic Advance Payment Recovery (amortization).
+- Configurable Retention Deduction (default: 10%).
+- VAT calculation and inclusion.
+- Net certificate value calculation.
+
+**Payment Tracking:**
+- Log confirmed payments with bank transfer/cheque reference numbers and payment dates.
+- Link payments to specific certificates.
+
+**Certificate Lifecycle:**
+- Status workflow: `Draft → Submitted → Approved → Paid`
+- Status badges with color-coded indicators.
+
+**Integration:**
+- Imports calculation logic from `utils/paymentCalculations.js`.
+- Calls `paymentService` for backend persistence.
+- Linked to specific projects and contractors.
+
+---
+
+### 14. Purchase Orders Management
+**File:** [PurchaseOrdersPage.jsx](file:///d:/prog/QB/frontend/src/pages/PurchaseOrdersPage.jsx)  
+**Route:** `/purchase-orders`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Manages the procurement workflow — creating, tracking, and closing purchase orders for materials and services across all projects.
+
+**UI Features:**
+- Create POs linked to a specific project and supplier.
+- Line-item entry: Material, Quantity, Unit, Unit Price, Total.
+- PO status tracking: `Draft → Issued → Partially Received → Fully Received → Closed`.
+- Delivery date tracking and late-delivery alerts.
+- Print-ready PO document generation.
+
+---
+
+### 15. Equipment & Machinery Management
+**File:** [EquipmentPage.jsx](file:///d:/prog/QB/frontend/src/pages/EquipmentPage.jsx)  
+**Route:** `/equipment`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Tracks all construction machinery and equipment — owned or rented — including their assignment to projects, operational status, and maintenance schedules.
+
+**UI Features:**
+- Equipment registry: Type (Crane, Excavator, Mixer, Forklift, Generator), model, serial number, ownership (owned/rented).
+- Assignment tracker: Which project/site each machine is currently deployed at.
+- Maintenance log: Next service date and maintenance history.
+- Rental cost calculator for rented equipment per day.
+- Operational status: Active, Under Maintenance, Idle.
+
+---
+
+### 16. Cost Variance Analysis Page
+**File:** [CostVariancePage.jsx](file:///d:/prog/QB/frontend/src/pages/CostVariancePage.jsx)  
+**Route:** `/cost-variance`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A focused analytical page that identifies deviations between planned (budgeted) costs and actual expenditures across all projects and cost categories.
+
+**UI Features:**
+- **Variance Summary Table:** Per-project breakdown of budgeted vs. actual costs with absolute and percentage variance columns.
+- **Color-Coded Flags:** Green for within budget, amber for minor overspend (< 10%), red for critical overrun (> 10%).
+- **Trend Charts:** Historical cost deviation over time per project.
+- **Root Cause Tags:** User-assignable tags explaining variance reasons (material price spike, scope change, delays, etc.).
+
+---
+
+### 17. Gantt Chart Timeline Page
+**File:** [GanttPage.jsx](file:///d:/prog/QB/frontend/src/pages/GanttPage.jsx)  
+**Route:** `/gantt`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+An interactive visual project scheduling interface built around a full-featured Gantt chart, enabling project managers to track task timelines, dependencies, and critical paths.
+
+**UI Features:**
+- Project selector dropdown to switch between projects.
+- **Interactive Gantt Chart** *(GanttChart.jsx)*: Drag-to-resize task bars, dependency arrows, milestone diamonds.
+- Zoom levels: Day / Week / Month.
+- **Export Options:**
+  - PNG — High-resolution image for client presentations.
+  - PDF — Formal schedule document.
+
+**Sub-components:**
+- `dashboard/GanttChart.jsx` — The full Gantt rendering engine (38 KB, the most feature-rich component in the application).
+
+---
+
+### 18. Employees & Workforce HR Page
+**File:** [EmployeesPage.jsx](file:///d:/prog/QB/frontend/src/pages/EmployeesPage.jsx)  
+**Route:** `/employees`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Human resources registry for all company employees and site labor — from engineers and supervisors to skilled and unskilled workers.
+
+**UI Features:**
+- Employee records: Full name, National ID / Iqama number, ID expiry date, nationality, job role.
+- **Role Classification:** Project Engineer, Site Supervisor, Foreman, Mason, Carpenter, Plumber, Electrician, Laborer.
+- **Site Assignment:** Assign each worker to a specific project site.
+- **Expiry Alerts:** Visual warnings for workers with upcoming ID/permit expiry within 30 days.
+- Search and filter by name, role, site, or nationality.
+
+---
+
+### 19. Daily Attendance Tracking Page
+**File:** [AttendancePage.jsx](file:///d:/prog/QB/frontend/src/pages/AttendancePage.jsx)  
+**Route:** `/attendance`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A digital daily roll-call tool for recording workforce attendance at each site, providing the data foundation for accurate payroll calculations.
+
+**UI Features:**
+- Date and project/site selector.
+- Employee attendance list with per-row status selection:
+  - ✅ Present
+  - ❌ Absent
+  - 🏖️ Annual Leave
+  - 🏥 Sick Leave
+- **Overtime Entry:** Inline overtime hours input per employee per day.
+- **Summary Counter:** Total present / absent / on-leave tallies at the top.
+- Bulk mark-all-present button for operational efficiency.
+
+---
+
+### 20. Payroll Management Page
+**File:** [PayrollPage.jsx](file:///d:/prog/QB/frontend/src/pages/PayrollPage.jsx)  
+**Route:** `/payroll`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Computes and manages monthly or periodic wage payments for all site employees, automatically aggregating attendance and overtime data.
+
+**UI Features:**
+- **Auto-Import from Attendance:** Pulls working days and overtime hours from the Attendance module automatically.
+- **Salary Computation Engine:**
+  - Base salary / daily rate × actual working days.
+  - Overtime pay addition (at configured multiplier, e.g., 1.5×).
+  - Absence deductions.
+  - Allowances (housing, transport) and deductions (loans, fines).
+- **Payroll Slip Generation:** Individual slip per employee, exportable as PDF.
+- **Payroll Summary Report:** Company-wide wage totals per period, exportable for accounting.
+
+---
+
+### 21. Financial Analytics & Statistics Page
+**File:** [AnalyticsPage.jsx](file:///d:/prog/QB/frontend/src/pages/AnalyticsPage.jsx)  
+**Route:** `/analytics`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Executive-level financial dashboard providing deep insight into organizational financial performance across all projects and time periods.
+
+**UI Features:**
+- **Revenue vs. Cost Trend Chart** *(Recharts LineChart)*: Monthly comparison over the fiscal year.
+- **Profit Margin Analysis:** Per-project profitability ranking.
+- **Material Cost Breakdown Pie Chart:** Proportional spend by material category.
+- **Cash Flow Timeline:** Projected vs. actual cash flow by month.
+- **KPI Summary Cards:** Total Revenue, Total Costs, Net Profit, Profit Margin %, ROI.
+- Date range filter for custom reporting periods.
+
+---
+
+### 22. Daily Site Reports Page
+**File:** [DailyReportsPage.jsx](file:///d:/prog/QB/frontend/src/pages/DailyReportsPage.jsx)  
+**Route:** `/daily-reports`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A structured daily log system for site engineers to document all on-site activities, manpower deployment, weather conditions, and obstacles — creating a legal and operational record of the project's progress.
+
+**UI Features:**
+- **Auto Weather Integration:** Fetches real-time weather data (temperature, wind speed, humidity) based on the project's GPS coordinates via `weatherService`. Weather conditions are automatically pre-filled in the report.
+- **Structured Report Form:**
+  - Completed activities for today.
+  - Planned activities for tomorrow.
+  - Obstacles and delays encountered.
+  - Workforce count by trade.
+  - Equipment on site.
+- **Photo Gallery:** Upload multiple field photos per report. Images are automatically compressed and optimized via `imageOptimizer` before upload to reduce storage costs.
+- Report history with date-based filtering per project.
+
+**Integration:**
+- `dailyReportService` for CRUD.
+- `weatherService` for live weather auto-fill.
+
+---
+
+### 23. Completion Percentage Report Page
+**File:** [CompletionPercentagePage.jsx](file:///d:/prog/QB/frontend/src/pages/CompletionPercentagePage.jsx)  
+**Route:** `/completion-percentage`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A specialized, formal report generation module for producing official construction completion percentage certificates — the industry-standard document used to justify payment certificates, milestone verification, and client reporting.
+
+**Architecture:**  
+The page uses a **two-panel split layout** (`lg:grid-cols-12` → 5 + 7 columns):
+
+**Left Panel — Data Input** *(ProgressInputForm)*:
+- Project header info: Project name, client, site location, report date, report number.
+- **Structural Works Accordion:** Individual progress sliders (0–100%) for each structural item (Excavation, Foundations, Columns, Beams, Slabs, etc.).
+- **Finishing Works Accordion:** Progress sliders for finishing trades (Plastering, Tiling, Painting, MEP, etc.).
+- **Sub-sector / Discipline Breakdown:** Named sub-sectors each with individual progress percentages for radar chart visualization.
+- **Financial Summary Fields:** Total Budget, Amount Spent.
+- **Photos Section:** Upload field site photos per section.
+- **Notes & Recommendations Field:** Free-text observations.
+
+**Right Panel — Live Preview** *(ProgressDashboard)*:
+- **Overall Progress Ring** *(Recharts PieChart)*: Animated donut showing global completion %.
+- **Structural vs. Finishing Split:** Two separate progress bars with color-coded percentages.
+- **Discipline Radar Chart** *(Recharts RadarChart)*: Multi-axis radar showing balance across trades.
+- **Task Status Distribution Chart** *(Recharts BarChart)*: Completed / In Progress / Not Started counts.
+- **Budget Utilization Bar:** Visual spend vs. budget gauge.
+- **Item Filter Tabs:** All / Structure / Finishing — with search and status filter dropdowns.
+- **Detailed Items Table:** Each work item listed with its progress bar, status badge, and notes.
+- **Photo Gallery Lightbox:** Full-screen photo viewer with navigation.
+- **PDF Export Button:** Generates a print-ready, professionally formatted completion certificate using `html2canvas` + `jsPDF`.
+- **Print Button:** Direct browser print trigger.
+
+**Sub-components:**
+- [ProgressInputForm.jsx](file:///d:/prog/QB/frontend/src/components/completion/ProgressInputForm.jsx) — Left panel input accordion
+- [ProgressDashboard.jsx](file:///d:/prog/QB/frontend/src/components/completion/ProgressDashboard.jsx) — Right panel live preview and export engine
+- [defaultCompletionData.js](file:///d:/prog/QB/frontend/src/components/completion/defaultCompletionData.js) — Pre-populated demo dataset
+
+**Calculation Logic** *(inside ProgressDashboard)*:
 ```
-frontend/src/
-├── api/
-│   └── axios.js                          # Axios instance with JWT interceptor
-├── components/
-│   ├── completion/
-│   │   ├── defaultCompletionData.js      # 58 demo items + 9 payments
-│   │   ├── NewPeriodModal.jsx
-│   │   ├── ProgressDashboard.jsx
-│   │   ├── ProgressInputForm.jsx
-│   │   └── QuickCreateProjectModal.jsx
-│   └── ui/
-│       ├── ConfirmModal.jsx
-│       └── ErrorBoundary.jsx
-├── contexts/
-│   └── AuthContext.jsx                    # Auth state provider
-├── features/
-│   ├── boq/
-│   │   └── boqApi.js
-│   ├── contractors/
-│   │   ├── contractorsApi.js
-│   │   └── useContractors.js
-│   ├── hr/
-│   │   └── employeesApi.js
-│   ├── payments/
-│   │   └── paymentsApi.js
-│   ├── projects/
-│   │   ├── projectsApi.js
-│   │   ├── useBuildings.js
-│   │   ├── useProjects.js
-│   │   └── useStages.js
-│   ├── quality/
-│   │   └── qualityChecksApi.js
-│   └── reports/
-│       ├── completionReportsApi.js
-│       └── reportsApi.js
-├── hooks/
-│   ├── useAuth.js
-│   └── usePermissions.js
-├── pages/
-│   ├── AuditLogsPage.jsx
-│   ├── BOQReviewPage.jsx
-│   ├── CompletionPercentagePage.jsx
-│   ├── ContractsPage.jsx
-│   ├── ContractorsPage.jsx
-│   ├── DashboardPage.jsx
-│   ├── DrawingsPage.jsx
-│   ├── EmployeesPage.jsx
-│   ├── LoginPage.jsx
-│   ├── PaymentsPage.jsx
-│   ├── ProjectDetailPage.jsx
-│   ├── ProjectsPage.jsx
-│   ├── QualityChecksPage.jsx
-│   └── ReportsPage.jsx
-├── App.jsx                               # Routes + lazy loading + error boundary
-├── main.jsx                              # Entry point
-└── index.css                             # Tailwind base styles
+Structural Progress  = Average(all structureItems[].progress)
+Finishing Progress   = Average(all finishingItems[].progress)
+Overall Progress     = (Structural Progress + Finishing Progress) / 2
+Budget Spent %       = (spentBudget / totalBudget) x 100
+Remaining Budget     = max(0, totalBudget - spentBudget)
+```
+
+**State Management:** All data is held in a single `completionData` state object in the parent page, passed as props to both child components. Changes in `ProgressInputForm` are propagated up via `onChange` callback, triggering a live re-render of `ProgressDashboard`.
+
+---
+
+### 24. Documents Cloud Storage Page
+**File:** [DocumentsPage.jsx](file:///d:/prog/QB/frontend/src/pages/DocumentsPage.jsx)  
+**Route:** `/documents`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A centralized document management system for storing, organizing, and sharing all project-related files including contracts, drawings, permits, and reports.
+
+**UI Features:**
+- **Folder Structure:** Organized by project, then by document category (Contracts, Drawings, Permits, Reports, Photos).
+- **Upload Interface:** Drag-and-drop or browse for file upload. Supports PDF, DWG, DXF, DOCX, XLSX, images.
+- **Document Cards:** File name, size, upload date, uploader, and file type icon.
+- **Quick Preview:** In-browser PDF preview for PDF files.
+- **Search & Filter:** By project, category, date range, or uploader.
+- **Download & Share:** Download any file or generate a time-limited share link.
+- **Version Control:** Upload new versions of existing documents with history tracking.
+
+**Integration:**
+- Uses Supabase Storage for file hosting.
+- Metadata (file name, project, uploader, category) stored in PostgreSQL.
+
+---
+
+### 25. Emergency Management Center
+**File:** [EmergencyManagementCenter.jsx](file:///d:/prog/QB/frontend/src/components/EmergencyManagementCenter.jsx)  
+**Route:** `/emergency`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A real-time safety and emergency response command center designed to handle critical incidents on construction sites — enabling immediate alerts, communication, and coordinated response actions.
+
+**UI Features:**
+- **Emergency Level Indicator:** Color-coded site safety status display:
+  - 🟢 Green — All Clear / Normal Operations
+  - 🟡 Amber — Caution / Heightened Alertness
+  - 🔴 Red — Active Emergency
+- **Panic / SOS Button:** Prominently styled red animated button that triggers a mass emergency notification to all workers and supervisors on the affected site, immediately halting all operations.
+- **Quick-Dial Emergency Contacts:** One-click access to:
+  - Civil Defense (Fire & Rescue)
+  - Emergency Medical Services (Ambulance)
+  - Police
+  - Site Safety Officer
+- **Advanced Weather Alerts:** Real-time orange-alert banners when the weather service detects conditions hazardous to site operations (sandstorms, wind speeds exceeding tower crane safe limits, extreme heat).
+- **Incident Log:** Timeline of all emergency events with timestamps, responders assigned, and resolution status.
+
+---
+
+### 26. Smart Voice Assistant
+**File:** [SmartAssistant.jsx](file:///d:/prog/QB/frontend/src/components/SmartAssistant.jsx)  
+**Route:** `/smart-assistant`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+An AI-powered voice and text interactive assistant that allows engineers to query data and navigate the system hands-free — critical for site environments where manual device interaction is impractical.
+
+**UI Features:**
+- **Arabic Voice Recognition:** Microphone button activating the browser's `SpeechRecognition` API. Processes spoken Arabic commands.
+- **Voice Response (TTS):** The assistant reads responses aloud in natural-sounding Arabic using `SpeechSynthesis` API.
+- **Text Chat Interface:** Full chat bubble UI for typed queries and AI responses.
+- **Quick Action Shortcuts:**
+  - "Show delayed projects"
+  - "Open cost calculator"
+  - "Generate investor report"
+  - "Check current weather"
+  - "Call [contractor name]"
+- **Contextual Navigation:** The assistant can directly navigate to any page in the app based on a spoken or typed command.
+
+---
+
+### 27. AI Predictive Analytics Center
+**File:** [AIPredictiveCenter.jsx](file:///d:/prog/QB/frontend/src/components/AIPredictiveCenter.jsx)  
+**Route:** `/ai-predictive`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A forward-looking AI intelligence dashboard that applies predictive algorithms to project data in order to surface risks and anomalies before they become costly problems.
+
+**Prediction Modules:**
+
+| Module | What It Predicts |
+|---|---|
+| **Delay Forecasting** | Probability (%) that each project will miss its deadline, with day-count estimates and root cause breakdown |
+| **Budget Overrun Warning** | Early alert when materials price trends indicate a threat to the project's approved budget |
+| **Concrete Pour Quality** | Predicts cure quality issues based on site temperature and humidity readings |
+| **Safety Risk Index** | Composite risk score for workplace accidents based on historical incidents and current weather |
+
+**UI Features:**
+- Risk cards per project with confidence score and severity level.
+- Trend charts showing the trajectory of each risk metric.
+- Recommended corrective actions per alert.
+- Configurable alert thresholds.
+
+---
+
+### 28. System Settings Page
+**File:** [SettingsPage.jsx](file:///d:/prog/QB/frontend/src/pages/SettingsPage.jsx)  
+**Route:** `/settings`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Global system configuration panel for administrators to customize the platform's behavior, appearance, and integrations.
+
+**Settings Categories:**
+- **General:** System language, date format, currency, timezone.
+- **Appearance:** Dark / Light mode toggle, primary accent color selection.
+- **Notifications:** Configure which events trigger in-app or email notifications and their thresholds.
+- **Financial Defaults:** Default VAT rate, retention percentage, standard profit margin.
+- **API Integrations:** Weather service API key, third-party integration tokens.
+- **User Management:** *(Admin only)* View all registered users and manage roles and permissions.
+
+---
+
+### 29. Notifications Page
+**File:** [NotificationsPage.jsx](file:///d:/prog/QB/frontend/src/pages/NotificationsPage.jsx)  
+**Route:** `/notifications`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+Centralized inbox for all system-generated alerts, approvals, reminders, and messages — keeping users informed of events requiring attention.
+
+**UI Features:**
+- **Notification Feed:** Chronological list of notifications with type icons (alert, approval, info, warning).
+- **Categories:** Budget alerts, overdue tasks, payment approvals, ID expiry warnings, weather alerts.
+- **Read / Unread State:** Bold unread items, greyed-out read items.
+- **Mark All as Read** button.
+- **Notification Detail View:** Click any notification to see full context and navigate to the relevant page.
+- **Notification Filters:** By type, project, date range.
+
+---
+
+### 30. Activity Log & Audit Trail Page
+**File:** [ActivityPage.jsx](file:///d:/prog/QB/frontend/src/pages/ActivityPage.jsx)  
+**Route:** `/activity`  
+**Auth Required:** ✅ Protected
+
+**Purpose:**  
+A comprehensive, tamper-evident audit trail of all user actions performed within the system — serving compliance, accountability, and debugging purposes.
+
+**UI Features:**
+- Chronological log entries: `[Timestamp] [User] [Action] [Entity] [Details]`
+- **Examples of logged events:**
+  - Project created / updated / deleted
+  - Payment certificate approved
+  - Material price updated
+  - User login / logout
+  - Report exported
+- **Filter Panel:** By user, action type, entity type, date range.
+- **Export:** Download the full activity log as CSV or PDF for auditing purposes.
+
+---
+
+## 🔒 Route Protection Architecture
+
+All protected pages are wrapped with `<ProtectedRoute>` in [App.jsx](file:///d:/prog/QB/frontend/src/App.jsx). Critical heavy pages also use lazy loading with `React.Suspense`:
+
+```jsx
+// Public Route Example
+<Route path="/login" element={
+  <ErrorBoundary>
+    <LoginPage />
+  </ErrorBoundary>
+} />
+
+// Protected + Lazy-Loaded Route Example
+<Route path="/dashboard" element={
+  <ProtectedRoute>
+    <DashboardErrorBoundary>
+      <Suspense fallback={<SmartLoader message="Loading Dashboard..." />}>
+        <LazyDashboard />
+      </Suspense>
+    </DashboardErrorBoundary>
+  </ProtectedRoute>
+} />
 ```
 
 ---
 
-*Generated: 2026-07-27 — Reflects the current production codebase. All 14 pages are wired to FastAPI backends with full RBAC enforcement.*
+## 📦 Key Dependencies
+
+| Package | Purpose |
+|---|---|
+| `framer-motion` | Page transitions and micro-animations |
+| `lucide-react` | Consistent icon system |
+| `@tanstack/react-query` | Server state management and data fetching |
+| `recharts` | All charts and data visualizations |
+| `html2canvas` + `jspdf` | PDF export for reports, completion certificates, Gantt |
+| `react-hot-toast` | Non-intrusive toast notifications |
+| `@supabase/supabase-js` | Auth, database, and file storage client |
+
+---
+
+## 🚀 Migration Guide
+
+To transplant any page into a new project:
+
+1. **Copy the page file** and all component sub-folders it imports from.
+2. **Install dependencies** listed above via `npm install`.
+3. **Configure backend connection:** Edit the service files in `frontend/src/services/` to point to your new API or Supabase instance.
+4. **Set environment variables:** Copy `.env` and populate `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+5. **Configure Tailwind:** Ensure `tailwind.config.js` includes the dark mode class strategy (`class`) and the Arabic font (e.g., `Cairo`, `Tajawal`) is imported via Google Fonts.
+6. **Register routes:** Add each page to your `App.jsx` router, wrapping protected pages with your authentication guard component.

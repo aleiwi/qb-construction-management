@@ -94,7 +94,7 @@ export const defaultCompletionData = {
     { id: 'f26', name: 'اكسسوارات الكهرباء',                           progress: 0,  sectorId: 's1' },
     { id: 'f27', name: 'بلاط الأسطح',                                  progress: 0,  sectorId: 's5' },
     { id: 'f28', name: 'البلاط ودورات الانترلوك',                     progress: 0,  sectorId: 's5' },
-    { id: 'f29', name: 'الأسفلت', progress: 0, sectorId: 's5' },
+    { id: 'f29', name: 'الأسفلت',                                      progress: 0,  sectorId: 's5' },
   ],
 
   // === ه. جدول الدفعات المالية (9 مراحل) ===
@@ -111,6 +111,7 @@ export const defaultCompletionData = {
   ],
 
   // === و. المعرض المصور (يبدأ فارغاً — الصور تُضاف من صفحة التحرير فقط، لا تظهر أي صورة تلقائياً) ===
+  mainPhoto: null,
   photoGallery: [],
 };
 
@@ -125,6 +126,7 @@ export const createEmptyCompletionData = () => ({
   structureItems: defaultCompletionData.structureItems.map((it) => ({ ...it })),
   finishingItems: defaultCompletionData.finishingItems.map((it) => ({ ...it })),
   paymentsSchedule: defaultCompletionData.paymentsSchedule.map((p) => ({ ...p })),
+  mainPhoto: null,
   photoGallery: [],
 });
 

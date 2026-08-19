@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download, Printer, TrendingUp, TrendingDown, Minus, CheckCircle2,
+  Download, TrendingUp, TrendingDown, Minus, CheckCircle2,
   Clock3, Circle, Layers, Building2, Wallet, Camera
 } from 'lucide-react';
 import {
@@ -39,11 +39,11 @@ const SectionTitle = ({ icon: Icon, title, subtitle, color = 'bg-blue-500/10 tex
   </div>
 );
 
-const ProgressBar = ({ value, color, height = 'h-2.5' }) => {
+const ProgressBar = ({ value, color, height = 'h-2.5', className = '' }) => {
   const val = Math.min(100, Math.max(0, parseFloat(value) || 0));
   const c = color || getProgressColor(val);
   return (
-    <div className={`w-full ${height} bg-slate-800 rounded-full overflow-hidden`}>
+    <div className={`w-full ${height} bg-slate-800 rounded-full overflow-hidden shrink-0 ${className}`}>
       <div className="h-full rounded-full transition-all duration-700" style={{ width: `${val}%`, backgroundColor: c }} />
     </div>
   );
@@ -71,17 +71,23 @@ const ItemBar = ({ item }) => {
   const color = getProgressColor(val);
   const isDone = val >= 100;
   return (
-    <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:border-slate-600 transition">
-      {isDone ? (
-        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-      ) : val > 0 ? (
-        <Clock3 className="w-4 h-4 text-blue-400 shrink-0" />
-      ) : (
-        <Circle className="w-4 h-4 text-slate-600 shrink-0" />
-      )}
-      <span className="text-xs font-semibold text-slate-200 truncate flex-1">{item.name}</span>
-      <ProgressBar value={val} height="h-1.5" />
-      <span dir="ltr" className="w-11 text-center font-mono font-black text-[11px] shrink-0" style={{ color }}>{val}%</span>
+    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:border-slate-600 transition min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {isDone ? (
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        ) : val > 0 ? (
+          <Clock3 className="w-4 h-4 text-blue-400 shrink-0" />
+        ) : (
+          <Circle className="w-4 h-4 text-slate-600 shrink-0" />
+        )}
+        <span className="text-xs font-semibold text-slate-200 truncate">{item.name}</span>
+      </div>
+      <div className="flex items-center gap-2.5 w-44 shrink-0">
+        <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${val}%`, backgroundColor: color }} />
+        </div>
+        <span dir="ltr" className="w-11 text-left font-mono font-black text-xs shrink-0" style={{ color }}>{val}%</span>
+      </div>
     </div>
   );
 };
@@ -155,14 +161,10 @@ export const ProgressDashboard = ({ data, delta = null, parentOverall = null }) 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => window.print()}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl text-xs font-bold flex items-center gap-2 transition border border-slate-700">
-            <Printer className="w-4 h-4 text-amber-400" /> طباعة المعتمد
-          </button>
           <button onClick={handleExportPDF} disabled={exporting}
-            className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 rounded-2xl text-xs font-black flex items-center gap-2 transition shadow-md">
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 rounded-2xl text-xs font-black flex items-center gap-2 transition shadow-md">
             <Download className={`w-4 h-4 ${exporting ? 'animate-bounce' : ''}`} />
-            {exporting ? 'جارٍ تصدير ملف PDF...' : 'تصدير PDF (A4 Landscape)'}
+            {exporting ? 'جارٍ تصدير ملف PDF...' : 'تصدير PDF'}
           </button>
         </div>
       </div>
@@ -361,17 +363,36 @@ export const ProgressDashboard = ({ data, delta = null, parentOverall = null }) 
       </motion.div>
 
       {/* ===== Photos ===== */}
-      {data.photoGallery.length > 0 && (
-        <motion.div {...fadeIn} className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5">
-          <SectionTitle icon={Camera} title="التوثيق المصور للموقع" subtitle={`${data.photoGallery.length} صورة ميدانية`} color="bg-rose-500/10 text-rose-400" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {data.photoGallery.map((ph) => (
-              <div key={ph.id} className="rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 group">
-                <img src={ph.src} alt={ph.caption} className="w-full h-28 object-cover group-hover:scale-105 transition duration-500" />
-                {ph.caption && <div className="px-2.5 py-1.5 text-[10px] text-slate-400 truncate">{ph.caption}</div>}
+      {((data.mainPhoto?.src || data.mainPhoto) || (data.photoGallery && data.photoGallery.length > 0)) && (
+        <motion.div {...fadeIn} className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 space-y-4">
+          <SectionTitle icon={Camera} title="التوثيق المصور للموقع" subtitle={`${(data.mainPhoto ? 1 : 0) + (data.photoGallery?.length || 0)} صورة ميدانية`} color="bg-rose-500/10 text-rose-400" />
+
+          {/* Main Photo Banner if present */}
+          {(data.mainPhoto?.src || (typeof data.mainPhoto === 'string' && data.mainPhoto)) && (
+            <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-slate-800 aspect-video max-h-72">
+              <img src={data.mainPhoto.src || data.mainPhoto} alt="Main Site Overview" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex items-end p-4">
+                <div>
+                  <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-md mb-1 inline-block">
+                    الصورة الرئيسية (الصفحة الأولى)
+                  </span>
+                  <div className="text-sm font-black text-white">{data.mainPhoto.caption || 'الصورة الرئيسية للموقع'}</div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Other Gallery Photos */}
+          {data.photoGallery && data.photoGallery.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {data.photoGallery.map((ph) => (
+                <div key={ph.id} className="rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 group">
+                  <img src={ph.src} alt={ph.caption} className="w-full h-28 object-cover group-hover:scale-105 transition duration-500" />
+                  {ph.caption && <div className="px-2.5 py-1.5 text-[10px] text-slate-400 truncate">{ph.caption}</div>}
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       )}
 

@@ -153,26 +153,19 @@ export const ProgressPrintReport = ({ data }) => {
 
               {/* Centered Donut Gauge */}
               <div className="flex-1 flex flex-col items-center justify-center relative py-2">
-                <div className="w-44 h-44 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        cx="50%" cy="50%"
-                        innerRadius={52} outerRadius={72}
-                        startAngle={90} endAngle={-270}
-                        paddingAngle={3}
-                      >
-                        {pieData.map((e, i) => (
-                          <Cell key={i} fill={e.color} stroke="#ffffff" strokeWidth={2} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="w-44 h-44 relative flex items-center justify-center">
+                  <svg width="176" height="176" viewBox="0 0 176 176" className="-rotate-90">
+                    <circle cx="88" cy="88" r="62" fill="none" stroke="#e2e8f0" strokeWidth="16" />
+                    <circle
+                      cx="88" cy="88" r="62" fill="none" stroke="#10b981" strokeWidth="16"
+                      strokeDasharray={`${2 * Math.PI * 62}`}
+                      strokeDashoffset={`${2 * Math.PI * 62 * (1 - Math.min(100, Math.max(0, overall)) / 100)}`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
 
                   {/* Gauge Center Text */}
-                  <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                     <span dir="ltr" className="text-3xl font-black text-slate-900 tracking-tight leading-none">{overall}%</span>
                     <span className="text-[9px] font-bold text-slate-500 mt-1">متوسط نسبة الإنجاز الكلي</span>
                   </div>
@@ -214,8 +207,8 @@ export const ProgressPrintReport = ({ data }) => {
             </div>
 
             {/* Section 2: Project Info Card */}
-            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2.5">
                 <h3 className="text-xs font-black text-slate-800 flex items-center gap-2">
                   <SectionBadge number={2} />
                   بيانات المشروع
@@ -223,7 +216,7 @@ export const ProgressPrintReport = ({ data }) => {
               </div>
 
               {/* Structured Metadata Grid */}
-              <div className="grid grid-cols-2 gap-2.5 text-[10.5px] flex-1 items-center py-1">
+              <div className="grid grid-cols-2 gap-2 text-[10px] mb-2.5">
                 <div className="bg-white border border-slate-200 p-2.5 rounded-xl flex items-center justify-between shadow-2xs">
                   <span className="text-slate-500 font-medium">نوع المشروع</span>
                   <span className="font-bold text-slate-900">{data.projectType}</span>
@@ -250,17 +243,17 @@ export const ProgressPrintReport = ({ data }) => {
                 </div>
               </div>
 
-              {/* Main Site Photo Card (ONLY rendered if photo uploaded) */}
-              {data.photoGallery?.[0]?.src && (
-                <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden bg-slate-900 relative h-36 flex flex-col justify-end">
+              {/* Main Site Photo Card (occupies entire lower half) */}
+              {(data.mainPhoto?.src || (typeof data.mainPhoto === 'string' && data.mainPhoto)) && (
+                <div className="flex-1 min-h-0 border border-slate-200 rounded-xl overflow-hidden bg-slate-900 relative flex flex-col justify-end">
                   <img
-                    src={data.photoGallery[0].src}
-                    alt={data.photoGallery[0].title || data.photoGallery[0].caption || 'Site Overview'}
-                    className="absolute inset-0 w-full h-full object-cover opacity-85"
+                    src={data.mainPhoto?.src || data.mainPhoto}
+                    alt={data.mainPhoto?.title || data.mainPhoto?.caption || 'Site Overview'}
+                    className="absolute inset-0 w-full h-full object-cover opacity-90"
                   />
-                  <div className="relative bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-2.5 text-white">
-                    <div className="text-[10.5px] font-black text-amber-400">{data.photoGallery[0].title || data.photoGallery[0].caption || 'الصورة الرئيسية للموقع'}</div>
-                    <div className="text-[9px] text-slate-300">تصوير وتوثيق الموقع الميداني لمشروع {data.projectName}</div>
+                  <div className="relative bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3.5 text-white">
+                    <div className="text-xs font-black text-amber-400">{data.mainPhoto?.title || data.mainPhoto?.caption || 'الصورة الرئيسية للموقع'}</div>
+                    <div className="text-[10px] text-slate-300 mt-0.5">تصوير وتوثيق الموقع الميداني لمشروع {data.projectName}</div>
                   </div>
                 </div>
               )}
@@ -704,76 +697,42 @@ export const ProgressPrintReport = ({ data }) => {
           <CorporateFooter data={data} pageNum={5} totalPages={6} />
         </div>
 
-        {/* ==================== PAGE 7: SITE PHOTO GALLERY & SIGNATURES ==================== */}
-        <div className="cp-report-page bg-white text-slate-900 rounded-2xl shadow-xl p-6 border border-slate-200 w-[297mm] h-[210mm] max-w-[297mm] min-h-[210mm] mx-auto flex flex-col justify-between">
-          <CorporateHeader
-            data={data}
-            title={data.photoGallery && data.photoGallery.length > 0 ? "التوثيق المصور للموقع والاعتمادات" : "توقيعات واعتمادات أطراف المشروع"}
-            pageNum={6}
-            totalPages={6}
-          />
+        {/* ==================== PAGE 6: SITE PHOTO GALLERY (ONLY IF PHOTOS EXIST) ==================== */}
+        {data.photoGallery && data.photoGallery.length > 0 && (
+          <div className="cp-report-page bg-white text-slate-900 rounded-2xl shadow-xl p-6 border border-slate-200 w-[297mm] h-[210mm] max-w-[297mm] min-h-[210mm] mx-auto flex flex-col justify-between">
+            <CorporateHeader
+              data={data}
+              title="التوثيق المصور للموقع"
+              pageNum={6}
+              totalPages={6}
+            />
 
-          <div className="space-y-4 flex-1 flex flex-col justify-between">
-            {/* Section 8: Photo Documentation Gallery (ONLY rendered if photos uploaded) */}
-            {data.photoGallery && data.photoGallery.length > 0 && (
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3 flex-1 flex flex-col justify-between">
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex-1 flex flex-col justify-between">
                 <div className="border-b border-slate-200 pb-1 mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-black text-slate-800 flex items-center gap-2">
                     <SectionBadge number={8} />
                     توثيق مصور لسير العمل الميداني
                   </h3>
-                  <span className="text-[9px] text-slate-500">معرض صور الموقع الحالي</span>
+                  <span className="text-[9px] text-slate-500">معرض صور الموقع الميداني</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 flex-1 items-stretch">
+                <div className="grid grid-cols-3 gap-3 flex-1 items-stretch">
                   {data.photoGallery.slice(0, 6).map((photo) => (
-                    <div key={photo.id} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900 relative group flex flex-col justify-end">
+                    <div key={photo.id} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900 relative group flex flex-col justify-end min-h-[220px]">
                       <img src={photo.src} alt={photo.title || photo.caption} className="absolute inset-0 w-full h-full object-cover opacity-90" />
-                      <div className="relative bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-2 text-white">
+                      <div className="relative bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-2.5 text-white">
                         <div className="text-[9.5px] font-bold leading-tight">{photo.title || photo.caption}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* Signatures & Approvals Box */}
-            <div className={`bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 ${!data.photoGallery?.length ? 'flex-1 flex flex-col justify-center' : ''}`}>
-              <div className="text-xs font-black text-slate-800 mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-                <SectionBadge number={data.photoGallery && data.photoGallery.length > 0 ? 9 : 8} />
-                توقيعات واعتمادات أطراف المشروع المعتمدة
-              </div>
-              <div className="grid grid-cols-3 gap-8 pt-2">
-                <div className="text-center bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-                  <div className="h-16 border-b-2 border-dashed border-slate-300 mb-2 flex items-end justify-center pb-2">
-                    <span className="text-[9px] text-slate-400 font-mono">التوقيع والختم</span>
-                  </div>
-                  <div className="text-xs font-black text-slate-900">الاستشاري / المهندس المشرف</div>
-                  <div className="text-[9.5px] text-slate-500 mt-0.5">اعتماد نسبة الإنجاز التنفيذي</div>
-                </div>
-
-                <div className="text-center bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-                  <div className="h-16 border-b-2 border-dashed border-slate-300 mb-2 flex items-end justify-center pb-2">
-                    <span className="text-[9px] text-slate-400 font-mono">التوقيع والختم</span>
-                  </div>
-                  <div className="text-xs font-black text-slate-900">المطور العقاري</div>
-                  <div className="text-[9.5px] text-slate-500 mt-0.5">مسقا الأولى للتطوير العقاري</div>
-                </div>
-
-                <div className="text-center bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-                  <div className="h-16 border-b-2 border-dashed border-slate-300 mb-2 flex items-end justify-center pb-2">
-                    <span className="text-[9px] text-slate-400 font-mono">التوقيع والختم</span>
-                  </div>
-                  <div className="text-xs font-black text-slate-900">المقاول الرئيسي للمشروع</div>
-                  <div className="text-[9.5px] text-slate-500 mt-0.5">تأكيد الميزانية والبنود المنجزة</div>
-                </div>
-              </div>
             </div>
-          </div>
 
-          <CorporateFooter data={data} pageNum={6} totalPages={6} />
-        </div>
+            <CorporateFooter data={data} pageNum={6} totalPages={6} />
+          </div>
+        )}
 
       </div>
     </div>
