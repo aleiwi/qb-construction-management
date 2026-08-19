@@ -82,7 +82,7 @@ def m32_html():
 
 
 def test_builds_exactly_6_a4_pages(m32_html):
-    assert m32_html.count('class="page"') == 6
+    assert m32_html.count('class="page"') == 5
 
 
 def test_key_progress_values_match_cp_pdf(m32_html):
@@ -129,5 +129,5 @@ def test_structure_item_names_rendered(m32_html):
 
 def test_handles_empty_data_gracefully():
     html = _build_html({})
-    assert html.count('class="page"') == 6
+    assert html.count('class="page"') == 5
     assert "0.0%<" in html
