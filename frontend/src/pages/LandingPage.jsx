@@ -9,8 +9,13 @@ import {
   Building2, FolderKanban, FileText, FileSignature, Wallet, ShieldCheck,
   HardHat, UsersRound, BarChart3, TrendingUp, History, UserCircle,
   KeyRound, Fingerprint, Lock, Database, CheckCircle2, ChevronDown, ArrowLeft,
-  Menu, X, Mail, Phone, MapPin, Send, Moon, Compass, Layers, MessageSquare, Ruler,
+  Menu, X, Mail, Phone, MapPin, Send, Layers, MessageSquare, Ruler,
 } from 'lucide-react';
+
+const HERO_IMG =
+  'https://images.unsplash.com/photo-1623298317883-6b70254edf31?fm=jpg&q=80&w=1920&auto=format&fit=crop';
+const CTA_IMG =
+  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?fm=jpg&q=80&w=1920&auto=format&fit=crop';
 
 const FEATURES = [
   { icon: FolderKanban, code: 'MOD-01', title: 'المشاريع والمباني', desc: 'تقسيم المشاريع إلى مباني ومراحل بأوزان نسبية دقيقة لمتابعة التنفيذ.' },
@@ -27,10 +32,10 @@ const FEATURES = [
 ];
 
 const SECURITY_POINTS = [
-  { icon: KeyRound, title: 'برج الحراسة — RBAC', desc: 'خمسة أدوار وظيفية تتحكم في كل صفحة وزر، كأبراج مراقبة في كل واجهة.' },
-  { icon: Fingerprint, title: 'الأسوار — عزل البيانات RLS', desc: 'المقاول يرى عقوده ومستحقاته فقط؛ والمهندس مقيد بمشاريع حسابه.' },
-  { icon: Lock, title: 'البوابات — JWT والحماية', desc: 'جلسات موثقة مع قفل الحساب بعد المحاولات الفاشلة و HTTPS إجباري.' },
-  { icon: Database, title: 'كاميرات التتبع — Audit', desc: 'كل اعتماد دفعة أو تعديل سعر موثق: المنفذ، القيمة قبل وبعد.' },
+  { icon: KeyRound, title: 'التحكم بالدخول — RBAC', desc: 'خمسة أدوار وظيفية تتحكم في كل صفحة وزر داخل النظام.' },
+  { icon: Fingerprint, title: 'عزل البيانات — RLS', desc: 'المقاول يرى عقوده ومستحقاته فقط؛ والمهندس مقيد بمشاريع حسابه.' },
+  { icon: Lock, title: 'الجلسات — JWT', desc: 'جلسات موثقة مع قفل الحساب بعد المحاولات الفاشلة و HTTPS إجباري.' },
+  { icon: Database, title: 'سجل التتبع — Audit', desc: 'كل اعتماد دفعة أو تعديل سعر موثق: المنفذ، القيمة قبل وبعد.' },
 ];
 
 const PHASES = [
@@ -60,16 +65,9 @@ const BUILD_STAGES = [
   'تسليم المشروع',
 ];
 
-const STARS = Array.from({ length: 30 }, (_, i) => ({
-  top: (i * 37) % 55 + 3,
-  left: (i * 53) % 94 + 3,
-  size: (i % 3) + 1,
-  cls: i % 3 === 0 ? 'twinkle' : (i % 3 === 1 ? 'twinkle-delayed' : ''),
-}));
-
 const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: i * 0.08, ease: 'easeOut' } }),
+  hidden: { opacity: 0, y: 24 },
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.55, delay: i * 0.08, ease: 'easeOut' } }),
 };
 
 /* ===== The villa that builds itself as you scroll ===== */
@@ -369,6 +367,7 @@ const VillaBuild = ({ progress }) => {
     </svg>
   );
 };
+
 /* ===== Hero: the villa constructs as you scroll ===== */
 const BuildHero = () => {
   const navigate = useNavigate();
@@ -383,36 +382,20 @@ const BuildHero = () => {
 
   return (
     <section ref={heroRef} className="relative" style={{ height: '460vh' }}>
-      <div className="sticky top-0 h-screen overflow-hidden night-sky">
-        {/* stars */}
-        {STARS.map((s, i) => (
-          <span
-            key={i}
-            className={`absolute rounded-full bg-slate-100 ${s.cls}`}
-            style={{ top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size }}
-          />
-        ))}
-        {/* moon */}
-        <div className="absolute top-14 right-[8%] moon-drift">
-          <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-amber-100 via-yellow-50 to-slate-300 shadow-[0_0_60px_rgba(252,211,77,0.35)]" />
-        </div>
-        {/* fog */}
-        <div className="absolute bottom-28 inset-x-0 h-40 fog-drift bg-gradient-to-t from-transparent via-amber-200/5 to-transparent blur-2xl" />
-        {/* horizon glow */}
-        <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-amber-500/8 to-transparent" />
+      <div className="sticky top-0 h-screen overflow-hidden bg-[#23282d]">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.045),transparent_60%)]" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center gap-6 md:gap-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Text */}
             <div>
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="show"
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300 text-xs font-bold"
+                className="text-[10px] tracking-[0.35em] text-[#c9a227] font-semibold mb-6"
               >
-                <Compass className="w-3.5 h-3.5" />
-                وِجْهة — منصة إدارة المشاريع الإنشائية
+                مُنشِئو المساحات المتميزة
               </motion.div>
 
               <motion.h1
@@ -420,12 +403,10 @@ const BuildHero = () => {
                 initial="hidden"
                 animate="show"
                 custom={1}
-                className="mt-6 font-serif-ar text-4xl md:text-6xl xl:text-7xl font-bold leading-[1.2] text-white"
+                className="font-serif-ar text-4xl md:text-6xl xl:text-7xl font-bold leading-[1.25] text-white"
               >
                 شاهد فيلتك
-                <span className="block bg-gradient-to-l from-amber-200 via-amber-400 to-orange-500 bg-clip-text text-transparent">
-                  تُبنى أمامك…
-                </span>
+                <span className="block text-[#e3c078]">تُبنى أمامك…</span>
               </motion.h1>
 
               <motion.p
@@ -433,10 +414,10 @@ const BuildHero = () => {
                 initial="hidden"
                 animate="show"
                 custom={2}
-                className="mt-5 text-sm md:text-base text-slate-400 leading-relaxed max-w-md"
+                className="mt-6 text-sm md:text-base text-slate-400 leading-relaxed max-w-md"
               >
-                مرّر للأسفل… وستنهض الفيلا طابقاً طابقاً: أساسات، أعمدة، جدران، سقف، ثم تضيء نوافذها.
-                هكذا تدير وِجْهة مشروعك — مرحلة مرحلة، من الحفر حتى التسليم.
+                مرّر للأسفل… وستنهض الفيلا طابقاً طابقاً: أساسات، أعمدة، جدران، سقف،
+                ثم تضيء نوافذها. هكذا ندير مشروعك — مرحلة مرحلة، من الحفر حتى التسليم.
               </motion.p>
 
               <motion.div
@@ -444,11 +425,11 @@ const BuildHero = () => {
                 initial="hidden"
                 animate="show"
                 custom={3}
-                className="mt-7 flex flex-col sm:flex-row items-stretch gap-3"
+                className="mt-8 flex flex-col sm:flex-row items-stretch gap-3"
               >
                 <button
                   onClick={() => navigate('/login')}
-                  className="px-7 py-3.5 bg-gradient-to-l from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-2xl text-sm font-black transition shadow-xl shadow-amber-600/25 hover:-translate-y-0.5"
+                  className="px-7 py-3.5 bg-white text-[#1c2126] hover:bg-slate-200 rounded-xl text-sm font-bold transition hover:-translate-y-0.5"
                 >
                   ادخل إلى موقع العمل
                   <ArrowLeft className="w-4 h-4 inline mr-2" />
@@ -456,33 +437,43 @@ const BuildHero = () => {
                 <a
                   href="#modules"
                   onClick={(e) => { e.preventDefault(); document.querySelector('#modules')?.scrollIntoView({ behavior: 'smooth' }); }}
-                  className="px-7 py-3.5 border border-amber-400/30 hover:border-amber-300/60 text-amber-300 rounded-2xl text-sm font-bold transition hover:-translate-y-0.5 text-center"
+                  className="px-7 py-3.5 border border-white/15 hover:border-white/40 text-white rounded-xl text-sm font-semibold transition hover:-translate-y-0.5 text-center"
                 >
                   استعرض الأجنحة
                 </a>
+              </motion.div>
+
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="show"
+                custom={4}
+                className="mt-10 flex items-center gap-3 text-[10px] tracking-[0.3em] text-slate-500"
+              >
+                <span className="w-px h-10 bg-gradient-to-b from-white/30 to-transparent animate-pulse" />
+                مرّر
               </motion.div>
             </div>
 
             {/* Scene + stage meter */}
             <div>
-              <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-[#0c1424]/85 to-[#060b16]/85 backdrop-blur-md p-3 md:p-5 overflow-hidden shadow-2xl shadow-black/50 aspect-[19/12]">
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-l from-transparent via-amber-400/40 to-transparent" />
+              <div className="relative rounded-2xl border border-white/10 bg-[#1e2328] p-3 md:p-5 overflow-hidden shadow-2xl shadow-black/40 aspect-[19/12]">
                 <VillaBuild progress={scrollYProgress} />
               </div>
 
               {/* stage label + progress */}
-              <div className="mt-4 flex items-center gap-4">
-                <div className="w-3 h-3 rounded-full bg-amber-400 beacon shrink-0" />
+              <div className="mt-5 flex items-center gap-4">
+                <div className="w-2 h-2 rounded-full bg-[#c9a227] shrink-0" />
                 <div className="flex-1">
-                  <div className="flex items-center justify-between text-[11px] mb-1.5">
-                    <span className="font-bold text-amber-300">{BUILD_STAGES[stage]}</span>
-                    <span className="font-mono text-slate-500">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-white/80">{BUILD_STAGES[stage]}</span>
+                    <span className="font-mono text-[11px] text-slate-500">
                       <motion.span>{progressPct}</motion.span>
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-px bg-white/10 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-l from-amber-400 to-orange-500"
+                      className="h-full bg-gradient-to-l from-[#e3c078] to-[#c9a227]"
                       style={{ scaleX: scrollYProgress, transformOrigin: '100% 50%' }}
                     />
                   </div>
@@ -518,25 +509,17 @@ const StatCounter = ({ value, suffix, label }) => {
   }, [inView, value]);
 
   return (
-    <div ref={ref} className="text-center border border-amber-400/15 bg-[#0a1428]/70 rounded-2xl px-3 py-5 backdrop-blur-sm">
-      <div className="text-3xl md:text-4xl font-black text-amber-300 font-mono tabular-nums">
+    <div ref={ref} className="text-center">
+      <div className="font-serif-ar text-4xl md:text-5xl font-bold text-white tabular-nums">
         {display.toLocaleString('en-US')}
-        <span className="text-sm text-amber-400"> {suffix}</span>
+        <span className="text-[#c9a227] text-2xl mr-1">{suffix}</span>
       </div>
-      <div className="mt-1.5 text-[10px] text-slate-400 font-semibold">{label}</div>
+      <div className="mt-2 text-[10px] tracking-widest text-slate-500 font-semibold">{label}</div>
     </div>
   );
 };
 
-const Corners = () => (
-  <>
-    <span className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-amber-400/50 rounded-tr" />
-    <span className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-amber-400/50 rounded-tl" />
-    <span className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-amber-400/50 rounded-br" />
-    <span className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-amber-400/50 rounded-bl" />
-  </>
-);
-
+/* ===== Contact form ===== */
 const ContactForm = () => {
   const [sent, setSent] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
@@ -548,15 +531,15 @@ const ContactForm = () => {
 
   if (sent) {
     return (
-      <div className="bg-emerald-950/40 border border-emerald-800/50 rounded-3xl p-10 text-center animate-fade-in">
-        <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+      <div className="text-center py-10 animate-fade-in">
+        <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+          <CheckCircle2 className="w-7 h-7 text-emerald-400" />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">شكراً لتواصلك معنا</h3>
+        <h3 className="font-serif-ar text-xl font-bold text-white mb-2">شكراً لتواصلك معنا</h3>
         <p className="text-sm text-slate-400">تم استلام رسالتك بنجاح، وسيتواصل معك فريقنا في أقرب وقت.</p>
         <button
           onClick={() => { setSent(false); setForm({ name: '', email: '', message: '' }); }}
-          className="mt-6 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition"
+          className="mt-6 px-5 py-2.5 border border-white/15 hover:border-white/40 text-slate-300 rounded-xl text-sm font-semibold transition"
         >
           إرسال رسالة أخرى
         </button>
@@ -564,45 +547,28 @@ const ContactForm = () => {
     );
   }
 
+  const inputCls = "w-full bg-transparent border-b border-white/15 focus:border-[#c9a227] px-1 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition";
+  const labelCls = "block text-[10px] tracking-widest text-slate-500 font-semibold mb-1";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-7">
         <div>
-          <label className="block text-[11px] font-bold text-slate-300 mb-1.5">الاسم الكامل</label>
-          <input
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="م. محمد خالد"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-400 outline-none transition"
-          />
+          <label className={labelCls}>الاسم الكامل</label>
+          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="م. محمد خالد" className={inputCls} />
         </div>
         <div>
-          <label className="block text-[11px] font-bold text-slate-300 mb-1.5">البريد الإلكتروني</label>
-          <input
-            required
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="name@company.com"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-400 outline-none transition"
-          />
+          <label className={labelCls}>البريد الإلكتروني</label>
+          <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@company.com" className={inputCls} />
         </div>
       </div>
       <div>
-        <label className="block text-[11px] font-bold text-slate-300 mb-1.5">رسالتك</label>
-        <textarea
-          required
-          rows={4}
-          value={form.message}
-          onChange={(e) => setForm({ ...form, message: e.target.value })}
-          placeholder="كيف يمكننا مساعدتك؟"
-          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-400 outline-none transition resize-none"
-        />
+        <label className={labelCls}>رسالتك</label>
+        <textarea required rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="كيف يمكننا مساعدتك؟" className={`${inputCls} resize-none`} />
       </div>
       <button
         type="submit"
-        className="w-full px-6 py-3.5 bg-gradient-to-l from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 transition shadow-lg shadow-amber-600/20"
+        className="w-full px-6 py-3.5 bg-white hover:bg-slate-200 text-[#1c2126] rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
       >
         <Send className="w-4 h-4" />
         إرسال الرسالة
@@ -611,6 +577,44 @@ const ContactForm = () => {
   );
 };
 
+/* ===== Section heading ===== */
+const SectionHead = ({ kicker, title, desc }) => (
+  <div className="text-center mb-14">
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true }}
+      className="text-[10px] tracking-[0.35em] text-[#c9a227] font-semibold mb-5"
+    >
+      {kicker}
+    </motion.div>
+    <motion.h2
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true }}
+      custom={1}
+      className="font-serif-ar text-3xl md:text-5xl font-bold text-white leading-tight"
+    >
+      {title}
+    </motion.h2>
+    {desc && (
+      <motion.p
+        variants={fadeUp}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true }}
+        custom={2}
+        className="mt-5 text-slate-400 max-w-xl mx-auto text-sm md:text-base leading-relaxed"
+      >
+        {desc}
+      </motion.p>
+    )}
+  </div>
+);
+
+/* ===== Page ===== */
 export const LandingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -624,9 +628,9 @@ export const LandingPage = () => {
   const navLinks = [
     { href: '#modules', label: 'الأجنحة' },
     { href: '#phases', label: 'مراحل التنفيذ' },
-    { href: '#security', label: 'حراسة الموقع' },
-    { href: '#faq', label: 'الأسئلة الشائعة' },
-    { href: '#contact', label: 'تواصل معنا' },
+    { href: '#security', label: 'الحماية' },
+    { href: '#faq', label: 'الأسئلة' },
+    { href: '#contact', label: 'تواصل' },
   ];
 
   const scrollTo = (e, href) => {
@@ -636,21 +640,19 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070d1c] text-slate-100 overflow-x-clip">
+    <div className="min-h-screen bg-[#292f35] text-slate-100 overflow-x-clip">
       {/* ===== Navbar ===== */}
-      <header className="fixed top-0 inset-x-0 z-50 border-b border-amber-400/10 bg-[#070d1c]/80 backdrop-blur-xl">
+      <header className="fixed top-0 inset-x-0 z-50 border-b border-white/8 bg-[#292f35]/85 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
-              <div className="absolute inset-0 rounded-xl border border-amber-400/40" />
-              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 border-t-2 border-r-2 border-amber-400" />
-              <Building2 className="w-5 h-5 text-amber-300" />
+            <div className="relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/15">
+              <Building2 className="w-5 h-5 text-[#e3c078]" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base font-black text-white leading-tight truncate">
-                وِجْهة <span className="text-amber-300 font-mono text-sm">|</span> QB
+              <h1 className="text-base font-bold text-white leading-tight truncate">
+                وِجْهة <span className="text-[#c9a227]">|</span> QB
               </h1>
-              <p className="text-[10px] text-slate-500 font-mono truncate" dir="ltr">construction · architecture · finance</p>
+              <p className="text-[10px] text-slate-500 tracking-widest truncate" dir="ltr">construction · architecture · finance</p>
             </div>
           </div>
 
@@ -660,7 +662,7 @@ export const LandingPage = () => {
                 key={l.href}
                 href={l.href}
                 onClick={(e) => scrollTo(e, l.href)}
-                className="px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-amber-300 hover:bg-amber-500/5 transition"
+                className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition"
               >
                 {l.label}
               </a>
@@ -670,13 +672,13 @@ export const LandingPage = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/login')}
-              className="px-5 py-2.5 bg-gradient-to-l from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-xl text-xs font-black transition shadow-lg shadow-amber-600/20 hidden sm:block"
+              className="px-5 py-2.5 bg-white hover:bg-slate-200 text-[#1c2126] rounded-lg text-xs font-bold transition hidden sm:block"
             >
               دخول المهندسين
             </button>
             <button
               onClick={() => setMobileOpen((v) => !v)}
-              className="md:hidden p-2 text-slate-300 hover:bg-slate-800 rounded-xl transition"
+              className="md:hidden p-2 text-slate-300 hover:bg-white/5 rounded-lg transition"
               aria-label="القائمة"
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -685,21 +687,21 @@ export const LandingPage = () => {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden border-t border-amber-400/10 bg-[#070d1c]/95 backdrop-blur-xl animate-fade-in">
+          <div className="md:hidden border-t border-white/8 bg-[#292f35]/95 backdrop-blur-xl animate-fade-in">
             <div className="px-4 py-3 space-y-1">
               {navLinks.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
                   onClick={(e) => scrollTo(e, l.href)}
-                  className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:text-amber-300 hover:bg-amber-500/5 transition"
+                  className="block px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition"
                 >
                   {l.label}
                 </a>
               ))}
               <button
                 onClick={() => { setMobileOpen(false); navigate('/login'); }}
-                className="w-full mt-2 px-4 py-3 bg-gradient-to-l from-amber-500 to-orange-600 text-white rounded-xl text-sm font-black transition"
+                className="w-full mt-2 px-4 py-3 bg-white text-[#1c2126] rounded-lg text-sm font-bold transition"
               >
                 دخول المهندسين
               </button>
@@ -708,12 +710,81 @@ export const LandingPage = () => {
         )}
       </header>
 
-      {/* ===== Scroll-building hero ===== */}
-      <BuildHero />
+      {/* ===== Photo hero ===== */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <img
+          src={HERO_IMG}
+          alt="فيلا فاخرة عند الغسق"
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="eager"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#292f35]/75 via-[#292f35]/45 to-[#292f35]" />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-24 pb-20">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="text-[10px] tracking-[0.45em] text-[#e3c078] font-semibold mb-7"
+          >
+            QB · نظام إدارة المشاريع الإنشائية
+          </motion.div>
+          <motion.h1
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={1}
+            className="font-serif-ar text-5xl md:text-7xl font-bold text-white leading-[1.15]"
+          >
+            نُشيّدُ مساحاتٍ
+            <span className="block text-[#e3c078]">متميزة</span>
+          </motion.h1>
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={2}
+            className="mt-7 text-sm md:text-base text-slate-300 max-w-xl mx-auto leading-relaxed"
+          >
+            من التصميم الأول حتى مفتاح التسليم — منصة واحدة تدير الحصر، العقود،
+            الجودة، والمستحقات المالية بدقة وبسجل موثق بالكامل.
+          </motion.p>
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={3}
+            className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-200 text-[#1c2126] rounded-xl text-sm font-bold transition hover:-translate-y-0.5"
+            >
+              ابدأ مشروعك
+            </button>
+            <button
+              onClick={() => document.querySelector('#build')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full sm:w-auto px-8 py-4 border border-white/25 hover:border-white/60 text-white rounded-xl text-sm font-semibold transition hover:-translate-y-0.5"
+            >
+              شاهد الفيلا تُبنى
+            </button>
+          </motion.div>
+        </div>
+
+        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400">
+          <span className="text-[9px] tracking-[0.4em]">مرّر</span>
+          <span className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent animate-pulse" />
+        </div>
+      </section>
+
+      {/* ===== Scroll-building villa ===== */}
+      <section id="build" className="scroll-mt-0">
+        <BuildHero />
+      </section>
 
       {/* ===== Stats ===== */}
-      <section className="relative py-14 border-t border-amber-400/10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="relative py-16 border-t border-white/8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-10">
           <StatCounter value={58} suffix="بند" label="في تقرير الإنجاز" />
           <StatCounter value={9} suffix="دفعة" label="مستحقات مرحلية" />
           <StatCounter value={11} suffix="وحدة" label="أجنحة متكاملة" />
@@ -722,42 +793,15 @@ export const LandingPage = () => {
       </section>
 
       {/* ===== Modules ===== */}
-      <section id="modules" className="relative py-16 md:py-24 scroll-mt-20 border-t border-amber-400/10">
+      <section id="modules" className="relative py-16 md:py-24 scroll-mt-20 border-t border-white/8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 text-amber-300 text-xs font-bold mb-4"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              الأجنحة
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              custom={1}
-              className="font-serif-ar text-3xl md:text-5xl font-bold text-white"
-            >
-              أحد عشر جناحاً <span className="text-amber-300">للمشروع</span>
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              custom={2}
-              className="mt-4 text-slate-400 max-w-xl mx-auto text-sm md:text-base"
-            >
-              تغطي دورة حياة المشروع كاملة — من التصميم والحصر حتى الاعتماد المالي النهائي.
-            </motion.p>
-          </div>
+          <SectionHead
+            kicker="الأجنحة"
+            title={<>أحد عشر جناحاً <span className="text-[#e3c078]">للمشروع</span></>}
+            desc="تغطي دورة حياة المشروع كاملة — من التصميم والحصر حتى الاعتماد المالي النهائي."
+          />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/8 border border-white/8">
             {FEATURES.map((f, i) => (
               <motion.div
                 key={f.code}
@@ -766,14 +810,13 @@ export const LandingPage = () => {
                 whileInView="show"
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i % 3}
-                className="relative group rounded-2xl border border-amber-400/10 bg-[#0a1428]/70 p-6 hover:border-amber-400/40 hover:bg-[#0d1b31] transition-all duration-300 cursor-default overflow-hidden"
+                className="bg-[#2b3138] hover:bg-[#30373e] transition-colors duration-300 p-6 md:p-7"
               >
-                <Corners />
-                <span className="absolute top-3 left-4 font-mono text-[10px] tracking-widest text-amber-500/40 group-hover:text-amber-300/80 transition">
-                  {f.code}
-                </span>
-                <div className="w-12 h-12 mb-4 rounded-xl border border-amber-400/20 bg-amber-500/5 text-amber-300 flex items-center justify-center group-hover:bg-amber-400/10 transition-colors">
-                  <f.icon className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-11 h-11 rounded-lg border border-white/10 text-[#e3c078] flex items-center justify-center">
+                    <f.icon className="w-5 h-5" />
+                  </div>
+                  <span className="font-mono text-[10px] tracking-widest text-slate-600">{f.code}</span>
                 </div>
                 <h3 className="font-bold text-white text-base mb-2">{f.title}</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
@@ -784,33 +827,14 @@ export const LandingPage = () => {
       </section>
 
       {/* ===== Phases ===== */}
-      <section id="phases" className="relative py-16 md:py-24 scroll-mt-20 border-t border-amber-400/10">
+      <section id="phases" className="relative py-16 md:py-24 scroll-mt-20 border-t border-white/8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 text-amber-300 text-xs font-bold mb-4"
-            >
-              <Ruler className="w-3.5 h-3.5" />
-              مراحل التنفيذ
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              custom={1}
-              className="font-serif-ar text-3xl md:text-5xl font-bold text-white"
-            >
-              مثلما رأيتها تُبنى… <span className="text-amber-300">تدار بهذا الترتيب</span>
-            </motion.h2>
-          </div>
+          <SectionHead
+            kicker="مراحل التنفيذ"
+            title={<>مثلما رأيتها تُبنى… <span className="text-[#e3c078]">تدار بهذا الترتيب</span></>}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5 relative">
-            <div className="hidden md:block absolute top-[2.4rem] inset-x-8 h-0.5 dash-line" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-px bg-white/8 border border-white/8">
             {PHASES.map((p, i) => (
               <motion.div
                 key={p.phase}
@@ -819,17 +843,10 @@ export const LandingPage = () => {
                 whileInView="show"
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
-                className="relative text-center bg-[#0a1428]/70 border border-amber-400/10 rounded-2xl p-6 hover:border-amber-400/40 transition"
+                className="bg-[#2b3138] p-7 text-center"
               >
-                <div className="relative w-12 h-12 mx-auto mb-4">
-                  <div className="absolute inset-0 rounded-xl border border-amber-400/30 bg-amber-500/5" />
-                  <div className="absolute inset-0 rounded-xl flex items-center justify-center">
-                    <p.icon className="w-6 h-6 text-amber-300" />
-                  </div>
-                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#0d1b31] border border-amber-400/40 flex items-center justify-center font-mono text-[10px] font-bold text-amber-300">
-                    {p.phase}
-                  </span>
-                </div>
+                <div className="font-mono text-[#c9a227] text-xs tracking-widest mb-6">{p.phase}</div>
+                <p.icon className="w-6 h-6 text-white/60 mx-auto mb-5" />
                 <h3 className="font-bold text-white text-sm mb-2">{p.title}</h3>
                 <p className="text-[11px] text-slate-400 leading-relaxed">{p.desc}</p>
               </motion.div>
@@ -839,95 +856,45 @@ export const LandingPage = () => {
       </section>
 
       {/* ===== Security ===== */}
-      <section id="security" className="relative py-16 md:py-24 scroll-mt-20 border-t border-amber-400/10">
+      <section id="security" className="relative py-16 md:py-24 scroll-mt-20 border-t border-white/8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl border border-amber-400/15 bg-[#0a1428]/60 p-8 md:p-12 overflow-hidden">
-            <Corners />
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-l from-amber-500/60 via-yellow-400/60 to-orange-500/60" />
+          <SectionHead
+            kicker="الحماية"
+            title={<>بياناتك… <span className="text-[#e3c078]">محروسة من الأساس</span></>}
+            desc="أربع طبقات حماية: لكل وصول، لكل عملية، ولكل مقاول."
+          />
 
-            <div className="text-center mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/8 border border-white/8">
+            {SECURITY_POINTS.map((s, i) => (
               <motion.div
+                key={s.title}
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="show"
-                viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 text-amber-300 text-xs font-bold mb-4"
+                viewport={{ once: true, margin: '-40px' }}
+                custom={i}
+                className="bg-[#2b3138] hover:bg-[#30373e] transition-colors duration-300 p-6"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                حراسة الموقع — بياناتك
+                <div className="w-11 h-11 mb-5 rounded-lg border border-white/10 text-[#e3c078] flex items-center justify-center">
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-sm mb-1.5">{s.title}</h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed">{s.desc}</p>
               </motion.div>
-              <motion.h2
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true }}
-                custom={1}
-                className="font-serif-ar text-3xl md:text-5xl font-bold text-white"
-              >
-                موقع لا يُنسى… <span className="text-amber-300">لأن بياناته محروسة</span>
-              </motion.h2>
-              <motion.p
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true }}
-                custom={2}
-                className="mt-4 text-slate-400 max-w-xl mx-auto text-sm md:text-base"
-              >
-                أربع طبقات حماية: أبراج مراقبة، أسوار، بوابات، وكاميرات — لكل وصول وكل عملية.
-              </motion.p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {SECURITY_POINTS.map((s, i) => (
-                <motion.div
-                  key={s.title}
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={{ once: true, margin: '-40px' }}
-                  custom={i}
-                  className="bg-[#0d1b31]/70 border border-amber-400/15 rounded-2xl p-6 hover:border-amber-400/40 transition"
-                >
-                  <div className="w-11 h-11 mb-4 rounded-xl border border-amber-400/25 bg-amber-500/5 text-amber-300 flex items-center justify-center">
-                    <s.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-white text-sm mb-1.5">{s.title}</h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">{s.desc}</p>
-                </motion.div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ===== FAQ ===== */}
-      <section id="faq" className="relative py-16 md:py-24 scroll-mt-20 border-t border-amber-400/10">
+      <section id="faq" className="relative py-16 md:py-24 scroll-mt-20 border-t border-white/8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 text-amber-300 text-xs font-bold mb-4"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              الأسئلة الشائعة
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              custom={1}
-              className="font-serif-ar text-3xl md:text-4xl font-bold text-white"
-            >
-              استفسارات المكاتب والمقاولين
-            </motion.h2>
-          </div>
+          <SectionHead
+            kicker="الأسئلة الشائعة"
+            title={<>استفسارات المكاتب <span className="text-[#e3c078]">والمقاولين</span></>}
+          />
 
-          <div className="space-y-3">
+          <div className="border-t border-white/8">
             {FAQS.map((f, i) => (
               <motion.div
                 key={i}
@@ -936,24 +903,23 @@ export const LandingPage = () => {
                 whileInView="show"
                 viewport={{ once: true, margin: '-30px' }}
                 custom={i % 3}
-                className={`relative rounded-2xl border transition overflow-hidden ${openFaq === i ? 'border-amber-400/40 bg-[#0d1b31]/70' : 'border-amber-400/10 bg-[#0a1428]/50 hover:border-amber-400/30'}`}
+                className="border-b border-white/8"
               >
-                {openFaq === i && <Corners />}
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                  className="w-full flex items-center justify-between gap-4 px-6 py-5 text-right"
+                  className="w-full flex items-center justify-between gap-4 px-2 py-5 text-right"
                 >
-                  <span className="flex items-center gap-3">
-                    <span className={`font-mono text-[10px] ${openFaq === i ? 'text-amber-300' : 'text-slate-600'}`}>
+                  <span className="flex items-center gap-4">
+                    <span className={`font-mono text-[10px] ${openFaq === i ? 'text-[#c9a227]' : 'text-slate-600'}`}>
                       Q-{String(i + 1).padStart(2, '0')}
                     </span>
-                    <span className="font-bold text-white text-sm md:text-base">{f.q}</span>
+                    <span className="font-semibold text-white text-sm md:text-base">{f.q}</span>
                   </span>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-amber-300' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-[#c9a227]' : ''}`} />
                 </button>
                 <div className={`grid transition-all duration-300 ${openFaq === i ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                   <div className="overflow-hidden">
-                    <p className="px-6 pb-5 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-amber-400/10 pt-4">{f.a}</p>
+                    <p className="px-2 pb-6 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/8 pt-4">{f.a}</p>
                   </div>
                 </div>
               </motion.div>
@@ -963,18 +929,17 @@ export const LandingPage = () => {
       </section>
 
       {/* ===== Contact ===== */}
-      <section id="contact" className="relative py-16 md:py-24 scroll-mt-20 border-t border-amber-400/10">
+      <section id="contact" className="relative py-16 md:py-24 scroll-mt-20 border-t border-white/8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-start">
             <div>
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="show"
                 viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-400/25 bg-amber-500/10 text-amber-300 text-xs font-bold mb-4"
+                className="text-[10px] tracking-[0.35em] text-[#c9a227] font-semibold mb-6"
               >
-                <Compass className="w-3.5 h-3.5" />
                 تواصل معنا
               </motion.div>
               <motion.h2
@@ -983,12 +948,10 @@ export const LandingPage = () => {
                 whileInView="show"
                 viewport={{ once: true }}
                 custom={1}
-                className="font-serif-ar text-3xl md:text-4xl font-bold text-white leading-tight"
+                className="font-serif-ar text-3xl md:text-5xl font-bold text-white leading-tight"
               >
                 عندك مشروع على الورق؟
-                <span className="block bg-gradient-to-l from-amber-200 to-orange-400 bg-clip-text text-transparent">
-                  خليه يطلع للواقع…
-                </span>
+                <span className="block text-[#e3c078] mt-2">خليه يطلع للواقع…</span>
               </motion.h2>
               <motion.p
                 variants={fadeUp}
@@ -996,114 +959,141 @@ export const LandingPage = () => {
                 whileInView="show"
                 viewport={{ once: true }}
                 custom={2}
-                className="mt-4 text-slate-400 text-sm leading-relaxed max-w-md"
+                className="mt-6 text-slate-400 text-sm leading-relaxed max-w-md"
               >
                 فريقنا جاهز لتجهيز النظام لمكتبك أو شركتك الإنشائية — راسلنا وسنعود خلال يوم عمل واحد.
               </motion.p>
 
-              <div className="mt-8 space-y-4 text-sm">
-                <div className="flex items-center gap-3 text-slate-300">
-                  <div className="w-10 h-10 border border-amber-400/20 rounded-xl flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-amber-300" />
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={3}
+                className="mt-10 space-y-6 text-sm"
+              >
+                <div className="flex items-center gap-4 text-slate-300">
+                  <div className="w-10 h-10 border border-white/10 rounded-lg flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-[#e3c078]" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold">البريد الإلكتروني</div>
+                    <div className="text-[10px] tracking-widest text-slate-500 font-semibold">البريد الإلكتروني</div>
                     info@qb-construction.sa
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-slate-300">
-                  <div className="w-10 h-10 border border-amber-400/20 rounded-xl flex items-center justify-center">
-                    <Phone className="w-4 h-4 text-amber-300" />
+                <div className="flex items-center gap-4 text-slate-300">
+                  <div className="w-10 h-10 border border-white/10 rounded-lg flex items-center justify-center">
+                    <Phone className="w-4 h-4 text-[#e3c078]" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold">الهاتف</div>
+                    <div className="text-[10px] tracking-widest text-slate-500 font-semibold">الهاتف</div>
                     +966 5X XXX XXXX
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-slate-300">
-                  <div className="w-10 h-10 border border-amber-400/20 rounded-xl flex items-center justify-center">
-                    <MapPin className="w-4 h-4 text-amber-300" />
+                <div className="flex items-center gap-4 text-slate-300">
+                  <div className="w-10 h-10 border border-white/10 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-[#e3c078]" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold">الموقع</div>
+                    <div className="text-[10px] tracking-widest text-slate-500 font-semibold">الموقع</div>
                     الرياض، المملكة العربية السعودية
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            <div className="relative rounded-3xl border border-amber-400/15 bg-[#0a1428]/60 p-6 md:p-8">
-              <Corners />
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              custom={1}
+              className="border border-white/8 bg-[#2b3138]/70 p-7 md:p-9"
+            >
               <ContactForm />
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* ===== Final CTA ===== */}
-      <section className="relative py-16 md:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-amber-400/25 bg-gradient-to-br from-[#0d1b31] via-[#0a1428] to-[#101d33] p-10 md:p-16 text-center">
-            <Corners />
-            <div className="absolute -top-16 right-1/4 w-64 h-64 bg-amber-500/10 rounded-full blur-[90px]" />
-            <div className="absolute -bottom-16 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-[90px]" />
-            <div className="relative">
-              <div className="w-14 h-14 mx-auto mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/5 flex items-center justify-center">
-                <Moon className="w-7 h-7 text-amber-300" />
-              </div>
-              <h2 className="font-serif-ar text-3xl md:text-5xl font-bold text-white leading-tight">
-                المدينة لا تنام…
-                <span className="block bg-gradient-to-l from-amber-200 to-orange-400 bg-clip-text text-transparent">ومشروعك يُبنى الآن</span>
-              </h2>
-              <p className="mt-5 text-slate-400 text-sm md:text-base max-w-lg mx-auto">
-                ابدأ بإدارة مشروعك بالطريقة التي يستحقها — بدقة حساب، وجودة تنفيذ، وبيانات محصّنة.
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={() => navigate('/login')}
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-l from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition shadow-xl shadow-amber-600/25 hover:-translate-y-0.5"
-                >
-                  دخول المهندسين
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <a
-                  href="#modules"
-                  onClick={(e) => scrollTo(e, '#modules')}
-                  className="w-full sm:w-auto px-8 py-4 border border-amber-400/30 hover:border-amber-300/60 text-amber-300 rounded-2xl text-sm font-bold transition hover:-translate-y-0.5"
-                >
-                  راجع الأجنحة
-                </a>
-              </div>
-            </div>
-          </div>
+      <section className="relative py-16 md:py-24 overflow-hidden">
+        <img
+          src={CTA_IMG}
+          alt="منزل عصري"
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-[#292f35]/85" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.h2
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="font-serif-ar text-4xl md:text-6xl font-bold text-white leading-tight"
+          >
+            ابدأ مشروعك.
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={1}
+            className="mt-6 text-slate-300 text-sm md:text-base max-w-lg mx-auto leading-relaxed"
+          >
+            إدارة مشروعك بالطريقة التي يستحقها — بدقة حساب، وجودة تنفيذ، وبيانات محصّنة.
+          </motion.p>
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={2}
+            className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full sm:w-auto px-9 py-4 bg-white hover:bg-slate-200 text-[#1c2126] rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition hover:-translate-y-0.5"
+            >
+              دخول المهندسين
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => scrollTo({ preventDefault: () => {} }, '#modules')}
+              className="w-full sm:w-auto px-9 py-4 border border-white/25 hover:border-white/60 text-white rounded-xl text-sm font-semibold transition hover:-translate-y-0.5"
+            >
+              راجع الأجنحة
+            </button>
+          </motion.div>
         </div>
       </section>
 
       {/* ===== Footer ===== */}
-      <footer className="border-t border-amber-400/10 py-10">
+      <footer className="border-t border-white/8 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded-xl flex items-center justify-center">
-              <div className="absolute inset-0 rounded-xl border border-amber-400/40" />
-              <Building2 className="w-4 h-4 text-amber-300" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/15">
+              <Building2 className="w-4 h-4 text-[#e3c078]" />
             </div>
             <div>
               <div className="text-sm font-bold text-white">وِجْهة QB — إدارة المقاولات المتكاملة</div>
-              <div className="text-[10px] text-slate-500 font-mono" dir="ltr">© 2026 · QB CONSTRUCTION MANAGEMENT</div>
+              <div className="text-[10px] text-slate-500 tracking-widest" dir="ltr">© 2026 · QB CONSTRUCTION MANAGEMENT</div>
             </div>
           </div>
           <div className="flex items-center gap-5 text-xs text-slate-500">
-            <a href="#modules" onClick={(e) => scrollTo(e, '#modules')} className="hover:text-amber-300 transition">الأجنحة</a>
-            <a href="#phases" onClick={(e) => scrollTo(e, '#phases')} className="hover:text-amber-300 transition">مراحل التنفيذ</a>
-            <a href="#security" onClick={(e) => scrollTo(e, '#security')} className="hover:text-amber-300 transition">حراسة الموقع</a>
-            <a href="#contact" onClick={(e) => scrollTo(e, '#contact')} className="hover:text-amber-300 transition">تواصل معنا</a>
+            <a href="#modules" onClick={(e) => scrollTo(e, '#modules')} className="hover:text-white transition">الأجنحة</a>
+            <a href="#phases" onClick={(e) => scrollTo(e, '#phases')} className="hover:text-white transition">مراحل التنفيذ</a>
+            <a href="#security" onClick={(e) => scrollTo(e, '#security')} className="hover:text-white transition">الحماية</a>
+            <a href="#contact" onClick={(e) => scrollTo(e, '#contact')} className="hover:text-white transition">تواصل</a>
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-            <span className="text-emerald-400">RLS</span>
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 tracking-widest">
+            <span className="text-white/70">RLS</span>
             <span>·</span>
-            <span className="text-amber-300">RBAC</span>
+            <span className="text-[#e3c078]">RBAC</span>
             <span>·</span>
-            <span className="text-cyan-300">JWT</span>
+            <span className="text-white/70">JWT</span>
             <span>·</span>
             <span>HTTPS</span>
           </div>
