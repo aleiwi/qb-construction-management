@@ -51,12 +51,12 @@ const FAQS = [
 
 const BUILD_STAGES = [
   'الحفر والأساسات',
-  'صبّ الأعمدة',
-  'بلاطة الدور الأرضي',
-  'الجدران والواجهة',
-  'الدور الأول',
+  'هيكل الدور الأرضي',
+  'جدران الدور الأرضي',
+  'هيكل الدور الأول',
+  'جدران الدور الأول والشرفة',
   'السقف والبارابيت',
-  'الإضاءة والتشطيب',
+  'التشطيب والحديقة',
   'تسليم المشروع',
 ];
 
@@ -90,156 +90,285 @@ const VillaBuild = ({ progress }) => {
   const craneX   = useTransform(progress, [0.86, 1.0], [0, 110]);
 
   return (
-    <svg viewBox="0 0 700 460" className="w-full h-full select-none" role="img" aria-label="فيلا تُبنى أثناء التمرير">
-      {/* ground */}
-      <line x1="70" y1="420" x2="650" y2="420" stroke="rgba(251,191,36,0.5)" strokeWidth="2" />
-      <line x1="70" y1="430" x2="650" y2="430" stroke="rgba(251,191,36,0.12)" strokeWidth="1" />
-      <g stroke="rgba(251,191,36,0.15)" strokeWidth="1">
-        {[90, 130, 170, 210, 250, 290, 330, 370, 410, 450, 490, 530, 570, 610].map((x) => (
-          <line key={x} x1={x} y1="420" x2={x - 6} y2="430" />
-        ))}
-      </g>
+    <svg viewBox="0 0 760 480" className="w-full h-full select-none" role="img" aria-label="فيلا تُبنى أثناء التمرير">
+      <defs>
+        <linearGradient id="wallG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#eedbb8" />
+          <stop offset="1" stopColor="#cfb28c" />
+        </linearGradient>
+        <linearGradient id="baseG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#a3895f" />
+          <stop offset="1" stopColor="#8a6f45" />
+        </linearGradient>
+        <linearGradient id="roofG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2a3a52" />
+          <stop offset="1" stopColor="#16202f" />
+        </linearGradient>
+        <linearGradient id="doorG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7d5428" />
+          <stop offset="1" stopColor="#5d3c1c" />
+        </linearGradient>
+        <linearGradient id="glassG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#0f1930" />
+          <stop offset="1" stopColor="#1d2f4d" />
+        </linearGradient>
+        <linearGradient id="litG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffe08a" />
+          <stop offset="1" stopColor="#f59e0b" />
+        </linearGradient>
+        <linearGradient id="lawnG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#143522" />
+          <stop offset="1" stopColor="#0a2014" />
+        </linearGradient>
+        <linearGradient id="stoneG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#9aa3ad" />
+          <stop offset="1" stopColor="#6f7882" />
+        </linearGradient>
+        <linearGradient id="trunkG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7a5731" />
+          <stop offset="1" stopColor="#5c4022" />
+        </linearGradient>
+        <radialGradient id="glowWarm" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="rgba(252,211,77,0.30)" />
+          <stop offset="1" stopColor="rgba(252,211,77,0)" />
+        </radialGradient>
+        <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+      </defs>
 
-      {/* ===== foundation ===== */}
-      <motion.g style={{ opacity: found, scaleX: found, transformOrigin: '50% 100%' }}>
-        <rect x="140" y="404" width="380" height="16" fill="#101d33" stroke="rgba(251,191,36,0.6)" strokeWidth="1.5" />
-        <line x1="140" y1="412" x2="520" y2="412" stroke="rgba(251,191,36,0.2)" strokeWidth="1" />
+      {/* ==== site ground (bare soil) ==== */}
+      <rect x="60" y="424" width="640" height="44" fill="#0b1a12" />
+
+      {/* ==== excavation trench + foundation ==== */}
+      <motion.g style={{ opacity: found }}>
+        <rect x="172" y="416" width="416" height="14" fill="#05080f" opacity="0.9" />
+        <rect x="180" y="410" width="400" height="14" fill="#2b3b55" />
+        <rect x="180" y="410" width="400" height="3" fill="#3d506e" />
+        <line x1="180" y1="424" x2="580" y2="424" stroke="rgba(148,163,184,0.25)" strokeWidth="1" />
       </motion.g>
 
-      {/* ===== ground floor: columns ===== */}
+      {/* ==== ground floor columns ==== */}
       <motion.g style={{ opacity: cols1, scaleY: cols1, transformOrigin: '50% 100%' }}>
-        <rect x="180" y="300" width="14" height="104" fill="#16283f" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" />
-        <rect x="466" y="300" width="14" height="104" fill="#16283f" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" />
+        <rect x="192" y="300" width="16" height="110" fill="#31415c" />
+        <rect x="248" y="300" width="16" height="110" fill="#31415c" />
+        <rect x="496" y="300" width="16" height="110" fill="#31415c" />
+        <rect x="552" y="300" width="16" height="110" fill="#31415c" />
+        <rect x="192" y="300" width="16" height="3" fill="#47597a" />
+        <rect x="552" y="300" width="16" height="3" fill="#47597a" />
       </motion.g>
 
-      {/* ===== ground floor: slab ===== */}
+      {/* ==== ground floor slab ==== */}
       <motion.g style={{ opacity: slab1, scaleX: slab1, transformOrigin: '50% 50%' }}>
-        <rect x="162" y="300" width="336" height="12" fill="#0f1d33" stroke="rgba(251,191,36,0.55)" strokeWidth="1.4" />
+        <rect x="174" y="300" width="412" height="12" fill="#33435f" />
+        <rect x="174" y="300" width="412" height="3" fill="#47597a" />
       </motion.g>
 
-      {/* ===== ground floor: wall + door frame ===== */}
+      {/* ==== ground floor walls + openings ==== */}
       <motion.g style={{ opacity: wall1, scaleY: wall1, transformOrigin: '50% 100%' }}>
-        <rect x="200" y="312" width="280" height="92" fill="#0d1b31" stroke="rgba(251,191,36,0.3)" strokeWidth="1.2" />
-        {/* door */}
-        <rect x="310" y="336" width="62" height="68" fill="#0a1526" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" strokeDasharray="4 3" />
-        <line x1="372" y1="336" x2="372" y2="404" stroke="rgba(251,191,36,0.3)" strokeWidth="1" />
-        {/* window frame */}
-        <rect x="222" y="338" width="70" height="60" fill="#0a1526" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" strokeDasharray="4 3" />
+        <rect x="204" y="312" width="352" height="112" fill="url(#wallG)" />
+        <rect x="204" y="398" width="352" height="26" fill="url(#baseG)" />
+        <rect x="204" y="312" width="10" height="112" fill="#00000022" />
+        <rect x="546" y="312" width="10" height="112" fill="#00000022" />
+        {/* door — arched */}
+        <path d="M340 424 L340 380 Q340 352 370 352 Q400 352 400 380 L400 424 Z" fill="url(#doorG)" stroke="#4a2f14" strokeWidth="3" />
+        <path d="M340 424 L340 380 Q340 352 370 352 Q400 352 400 380 L400 424 Z" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+        <line x1="340" y1="398" x2="400" y2="398" stroke="#4a2f14" strokeWidth="2" />
+        <line x1="340" y1="386" x2="400" y2="386" stroke="#4a2f14" strokeWidth="1" />
+        <circle cx="391" cy="402" r="2.5" fill="#e8b04b" />
+        {/* door fanlight */}
+        <path d="M350 380 Q370 360 390 380 Z" fill="url(#glassG)" stroke="#4a2f14" strokeWidth="2" />
+        {/* ground windows (frames first, glass lights later) */}
+        <rect x="212" y="334" width="56" height="70" rx="4" fill="#0b1526" stroke="#6b4f2b" strokeWidth="4" />
+        <rect x="472" y="334" width="56" height="70" rx="4" fill="#0b1526" stroke="#6b4f2b" strokeWidth="4" />
+        <rect x="214" y="336" width="52" height="66" rx="2" fill="url(#glassG)" />
+        <rect x="474" y="336" width="52" height="66" rx="2" fill="url(#glassG)" />
+        <rect x="212" y="400" width="56" height="5" fill="#8a6f45" />
+        <rect x="472" y="400" width="56" height="5" fill="#8a6f45" />
       </motion.g>
 
-      {/* ===== upper floor: columns ===== */}
+      {/* ==== upper floor columns ==== */}
       <motion.g style={{ opacity: cols2, scaleY: cols2, transformOrigin: '50% 100%' }}>
-        <rect x="180" y="190" width="14" height="110" fill="#16283f" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" />
-        <rect x="466" y="190" width="14" height="110" fill="#16283f" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" />
+        <rect x="192" y="190" width="16" height="110" fill="#31415c" />
+        <rect x="552" y="190" width="16" height="110" fill="#31415c" />
+        <rect x="192" y="190" width="16" height="3" fill="#47597a" />
+        <rect x="552" y="190" width="16" height="3" fill="#47597a" />
       </motion.g>
 
-      {/* ===== upper floor: slab + balcony ===== */}
+      {/* ==== upper floor slab + balcony slab ==== */}
       <motion.g style={{ opacity: slab2, scaleX: slab2, transformOrigin: '50% 50%' }}>
-        <rect x="162" y="190" width="336" height="12" fill="#0f1d33" stroke="rgba(251,191,36,0.55)" strokeWidth="1.4" />
-        <rect x="486" y="250" width="58" height="8" fill="#0f1d33" stroke="rgba(251,191,36,0.4)" strokeWidth="1" />
+        <rect x="174" y="190" width="412" height="12" fill="#33435f" />
+        <rect x="174" y="190" width="412" height="3" fill="#47597a" />
+        <rect x="548" y="264" width="58" height="10" fill="#33435f" />
       </motion.g>
 
-      {/* ===== upper floor: wall + balcony rail ===== */}
+      {/* ==== upper floor walls + balcony ==== */}
       <motion.g style={{ opacity: wall2, scaleY: wall2, transformOrigin: '50% 100%' }}>
-        <rect x="200" y="202" width="286" height="88" fill="#0d1b31" stroke="rgba(251,191,36,0.3)" strokeWidth="1.2" />
-        <rect x="490" y="258" width="50" height="50" fill="#0d1b31" stroke="rgba(251,191,36,0.3)" strokeWidth="1" />
-        <line x1="490" y1="258" x2="540" y2="258" stroke="rgba(251,191,36,0.4)" strokeWidth="1.2" />
-        <line x1="500" y1="258" x2="500" y2="308" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="515" y1="258" x2="515" y2="308" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="530" y1="258" x2="530" y2="308" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        {/* window frames */}
-        <rect x="222" y="218" width="66" height="56" fill="#0a1526" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" strokeDasharray="4 3" />
-        <rect x="398" y="218" width="66" height="56" fill="#0a1526" stroke="rgba(251,191,36,0.45)" strokeWidth="1.2" strokeDasharray="4 3" />
+        <rect x="204" y="202" width="340" height="98" fill="url(#wallG)" />
+        <rect x="204" y="202" width="10" height="98" fill="#00000022" />
+        <rect x="534" y="202" width="10" height="98" fill="#00000022" />
+        {/* cornice under roof */}
+        <rect x="196" y="196" width="356" height="6" fill="#b89a6e" />
+        {/* balcony */}
+        <rect x="552" y="218" width="50" height="46" fill="url(#wallG)" />
+        <rect x="552" y="218" width="6" height="46" fill="#00000022" />
+        <rect x="552" y="214" width="50" height="4" fill="#8a6f45" />
+        <line x1="556" y1="264" x2="598" y2="264" stroke="#33435f" strokeWidth="5" />
+        <rect x="556" y="208" width="42" height="3" fill="#cfb28c" />
+        {[563, 573, 583, 593].map((bx) => (
+          <line key={bx} x1={bx} y1="211" x2={bx} y2="218" stroke="#cfb28c" strokeWidth="2.5" />
+        ))}
+        {/* upper windows */}
+        <rect x="212" y="222" width="56" height="56" rx="4" fill="#0b1526" stroke="#6b4f2b" strokeWidth="4" />
+        <rect x="352" y="222" width="56" height="56" rx="4" fill="#0b1526" stroke="#6b4f2b" strokeWidth="4" />
+        <rect x="472" y="222" width="56" height="56" rx="4" fill="#0b1526" stroke="#6b4f2b" strokeWidth="4" />
+        <rect x="214" y="224" width="52" height="52" rx="2" fill="url(#glassG)" />
+        <rect x="354" y="224" width="52" height="52" rx="2" fill="url(#glassG)" />
+        <rect x="474" y="224" width="52" height="52" rx="2" fill="url(#glassG)" />
+        <rect x="212" y="274" width="56" height="5" fill="#8a6f45" />
+        <rect x="352" y="274" width="56" height="5" fill="#8a6f45" />
+        <rect x="472" y="274" width="56" height="5" fill="#8a6f45" />
       </motion.g>
 
-      {/* ===== roof ===== */}
+      {/* ==== roof + parapet ==== */}
       <motion.g style={{ opacity: roof, scaleY: roof, transformOrigin: '50% 100%' }}>
-        <rect x="162" y="190" width="336" height="10" fill="#101d33" stroke="rgba(251,191,36,0.55)" strokeWidth="1.4" />
-        <rect x="152" y="176" width="356" height="14" fill="#0f1d33" stroke="rgba(251,191,36,0.5)" strokeWidth="1.3" />
+        <rect x="174" y="184" width="412" height="12" fill="url(#roofG)" />
+        <rect x="168" y="168" width="424" height="16" fill="url(#roofG)" />
+        <rect x="168" y="168" width="424" height="3" fill="#3d506e" />
+        <line x1="176" y1="182" x2="584" y2="182" stroke="rgba(252,211,77,0.18)" strokeWidth="1" />
       </motion.g>
 
-      {/* ===== lit windows ===== */}
+      {/* ==== lighting: windows glow warm ==== */}
       <motion.g style={{ opacity: windows }}>
-        <rect x="226" y="342" width="62" height="52" fill="#fcd34d" opacity="0.95" />
-        <line x1="257" y1="342" x2="257" y2="394" stroke="#d97706" strokeWidth="1.2" />
-        <rect x="226" y="222" width="58" height="48" fill="#fcd34d" opacity="0.95" />
-        <line x1="255" y1="222" x2="255" y2="270" stroke="#d97706" strokeWidth="1.2" />
-        <rect x="402" y="222" width="58" height="48" fill="#fcd34d" opacity="0.95" />
-        <line x1="431" y1="222" x2="431" y2="270" stroke="#d97706" strokeWidth="1.2" />
-        {/* warm glow halos */}
-        <rect x="222" y="338" width="70" height="60" fill="rgba(252,211,77,0.12)" className="blink" />
-        <rect x="218" y="218" width="66" height="56" fill="rgba(252,211,77,0.12)" className="blink-delayed" />
-        <rect x="398" y="218" width="66" height="56" fill="rgba(252,211,77,0.12)" className="blink" />
+        {[240, 500].map((wx) => (
+          <g key={wx}>
+            <rect x={wx - 44} y="330" width="88" height="80" rx="40" fill="url(#glowWarm)" filter="url(#softGlow)" />
+            <rect x={wx - 30} y="338" width="60" height="62" fill="url(#litG)" />
+            <line x1={wx - 15} y1="338" x2={wx - 15} y2="400" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx} y1="338" x2={wx} y2="400" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx + 15} y1="338" x2={wx + 15} y2="400" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx - 30} y1="369" x2={wx + 30} y2="369" stroke="#a16207" strokeWidth="1.5" />
+            <ellipse cx={wx} cy="426" rx="46" ry="9" fill="url(#glowWarm)" filter="url(#softGlow)" />
+          </g>
+        ))}
+        {[240, 380, 500].map((wx) => (
+          <g key={wx}>
+            <rect x={wx - 44} y="218" width="88" height="64" rx="40" fill="url(#glowWarm)" filter="url(#softGlow)" />
+            <rect x={wx - 28} y="224" width="56" height="52" fill="url(#litG)" />
+            <line x1={wx - 14} y1="224" x2={wx - 14} y2="276" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx} y1="224" x2={wx} y2="276" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx + 14} y1="224" x2={wx + 14} y2="276" stroke="#a16207" strokeWidth="1.5" />
+            <line x1={wx - 28} y1="250" x2={wx + 28} y2="250" stroke="#a16207" strokeWidth="1.5" />
+            <ellipse cx={wx} cy="426" rx="40" ry="8" fill="url(#glowWarm)" filter="url(#softGlow)" />
+          </g>
+        ))}
+        {/* door fanlight lit */}
+        <path d="M350 380 Q370 360 390 380 Z" fill="url(#litG)" />
+        <rect x="336" y="352" width="68" height="60" rx="34" fill="url(#glowWarm)" filter="url(#softGlow)" />
+        <ellipse cx="370" cy="430" rx="55" ry="10" fill="url(#glowWarm)" filter="url(#softGlow)" />
       </motion.g>
 
-      {/* ===== scaffolding (fades at delivery) ===== */}
-      <motion.g style={{ opacity: scaffold }} stroke="rgba(251,191,36,0.55)" strokeWidth="2">
-        <line x1="150" y1="170" x2="150" y2="412" />
-        <line x1="162" y1="170" x2="162" y2="412" />
-        <line x1="538" y1="170" x2="538" y2="412" />
-        <line x1="550" y1="170" x2="550" y2="412" />
-        <line x1="146" y1="200" x2="166" y2="200" strokeWidth="1.4" />
-        <line x1="146" y1="260" x2="166" y2="260" strokeWidth="1.4" />
-        <line x1="146" y1="320" x2="166" y2="320" strokeWidth="1.4" />
-        <line x1="146" y1="380" x2="166" y2="380" strokeWidth="1.4" />
-        <line x1="534" y1="200" x2="554" y2="200" strokeWidth="1.4" />
-        <line x1="534" y1="260" x2="554" y2="260" strokeWidth="1.4" />
-        <line x1="534" y1="320" x2="554" y2="320" strokeWidth="1.4" />
-        <line x1="534" y1="380" x2="554" y2="380" strokeWidth="1.4" />
+      {/* ==== scaffolding (fades at delivery) ==== */}
+      <motion.g style={{ opacity: scaffold }} stroke="rgba(148,163,184,0.5)" strokeWidth="1.5" fill="none">
+        <line x1="172" y1="180" x2="172" y2="412" />
+        <line x1="190" y1="180" x2="190" y2="412" />
+        <line x1="570" y1="180" x2="570" y2="412" />
+        <line x1="588" y1="180" x2="588" y2="412" />
+        {[210, 260, 310, 360, 400].map((y) => (
+          <g key={y}>
+            <line x1="168" y1={y} x2="194" y2={y} strokeWidth="1.2" />
+            <line x1="566" y1={y} x2="592" y2={y} strokeWidth="1.2" />
+          </g>
+        ))}
+        <path d="M172 210 L190 260 M190 210 L172 260" strokeWidth="1" />
+        <path d="M570 210 L588 260 M588 210 L570 260" strokeWidth="1" />
       </motion.g>
 
-      {/* ===== crane (leaves at delivery) ===== */}
+      {/* ==== finishing: garden, palms, walkway, walls ==== */}
+      <motion.g style={{ opacity: finish, scale: finish, transformOrigin: '50% 100%' }}>
+        {/* lawn */}
+        <rect x="70" y="424" width="620" height="44" fill="url(#lawnG)" />
+        {/* walkway + steps */}
+        <polygon points="318,468 422,468 406,424 354,424" fill="url(#stoneG)" />
+        <line x1="336" y1="468" x2="370" y2="424" stroke="#55606b" strokeWidth="1" />
+        <line x1="368" y1="468" x2="382" y2="424" stroke="#55606b" strokeWidth="1" />
+        <line x1="404" y1="468" x2="392" y2="424" stroke="#55606b" strokeWidth="1" />
+        <line x1="332" y1="452" x2="410" y2="452" stroke="#55606b" strokeWidth="1" />
+        <line x1="325" y1="440" x2="415" y2="440" stroke="#55606b" strokeWidth="1" />
+        <rect x="330" y="424" width="80" height="8" rx="2" fill="#b9a77f" />
+        <rect x="322" y="432" width="96" height="8" rx="2" fill="#a8946c" />
+        <rect x="314" y="440" width="112" height="9" rx="2" fill="#97835c" />
+        {/* shrubs */}
+        <ellipse cx="216" cy="418" rx="16" ry="10" fill="#1c5c33" />
+        <ellipse cx="256" cy="422" rx="13" ry="8" fill="#256e3d" />
+        <ellipse cx="300" cy="419" rx="14" ry="9" fill="#1c5c33" />
+        <ellipse cx="452" cy="419" rx="14" ry="9" fill="#1c5c33" />
+        <ellipse cx="496" cy="422" rx="13" ry="8" fill="#256e3d" />
+        <ellipse cx="538" cy="418" rx="16" ry="10" fill="#1c5c33" />
+        {/* palms */}
+        <g>
+          <path d="M118 424 C116 396 120 370 122 344" stroke="url(#trunkG)" strokeWidth="8" fill="none" strokeLinecap="round" />
+          <ellipse cx="122" cy="338" rx="15" ry="11" fill="#2f7a44" />
+          <path d="M122 338 Q104 312 84 322" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M122 338 Q120 308 106 296" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M122 338 Q140 308 150 318" stroke="#256e3d" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M122 338 Q150 322 156 336" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M122 338 Q92 326 82 338" stroke="#256e3d" strokeWidth="5" fill="none" strokeLinecap="round" />
+        </g>
+        <g>
+          <path d="M642 424 C644 396 640 370 638 344" stroke="url(#trunkG)" strokeWidth="8" fill="none" strokeLinecap="round" />
+          <ellipse cx="638" cy="338" rx="15" ry="11" fill="#2f7a44" />
+          <path d="M638 338 Q656 312 676 322" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M638 338 Q640 308 654 296" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M638 338 Q620 308 610 318" stroke="#256e3d" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M638 338 Q610 322 604 336" stroke="#2f7a44" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M638 338 Q668 326 678 338" stroke="#256e3d" strokeWidth="5" fill="none" strokeLinecap="round" />
+        </g>
+        {/* garden walls + light posts */}
+        <rect x="70" y="384" width="16" height="40" fill="#223046" />
+        <rect x="70" y="380" width="16" height="4" fill="#3d506e" />
+        <rect x="674" y="384" width="16" height="40" fill="#223046" />
+        <rect x="674" y="380" width="16" height="4" fill="#3d506e" />
+        <rect x="76" y="366" width="4" height="14" fill="#33435f" />
+        <rect x="680" y="366" width="4" height="14" fill="#33435f" />
+        <circle cx="78" cy="364" r="3.5" fill="#fcd34d" filter="url(#softGlow)" />
+        <circle cx="682" cy="364" r="3.5" fill="#fcd34d" filter="url(#softGlow)" />
+        <circle cx="78" cy="364" r="2" fill="#fff3c4" />
+        <circle cx="682" cy="364" r="2" fill="#fff3c4" />
+      </motion.g>
+
+      {/* ==== crane (leaves at delivery) ==== */}
       <motion.g style={{ opacity: craneO, x: craneX }}>
-        <rect x="608" y="140" width="16" height="280" fill="#101d33" stroke="rgba(251,191,36,0.4)" strokeWidth="1.2" />
-        <line x1="608" y1="170" x2="624" y2="190" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="624" y1="170" x2="608" y2="190" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="608" y1="240" x2="624" y2="260" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="624" y1="240" x2="608" y2="260" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="608" y1="310" x2="624" y2="330" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <line x1="624" y1="310" x2="608" y2="330" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <rect x="470" y="122" width="230" height="14" fill="#101d33" stroke="rgba(251,191,36,0.4)" strokeWidth="1.2" />
-        <rect x="676" y="136" width="26" height="20" fill="#16283f" stroke="rgba(251,191,36,0.3)" strokeWidth="1" />
-        <polygon points="608,140 624,140 616,104" fill="#101d33" stroke="rgba(251,191,36,0.4)" strokeWidth="1.2" />
-        {/* beacon */}
-        <circle cx="616" cy="94" r="5" fill="#fcd34d" className="beacon" />
-        <circle cx="616" cy="94" r="10" fill="rgba(252,211,77,0.25)" className="beacon" />
-        {/* cable + load */}
+        <rect x="706" y="156" width="16" height="268" fill="#1d2a3e" />
+        <rect x="706" y="156" width="16" height="3" fill="#33435f" />
+        <line x1="704" y1="196" x2="724" y2="214" stroke="#2b3b55" strokeWidth="2" />
+        <line x1="724" y1="196" x2="704" y2="214" stroke="#2b3b55" strokeWidth="2" />
+        <line x1="704" y1="276" x2="724" y2="294" stroke="#2b3b55" strokeWidth="2" />
+        <line x1="724" y1="276" x2="704" y2="294" stroke="#2b3b55" strokeWidth="2" />
+        <line x1="704" y1="356" x2="724" y2="374" stroke="#2b3b55" strokeWidth="2" />
+        <line x1="724" y1="356" x2="704" y2="374" stroke="#2b3b55" strokeWidth="2" />
+        <rect x="524" y="146" width="212" height="14" fill="#1d2a3e" />
+        <rect x="524" y="146" width="212" height="3" fill="#33435f" />
+        <rect x="724" y="160" width="22" height="18" fill="#2b3b55" />
+        <polygon points="706,156 722,156 714,120" fill="#1d2a3e" />
+        <circle cx="714" cy="112" r="5" fill="#fcd34d" className="beacon" />
+        <circle cx="714" cy="112" r="11" fill="rgba(252,211,77,0.25)" className="beacon" />
+        {/* cable + facade panel */}
         <g className="crane-swing">
           <g className="block-hoist">
-            <line x1="560" y1="136" x2="560" y2="252" stroke="rgba(226,232,240,0.7)" strokeWidth="1.5" />
-            <path d="M 548 252 h 24 M 548 252 l 4 -10 h 16 l 4 10" fill="none" stroke="rgba(226,232,240,0.7)" strokeWidth="2" />
-            <rect x="540" y="262" width="40" height="24" fill="#16283f" stroke="#f59e0b" strokeWidth="1.4" />
-            <line x1="540" y1="270" x2="580" y2="270" stroke="rgba(245,158,11,0.4)" strokeWidth="1" />
-            <line x1="540" y1="278" x2="580" y2="278" stroke="rgba(245,158,11,0.4)" strokeWidth="1" />
+            <line x1="622" y1="160" x2="622" y2="276" stroke="rgba(226,232,240,0.6)" strokeWidth="1.5" />
+            <path d="M610 276 h 24 M610 276 l 4 -10 h 16 l 4 10" fill="none" stroke="rgba(226,232,240,0.6)" strokeWidth="2" />
+            <rect x="602" y="286" width="40" height="26" fill="#e5cf9f" stroke="#b89a6e" strokeWidth="1.5" />
+            <rect x="606" y="290" width="10" height="8" rx="1" fill="#0b1526" />
+            <rect x="620" y="290" width="10" height="8" rx="1" fill="#0b1526" />
+            <rect x="606" y="300" width="10" height="8" rx="1" fill="#0b1526" />
+            <rect x="620" y="300" width="10" height="8" rx="1" fill="#0b1526" />
           </g>
         </g>
       </motion.g>
-
-      {/* ===== finishing: trees + walkway ===== */}
-      <motion.g style={{ opacity: finish, scale: finish, transformOrigin: '50% 100%' }}>
-        {/* left tree */}
-        <rect x="106" y="356" width="8" height="64" fill="#16283f" stroke="rgba(251,191,36,0.3)" strokeWidth="1" />
-        <circle cx="110" cy="336" r="26" fill="#12301f" stroke="rgba(52,211,153,0.4)" strokeWidth="1" />
-        <circle cx="90" cy="350" r="16" fill="#12301f" stroke="rgba(52,211,153,0.35)" strokeWidth="1" />
-        <circle cx="132" cy="352" r="15" fill="#12301f" stroke="rgba(52,211,153,0.35)" strokeWidth="1" />
-        {/* right tree */}
-        <rect x="566" y="356" width="8" height="64" fill="#16283f" stroke="rgba(251,191,36,0.3)" strokeWidth="1" />
-        <circle cx="570" cy="336" r="26" fill="#12301f" stroke="rgba(52,211,153,0.4)" strokeWidth="1" />
-        <circle cx="590" cy="350" r="16" fill="#12301f" stroke="rgba(52,211,153,0.35)" strokeWidth="1" />
-        <circle cx="550" cy="352" r="15" fill="#12301f" stroke="rgba(52,211,153,0.35)" strokeWidth="1" />
-        {/* walkway */}
-        <rect x="314" y="420" width="52" height="10" fill="#16283f" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <rect x="324" y="430" width="32" height="10" fill="#16283f" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-        <rect x="330" y="440" width="20" height="8" fill="#16283f" stroke="rgba(251,191,36,0.25)" strokeWidth="1" />
-      </motion.g>
-
-      {/* level markers */}
-      <text x="140" y="446" fontSize="10" fill="rgba(251,191,36,0.7)" fontFamily="monospace">مستوى +0.00</text>
-      <text x="140" y="180" fontSize="10" fill="rgba(251,191,36,0.7)" fontFamily="monospace">+6.40</text>
     </svg>
   );
 };
-
 /* ===== Hero: the villa constructs as you scroll ===== */
 const BuildHero = () => {
   const navigate = useNavigate();
@@ -336,7 +465,7 @@ const BuildHero = () => {
 
             {/* Scene + stage meter */}
             <div>
-              <div className="relative rounded-3xl border border-amber-400/15 bg-[#070d1c]/60 backdrop-blur-sm p-3 md:p-5 overflow-hidden">
+              <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-[#0c1424]/85 to-[#060b16]/85 backdrop-blur-md p-3 md:p-5 overflow-hidden shadow-2xl shadow-black/50 aspect-[19/12]">
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-l from-transparent via-amber-400/40 to-transparent" />
                 <VillaBuild progress={scrollYProgress} />
               </div>
