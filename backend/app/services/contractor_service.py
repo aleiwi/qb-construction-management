@@ -19,9 +19,23 @@ class ContractorService:
         result = await self.db.execute(select(Contractor).filter(Contractor.id == contractor_id))
         return result.scalars().first()
 
-    async def get_by_email(self, email: str) -> Optional[Contractor]:
-        result = await self.db.execute(select(Contractor).filter(Contractor.email == email))
+    async def get_by_user_id(self, user_id: int) -> Optional[Contractor]:
+        result = await self.db.execute(select(Contractor).filter(Contractor.user_id == user_id))
         return result.scalars().first()
+
+    async def get_by_email(self, email: str) -> Optional[Contractor]:
+        result = await self.db.execute(select(Contractor).filter(func.lower(Contractor.email) == email.lower()))
+        return result.scalars().first()
+
+    async def link_user(self, contractor_id: int, user_id: int) -> Optional[Contractor]:
+        contractor = await self.get_by_id(contractor_id)
+        if contractor is None:
+            return None
+        contractor.user_id = user_id
+        self.db.add(contractor)
+        await self.db.commit()
+        await self.db.refresh(contractor)
+        return contractor
 
     async def get_all(self, skip: int = 0, limit: int = 20) -> List[Contractor]:
         result = await self.db.execute(
@@ -65,6 +79,10 @@ class ContractorService:
             specialization=contractor_in.specialization,
             notes=contractor_in.notes,
         )
+        from app.models.user import User
+        user = (await self.db.execute(select(User).filter(func.lower(User.email) == contractor_in.email.lower()))).scalars().first()
+        if user is not None and user.role.value == "contractor":
+            contractor.user_id = user.id
         self.db.add(contractor)
         await self.db.commit()
         await self.db.refresh(contractor)

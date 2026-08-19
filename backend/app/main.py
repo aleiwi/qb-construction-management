@@ -68,6 +68,12 @@ async def _ensure_user_security_columns() -> None:
         if "is_email_verified" not in existing:
             await conn.execute(text("ALTER TABLE users ADD COLUMN is_email_verified BOOLEAN NOT NULL DEFAULT 0"))
             logger.info("migration: added users.is_email_verified column")
+    async with engine.begin() as conn:
+        cols = (await conn.execute(text("PRAGMA table_info(contractors)"))).fetchall()
+        existing = {c[1] for c in cols}
+        if "user_id" not in existing:
+            await conn.execute(text("ALTER TABLE contractors ADD COLUMN user_id INTEGER"))
+            logger.info("migration: added contractors.user_id column")
 
 
 async def init_db_seed():

@@ -18,9 +18,28 @@ async def list_contracts(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):
     contract_service = ContractService(db)
+    if current_user.role == UserRole.CONTRACTOR:
+        contractor = await contract_service.get_contractor_by_user(current_user.id)
+        if contractor is None:
+            return APIResponse.ok(data=[], message="تم جلب قائمة العقود بنجاح")
+        if contractor_id and contractor_id != contractor.id:
+            return APIResponse.ok(data=[], message="تم جلب قائمة العقود بنجاح")
+        contracts = await contract_service.get_all(skip=0, limit=1000)
+        filtered = [c for c in contracts if c.contractor_id == contractor.id]
+        items = [ContractListOut(
+            id=c.id, title=c.title, description=c.description,
+            total_value=float(c.total_value), retention_percent=float(c.retention_percent),
+            status=c.status.value if hasattr(c.status, 'value') else c.status,
+            start_date=c.start_date, end_date=c.end_date,
+            contractor_id=c.contractor_id, building_id=c.building_id,
+            created_at=c.created_at, updated_at=c.updated_at,
+            contractor_name=getattr(c, 'contractor_name', None),
+            building_name=getattr(c, 'building_name', None),
+        ) for c in filtered]
+        return APIResponse.ok(data=items, message="تم جلب قائمة العقود بنجاح")
     if contractor_id or building_id:
         if building_id:
             await check_entity_access(db, current_user, "building", building_id)
@@ -78,8 +97,14 @@ async def get_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):
-    await check_entity_access(db, current_user, "contract", contract_id)
     contract_service = ContractService(db)
+    if current_user.role == UserRole.CONTRACTOR:
+        contractor = await contract_service.get_contractor_by_user(current_user.id)
+        contract = await contract_service.get_by_id(contract_id)
+        if contractor is None or contract is None or contract.contractor_id != contractor.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="العقد غير موجود")
+    else:
+        await check_entity_access(db, current_user, "contract", contract_id)
     contract = await contract_service.get_by_id(contract_id)
     if not contract:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="العقد غير موجود")

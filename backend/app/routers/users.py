@@ -9,6 +9,7 @@ from app.services.auth_service import AuthService, InvalidCredentialsException
 from app.dependencies.auth import get_current_user, require_roles
 from app.models.user import User, UserRole
 from app.services.audit_log_service import AuditLogService
+from app.services.contractor_service import ContractorService
 
 router = APIRouter(prefix="/users", tags=["Users Management"])
 
@@ -36,6 +37,11 @@ async def create_user(
         )
     new_user = await user_service.create(user_in)
     await AuthService(db).send_activation_email(new_user.id)
+    if new_user.role == UserRole.CONTRACTOR:
+        contractor_service = ContractorService(db)
+        contractor = await contractor_service.get_by_email(new_user.email)
+        if contractor is not None:
+            await contractor_service.link_user(contractor.id, new_user.id)
     out = _to_out(new_user, user_service)
     out.project_ids = await user_service.get_project_ids(new_user.id)
     return APIResponse.ok(data=out, message="تم إنشاء المستخدم وإرسال دعوة التفعيل بالبريد")
@@ -80,6 +86,15 @@ async def update_user(
 
     old = {"role": user.role.value, "is_active": user.is_active}
     updated = await user_service.update(user, user_in)
+    contractor_service = ContractorService(db)
+    if updated.role == UserRole.CONTRACTOR:
+        contractor = await contractor_service.get_by_email(updated.email)
+        if contractor is not None:
+            await contractor_service.link_user(contractor.id, updated.id)
+    elif user.role == UserRole.CONTRACTOR:
+        old_contractor = await contractor_service.get_by_user_id(updated.id)
+        if old_contractor is not None:
+            await contractor_service.link_user(old_contractor.id, None)
     await AuditLogService(db).log(
         user_id=admin_user.id,
         action="user_updated",

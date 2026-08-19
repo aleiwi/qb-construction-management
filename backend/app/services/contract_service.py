@@ -20,6 +20,11 @@ class ContractService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_contractor_by_user(self, user_id: int):
+        from app.models.contractor import Contractor
+        result = await self.db.execute(select(Contractor).filter(Contractor.user_id == user_id))
+        return result.scalars().first()
+
     async def get_by_id(self, contract_id: int) -> Optional[Contract]:
         result = await self.db.execute(select(Contract).filter(Contract.id == contract_id))
         return result.scalars().first()

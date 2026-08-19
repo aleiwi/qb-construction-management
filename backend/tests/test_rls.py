@@ -210,6 +210,103 @@ async def test_linked_user_blocked_from_other_project_qc_and_report(admin_client
 
 
 @pytest.mark.asyncio
+async def test_contractor_auto_link_on_user_creation(admin_client):
+    """Creating a CONTRACTOR user with the same email as a contractor record
+    auto-links the account (M4). The contractor then sees only his own records."""
+    token = admin_client.headers["Authorization"].split()[1]
+    contractor_email = f"contractor_{uuid4().hex[:6]}@qb.com"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(
+            "/api/v1/contractors",
+            headers=_headers(token),
+            json={"company_name": "شركة الربط", "contact_person": "ك", "email": contractor_email},
+        )
+        assert r.status_code == 200, r.text
+        contractor_id = r.json()["data"]["id"]
+
+    pa = await _new_project(admin_client, "مشروع أ")
+    pb = await _new_project(admin_client, "مشروع ب")
+    b_pa = await _new_building(admin_client, pa)
+    b_pb = await _new_building(admin_client, pb)
+    my_contract = await _new_contract(admin_client, contractor_id, b_pa)
+    other_contractor = await _new_contractor(admin_client)
+    other_contract = await _new_contract(admin_client, other_contractor, b_pb)
+
+    password = "contractor123"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(
+            "/api/v1/users",
+            headers=_headers(token),
+            json={"email": contractor_email, "full_name": "ربط مقاول", "password": password, "role": "contractor", "project_ids": []},
+        )
+        assert r.status_code == 200, r.text
+    client = await _make_client(contractor_email, password)
+    try:
+        r = await client.get("/api/v1/contractors")
+        assert r.status_code == 200, r.text
+        assert contractor_id in [x["id"] for x in r.json()["data"]]
+
+        r2 = await client.get(f"/api/v1/contractors/{contractor_id}")
+        assert r2.status_code == 200, r2.text
+
+        r3 = await client.get("/api/v1/contracts")
+        assert r3.status_code == 200, r3.text
+        ids = [x["id"] for x in r3.json()["data"]]
+        assert my_contract in ids and other_contract not in ids, f"contracts {ids}"
+
+        r4 = await client.get(f"/api/v1/contracts/{other_contract}")
+        assert r4.status_code == 404, r4.text
+
+        r5 = await client.get(f"/api/v1/contracts/{my_contract}")
+        assert r5.status_code == 200, r5.text
+
+        r6 = await client.get("/api/v1/payments")
+        assert r6.status_code == 200, r6.text
+        assert all(p["contract_id"] == my_contract for p in r6.json()["data"])
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_contractor_unlinked_user_gets_no_contracts(admin_client):
+    """A contractor user with no matching contractor record sees nothing."""
+    token = admin_client.headers["Authorization"].split()[1]
+    email, password = await _create_user(token, "contractor", [])
+    client = await _make_client(email, password)
+    try:
+        r = await client.get("/api/v1/contracts")
+        assert r.status_code == 200, r.text
+        assert r.json()["data"] == []
+        r2 = await client.get("/api/v1/payments")
+        assert r2.status_code == 200, r2.text
+        assert r2.json()["data"] == []
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_contractor_auto_link_reverse_on_contractor_creation(admin_client):
+    """Creating a contractor record whose email matches an existing
+    CONTRACTOR user auto-links it too."""
+    token = admin_client.headers["Authorization"].split()[1]
+    email, password = await _create_user(token, "contractor", [])
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(
+            "/api/v1/contractors",
+            headers=_headers(token),
+            json={"company_name": "شركة عكسية", "contact_person": "ك", "email": email},
+        )
+        assert r.status_code == 200, r.text
+        contractor_id = r.json()["data"]["id"]
+    client = await _make_client(email, password)
+    try:
+        r = await client.get(f"/api/v1/contractors/{contractor_id}")
+        assert r.status_code == 200, r.text
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_unlinked_user_unrestricted_legacy_compat(admin_client):
     token = admin_client.headers["Authorization"].split()[1]
     pa = await _new_project(admin_client, "مشروع أ")

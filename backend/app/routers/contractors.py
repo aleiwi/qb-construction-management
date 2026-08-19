@@ -16,9 +16,28 @@ async def list_contractors(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):
     contractor_service = ContractorService(db)
+    if current_user.role == UserRole.CONTRACTOR:
+        contractor = await contractor_service.get_by_user_id(current_user.id)
+        if contractor is None:
+            return APIResponse.ok(data=[], message="تم جلب قائمة المقاولين بنجاح")
+        item = ContractorListOut(
+            id=contractor.id,
+            company_name=contractor.company_name,
+            contact_person=contractor.contact_person,
+            email=contractor.email,
+            phone=contractor.phone,
+            specialization=contractor.specialization,
+            notes=contractor.notes,
+            is_active=contractor.is_active,
+            created_at=contractor.created_at,
+            updated_at=contractor.updated_at,
+            contracts_count=0,
+            total_contract_value=0.0,
+        )
+        return APIResponse.ok(data=[item], message="تم جلب قائمة المقاولين بنجاح")
     results = await contractor_service.get_all_with_counts(skip=(page - 1) * page_size, limit=page_size)
     items = []
     for row in results:
@@ -65,7 +84,7 @@ async def get_contractor(
     if not contractor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="المقاول غير موجود")
 
-    if current_user.role == UserRole.CONTRACTOR and current_user.id != contractor_id:
+    if current_user.role == UserRole.CONTRACTOR and contractor.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="ليس لديك الصلاحية الكافية")
 
     return APIResponse.ok(data=ContractorOut.model_validate(contractor), message="تم جلب بيانات المقاول بنجاح")
