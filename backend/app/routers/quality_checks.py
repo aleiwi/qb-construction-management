@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.schemas.quality_check import QualityCheckCreate, QualityCheckUpdate, QualityCheckOut, QualityCheckListOut
 from app.schemas.response import APIResponse
 from app.services.quality_check_service import QualityCheckService
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import require_roles, check_entity_access, allowed_project_ids
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/quality-checks", tags=["Quality Checks"])
@@ -19,7 +19,10 @@ async def list_quality_checks(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
     service = QualityCheckService(db)
-    results = await service.get_all_with_names(skip=(page - 1) * page_size, limit=page_size)
+    results = await service.get_all_with_names(
+        skip=(page - 1) * page_size, limit=page_size,
+        project_ids=await allowed_project_ids(current_user, db),
+    )
     items = []
     for row in results:
         qc = row[0]
@@ -39,6 +42,7 @@ async def create_quality_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "stage", data.stage_id)
     service = QualityCheckService(db)
     existing = await service.get_by_stage(data.stage_id)
     if existing:
@@ -53,6 +57,7 @@ async def get_quality_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER, UserRole.CONTRACTOR])),
 ):
+    await check_entity_access(db, current_user, "quality_check", qc_id)
     service = QualityCheckService(db)
     qc = await service.get_by_id(qc_id)
     if not qc:
@@ -67,6 +72,7 @@ async def update_quality_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "quality_check", qc_id)
     service = QualityCheckService(db)
     qc = await service.get_by_id(qc_id)
     if not qc:
@@ -81,6 +87,7 @@ async def delete_quality_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "quality_check", qc_id)
     service = QualityCheckService(db)
     deleted = await service.delete(qc_id)
     if not deleted:

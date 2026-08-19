@@ -11,7 +11,7 @@ from app.schemas.drawing import DrawingUploadResponse, DrawingOut, DrawingListOu
 from app.schemas.response import APIResponse
 from app.services.drawing_service import DrawingService
 from app.services.dwg_converter import ensure_dxf
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import require_roles, check_entity_access, allowed_project_ids
 from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,15 @@ async def list_drawings(
 ):
     drawing_service = DrawingService(db)
     if building_id:
+        await check_entity_access(db, current_user, "building", building_id)
         drawings = await drawing_service.get_by_building(building_id)
         items = [DrawingListOut.model_validate(d) for d in drawings]
     else:
-        drawings = await drawing_service.get_all(skip=(page - 1) * page_size, limit=page_size)
+        ids = await allowed_project_ids(current_user, db)
+        if ids:
+            drawings = await drawing_service.get_all_in_projects(ids, skip=(page - 1) * page_size, limit=page_size)
+        else:
+            drawings = await drawing_service.get_all(skip=(page - 1) * page_size, limit=page_size)
         items = [DrawingListOut.model_validate(d) for d in drawings]
     return APIResponse.ok(data=items, message="تم جلب قائمة المخططات بنجاح")
 
@@ -50,6 +55,7 @@ async def upload_drawing(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "building", building_id)
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="اسم الملف مطلوب")
 
@@ -93,6 +99,7 @@ async def get_drawing(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "drawing", drawing_id)
     drawing_service = DrawingService(db)
     drawing = await drawing_service.get_by_id(drawing_id)
     if not drawing:
@@ -107,6 +114,7 @@ async def upload_drawings_batch(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "building", building_id)
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="لم يتم اختيار أي ملفات")
 
@@ -207,6 +215,7 @@ async def download_drawing(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "drawing", drawing_id)
     drawing_service = DrawingService(db)
     drawing = await drawing_service.get_by_id(drawing_id)
     if not drawing:
@@ -223,6 +232,7 @@ async def view_drawing_raw(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
     """ج8: يعيد محتوى ملف DXF الخام لعرضه احترافيًا في المتصفح (Canvas)."""
+    await check_entity_access(db, current_user, "drawing", drawing_id)
     drawing_service = DrawingService(db)
     drawing = await drawing_service.get_by_id(drawing_id)
     if not drawing:
@@ -264,6 +274,7 @@ async def delete_drawing(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "drawing", drawing_id)
     drawing_service = DrawingService(db)
     deleted = await drawing_service.delete(drawing_id)
     if not deleted:

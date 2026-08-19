@@ -16,7 +16,7 @@ from app.services.completion_report_service import (
     CompletionReportProjectNotFoundException,
     CompletionReportNoPreviousException,
 )
-from app.dependencies.auth import require_roles
+from app.dependencies.auth import require_roles, check_entity_access
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/completion-reports", tags=["Completion Reports"])
@@ -31,6 +31,7 @@ async def list_reports(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER, UserRole.ACCOUNTANT])),
 ):
     """جلب قائمة كافة تقارير المشروع المحفوظة عبر الفترات الزمنية."""
+    await check_entity_access(db, current_user, "project", project_id)
     service = CompletionReportService(db)
     reports = await service.list_by_project(project_id)
     items = [CompletionReportListItem.model_validate(r) for r in reports]
@@ -43,6 +44,7 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER, UserRole.ACCOUNTANT])),
 ):
+    await check_entity_access(db, current_user, "completion_report", report_id)
     service = CompletionReportService(db)
     report = await service.get_by_id(report_id)
     if not report:
@@ -56,6 +58,7 @@ async def create_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "project", data.project_id)
     service = CompletionReportService(db)
     try:
         report = await service.create(data, created_by=current_user.id)
@@ -71,6 +74,7 @@ async def update_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "completion_report", report_id)
     service = CompletionReportService(db)
     try:
         report = await service.update(report_id, data)
@@ -85,6 +89,7 @@ async def delete_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "completion_report", report_id)
     service = CompletionReportService(db)
     try:
         await service.delete(report_id)
@@ -108,6 +113,7 @@ async def clone_previous_report(
       - لا يعدّل التقرير السابق (يظل أرشيفاً)
     """
     service = CompletionReportService(db)
+    await check_entity_access(db, current_user, "project", project_id)
     try:
         cloned = await service.clone_previous(project_id, payload, created_by=current_user.id)
     except CompletionReportProjectNotFoundException as e:

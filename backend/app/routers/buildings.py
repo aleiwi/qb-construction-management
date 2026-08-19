@@ -6,7 +6,7 @@ from app.schemas.building import BuildingCreate, BuildingUpdate, BuildingOut, Bu
 from app.schemas.response import APIResponse
 from app.services.building_service import BuildingService, BuildingNotFoundException
 from app.services.stage_service import StageService
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import get_current_user, require_roles, check_entity_access
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/buildings", tags=["Buildings"])
@@ -79,6 +79,7 @@ async def get_building(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
+    await check_entity_access(db, current_user, "building", building_id)
     building_service = BuildingService(db)
     building = await building_service.get_by_id(building_id)
     if not building:
@@ -93,6 +94,7 @@ async def update_building(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
 ):
+    await check_entity_access(db, current_user, "building", building_id)
     building_service = BuildingService(db)
     building = await building_service.get_by_id(building_id)
     if not building:
@@ -107,6 +109,7 @@ async def delete_building(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "building", building_id)
     building_service = BuildingService(db)
     try:
         await building_service.delete(building_id)

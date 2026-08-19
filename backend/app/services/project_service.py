@@ -22,7 +22,7 @@ class ProjectService:
         result = await self.db.execute(select(Project).offset(skip).limit(limit).order_by(Project.created_at.desc()))
         return result.scalars().all()
 
-    async def get_all_with_counts(self, skip: int = 0, limit: int = 20):
+    async def get_all_with_counts(self, skip: int = 0, limit: int = 20, project_ids: Optional[List[int]] = None):
         from app.models.building import Building
         subquery = select(Building.project_id, func.count(Building.id).label("buildings_count")).group_by(Building.project_id).subquery()
         query = (
@@ -32,6 +32,8 @@ class ProjectService:
             .limit(limit)
             .order_by(Project.created_at.desc())
         )
+        if project_ids:
+            query = query.where(Project.id.in_(project_ids))
         result = await self.db.execute(query)
         return result.all()
 

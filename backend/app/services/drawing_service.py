@@ -45,6 +45,20 @@ class DrawingService:
         )
         return result.scalars().all()
 
+    async def get_all_in_projects(self, project_ids: List[int], skip: int = 0, limit: int = 20) -> List[Drawing]:
+        from app.models.building import Building
+        building_ids = (
+            await self.db.execute(select(Building.id).where(Building.project_id.in_(project_ids)))
+        ).scalars().all()
+        result = await self.db.execute(
+            select(Drawing)
+            .where(Drawing.building_id.in_(building_ids))
+            .offset(skip)
+            .limit(limit)
+            .order_by(Drawing.created_at.desc())
+        )
+        return result.scalars().all()
+
     async def process_upload(
         self,
         building_id: int,

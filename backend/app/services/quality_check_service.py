@@ -25,16 +25,16 @@ class QualityCheckService:
         )
         return result.scalars().first()
 
-    async def get_all_with_names(self, skip: int = 0, limit: int = 50) -> List:
+    async def get_all_with_names(self, skip: int = 0, limit: int = 50, project_ids: Optional[List[int]] = None) -> List:
         query = (
             select(QualityCheck, Stage.name.label("stage_name"), Building.name.label("building_name"), Project.name.label("project_name"))
             .join(Stage, QualityCheck.stage_id == Stage.id)
             .join(Building, Stage.building_id == Building.id)
             .join(Project, Building.project_id == Project.id)
-            .offset(skip)
-            .limit(limit)
-            .order_by(QualityCheck.created_at.desc())
         )
+        if project_ids:
+            query = query.filter(Project.id.in_(project_ids))
+        query = query.offset(skip).limit(limit).order_by(QualityCheck.created_at.desc())
         result = await self.db.execute(query)
         return result.all()
 

@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.schemas.contract import ContractCreate, ContractUpdate, ContractOut, ContractListOut
 from app.schemas.response import APIResponse
 from app.services.contract_service import ContractService, ContractNotFoundException, ContractBuildingNotFoundException
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import require_roles, check_entity_access, allowed_project_ids
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/contracts", tags=["Contracts"])
@@ -22,6 +22,8 @@ async def list_contracts(
 ):
     contract_service = ContractService(db)
     if contractor_id or building_id:
+        if building_id:
+            await check_entity_access(db, current_user, "building", building_id)
         contracts = await contract_service.get_all(skip=0, limit=1000)
         filtered = [c for c in contracts if (not contractor_id or c.contractor_id == contractor_id) and (not building_id or c.building_id == building_id)]
         items = [ContractListOut(
@@ -35,7 +37,10 @@ async def list_contracts(
             building_name=getattr(c, 'building_name', None),
         ) for c in filtered]
     else:
-        results = await contract_service.get_all_with_names(skip=(page - 1) * page_size, limit=page_size)
+        ids = await allowed_project_ids(current_user, db)
+        results = await contract_service.get_all_with_names(
+            skip=(page - 1) * page_size, limit=page_size, project_ids=ids
+        )
         items = []
         for row in results:
             c = row[0]
@@ -58,6 +63,7 @@ async def create_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
 ):
+    await check_entity_access(db, current_user, "building", contract_in.building_id)
     contract_service = ContractService(db)
     try:
         contract = await contract_service.create(contract_in)
@@ -72,6 +78,7 @@ async def get_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):
+    await check_entity_access(db, current_user, "contract", contract_id)
     contract_service = ContractService(db)
     contract = await contract_service.get_by_id(contract_id)
     if not contract:
@@ -86,6 +93,7 @@ async def update_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
 ):
+    await check_entity_access(db, current_user, "contract", contract_id)
     contract_service = ContractService(db)
     contract = await contract_service.get_by_id(contract_id)
     if not contract:
@@ -100,6 +108,7 @@ async def delete_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "contract", contract_id)
     contract_service = ContractService(db)
     try:
         await contract_service.delete(contract_id)

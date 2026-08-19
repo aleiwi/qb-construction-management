@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.schemas.payment import PaymentCreate, PaymentUpdate, PaymentOut, PaymentListOut
 from app.schemas.response import APIResponse
 from app.services.payment_service import PaymentService
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import require_roles, check_entity_access
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -21,6 +21,7 @@ async def list_payments(
 ):
     service = PaymentService(db)
     if contract_id:
+        await check_entity_access(db, current_user, "contract", contract_id)
         payments = await service.get_by_contract(contract_id)
         items = []
         for p in payments:
@@ -54,6 +55,7 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT])),
 ):
+    await check_entity_access(db, current_user, "contract", payment_in.contract_id)
     service = PaymentService(db)
     payment = await service.create(payment_in.contract_id, payment_in.stage_id, payment_in.notes)
     return APIResponse.ok(data=PaymentOut.model_validate(payment), message=f"تم حساب الدفعة: {payment.net_amount} ر.س")
@@ -65,6 +67,7 @@ async def get_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):
+    await check_entity_access(db, current_user, "payment", payment_id)
     service = PaymentService(db)
     payment = await service.get_by_id(payment_id)
     if not payment:
@@ -78,6 +81,7 @@ async def approve_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
 ):
+    await check_entity_access(db, current_user, "payment", payment_id)
     service = PaymentService(db)
     payment = await service.get_by_id(payment_id)
     if not payment:
@@ -95,6 +99,7 @@ async def mark_paid(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.ACCOUNTANT])),
 ):
+    await check_entity_access(db, current_user, "payment", payment_id)
     service = PaymentService(db)
     payment = await service.get_by_id(payment_id)
     if not payment:
@@ -109,6 +114,7 @@ async def delete_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
 ):
+    await check_entity_access(db, current_user, "payment", payment_id)
     service = PaymentService(db)
     deleted = await service.delete(payment_id)
     if not deleted:

@@ -5,8 +5,10 @@ from app.core.database import get_db
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectListOut, ProjectDetailOut
 from app.schemas.response import APIResponse
 from app.services.project_service import ProjectService, ProjectNotFoundException
-from app.dependencies.auth import get_current_user, require_roles
+from app.dependencies.auth import get_current_user, require_roles, require_project_access, allowed_project_ids
 from app.models.user import User, UserRole
+from app.models.user_project import UserProject
+from sqlalchemy.future import select
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -20,8 +22,13 @@ async def list_projects(
 ):
     skip = (page - 1) * page_size
     project_service = ProjectService(db)
-    results = await project_service.get_all_with_counts(skip=skip, limit=page_size)
-    total = await project_service.count_total()
+    ids = await allowed_project_ids(current_user, db)
+    if ids:
+        results = await project_service.get_all_with_counts(skip=skip, limit=page_size, project_ids=ids)
+        total = len(results)
+    else:
+        results = await project_service.get_all_with_counts(skip=skip, limit=page_size)
+        total = await project_service.count_total()
 
     items = []
     for row in results:
@@ -60,6 +67,7 @@ async def get_project(
     project_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
+    _: None = Depends(require_project_access()),
 ):
     project_service = ProjectService(db)
     project = await project_service.get_by_id(project_id)
@@ -74,6 +82,7 @@ async def update_project(
     project_in: ProjectUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    _: None = Depends(require_project_access()),
 ):
     project_service = ProjectService(db)
     project = await project_service.get_by_id(project_id)

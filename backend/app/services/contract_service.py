@@ -49,7 +49,7 @@ class ContractService:
         )
         return result.scalars().all()
 
-    async def get_all_with_names(self, skip: int = 0, limit: int = 20, contractor_id: Optional[int] = None):
+    async def get_all_with_names(self, skip: int = 0, limit: int = 20, contractor_id: Optional[int] = None, project_ids: Optional[List[int]] = None):
         query = (
             select(
                 Contract,
@@ -61,6 +61,8 @@ class ContractService:
         )
         if contractor_id:
             query = query.filter(Contract.contractor_id == contractor_id)
+        if project_ids:
+            query = query.filter(Building.project_id.in_(project_ids))
         query = query.offset(skip).limit(limit).order_by(Contract.created_at.desc())
         result = await self.db.execute(query)
         return result.all()
