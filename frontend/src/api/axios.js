@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from '../utils/alerts';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
 
@@ -25,6 +26,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (error.response && error.response.status === 403) {
+      const detail = error.response?.data?.error?.message;
+      toast('error', 'لا توجد صلاحية', detail || 'ليس لديك صلاحية الوصول لهذا المورد');
+      return Promise.reject(error);
+    }
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');
