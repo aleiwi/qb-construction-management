@@ -16,6 +16,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
+    # Seed: default demo users/entities (admin@qb.com ...) — OFF in production
+    SEED_DEFAULT_USERS: bool = True
+
+    # Login security: rate limit (per IP) + account lockout (per user)
+    LOGIN_RATE_LIMIT_ATTEMPTS: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    MAX_FAILED_LOGIN_ATTEMPTS: int = 5
+    ACCOUNT_LOCKOUT_MINUTES: int = 15
+
+    # Hosts allowed to reach the API (comma-separated; "*" = any in dev)
+    TRUSTED_HOSTS: str = "*"
+
     # CORS
     ALLOWED_ORIGINS: str = (
     "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002"

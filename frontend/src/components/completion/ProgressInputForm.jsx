@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { confirmDialog } from '../../utils/alerts';
 import {
   ChevronDown, Building2, Layers, Wallet, Camera, Info,
   Upload, Trash2, Plus, X, CheckCircle2, Percent, Image as ImageIcon
@@ -290,8 +291,8 @@ export const ProgressInputForm = ({ data, setData }) => {
     setData((d) => ({ ...d, paymentsSchedule: d.paymentsSchedule.filter((p) => p.id !== id) }));
 
   // ---- clear / delete full sections ----
-  const clearProjectInfo = () => {
-    if (window.confirm('هل أنت متأكد من تفريغ بيانات وتفاصيل المشروع؟')) {
+  const clearProjectInfo = async () => {
+    if (await confirmDialog('تفريغ بيانات المشروع', 'هل أنت متأكد من تفريغ بيانات وتفاصيل المشروع؟')) {
       setData((d) => ({
         ...d,
         projectName: '', projectType: '', projectNumber: '', location: '',
@@ -302,28 +303,28 @@ export const ProgressInputForm = ({ data, setData }) => {
     }
   };
 
-  const clearStructureItems = () => {
-    if (window.confirm(`هل أنت متأكد من حذف جميع بنود أعمال العظم (${data.structureItems.length} بنداً) بالكامل؟`)) {
+  const clearStructureItems = async () => {
+    if (await confirmDialog('حذف بنود العظم', `هل أنت متأكد من حذف جميع بنود أعمال العظم (${data.structureItems.length} بنداً) بالكامل؟`)) {
       setData((d) => ({ ...d, structureItems: [] }));
     }
   };
 
-  const clearFinishingSection = () => {
-    if (window.confirm(`هل أنت متأكد من حذف قسم التشطيبات بالكامل (جميع القطاعات الـ ${data.finishingSectors.length} وجميع البنود الـ ${data.finishingItems.length})؟`)) {
+  const clearFinishingSection = async () => {
+    if (await confirmDialog('حذف قسم التشطيبات', `هل أنت متأكد من حذف قسم التشطيبات بالكامل (جميع القطاعات الـ ${data.finishingSectors.length} وجميع البنود الـ ${data.finishingItems.length})؟`)) {
       setData((d) => ({ ...d, finishingSectors: [], finishingItems: [] }));
       setNewFinishingSector('');
     }
   };
 
-  const clearPaymentsSchedule = () => {
-    if (window.confirm(`هل أنت متأكد من حذف جميع مراحل جدول الدفعات (${data.paymentsSchedule.length} مراحل) بالكامل؟`)) {
+  const clearPaymentsSchedule = async () => {
+    if (await confirmDialog('حذف جدول الدفعات', `هل أنت متأكد من حذف جميع مراحل جدول الدفعات (${data.paymentsSchedule.length} مراحل) بالكامل؟`)) {
       setData((d) => ({ ...d, paymentsSchedule: [] }));
     }
   };
 
-  const clearPhotoGallery = () => {
+  const clearPhotoGallery = async () => {
     const totalCount = (data.mainPhoto ? 1 : 0) + data.photoGallery.length;
-    if (window.confirm(`هل أنت متأكد من حذف وتفريغ جميع الصور (${totalCount} صورة) بالكامل؟`)) {
+    if (await confirmDialog('تفريغ الصور', `هل أنت متأكد من حذف وتفريغ جميع الصور (${totalCount} صورة) بالكامل؟`)) {
       setData((d) => ({ ...d, mainPhoto: null, photoGallery: [] }));
       setMainPhotoCaption('');
     }
@@ -461,8 +462,8 @@ export const ProgressInputForm = ({ data, setData }) => {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => {
-                      if (window.confirm(`هل أنت متأكد من حذف قطاع "${sec.name}" بالكامل مع جميع بنوده (${items.length} بنود)؟`)) {
+                    onClick={async () => {
+                      if (await confirmDialog('حذف القطاع', `هل أنت متأكد من حذف قطاع "${sec.name}" بالكامل مع جميع بنوده (${items.length} بنود)؟`)) {
                         removeSector(sec.id);
                       }
                     }}

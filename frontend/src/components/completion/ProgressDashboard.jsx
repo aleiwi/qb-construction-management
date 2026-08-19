@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { showAlert } from '../../utils/alerts';
 import {
   Download, TrendingUp, TrendingDown, Minus, CheckCircle2,
   Clock3, Circle, Layers, Building2, Wallet, Camera
@@ -141,7 +142,7 @@ export const ProgressDashboard = ({ data, delta = null, parentOverall = null }) 
       } else if (respData?.detail) {
         msg = respData.detail;
       }
-      alert('فشل تصدير PDF: ' + msg);
+      showAlert('error', 'فشل تصدير PDF', msg);
     } finally {
       setExporting(false);
     }

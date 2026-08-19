@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.database import get_db
+from app.core.rate_limit import check_login_rate_limit
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshTokenRequest
 from app.schemas.user import UserOut
 from app.schemas.auth_context import UserContext, ContractorContext
 from app.schemas.response import APIResponse
-from app.services.auth_service import AuthService, InvalidCredentialsException, InactiveUserException, InvalidTokenException
+from app.services.auth_service import AuthService, InvalidCredentialsException, InactiveUserException, InvalidTokenException, AccountLockedException
 from app.dependencies.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.project import Project
@@ -17,21 +18,35 @@ from app.models.contract import Contract
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=APIResponse[TokenResponse])
-async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    login_data: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(check_login_rate_limit),
+):
     """
     تسجيل الدخول وإصدار رموز JWT Access Token و Refresh Token
     """
     auth_service = AuthService(db)
+    forwarded = request.headers.get("x-forwarded-for")
+    ip_address = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None)
     try:
-        token_response = await auth_service.authenticate(login_data)
+        token_response = await auth_service.authenticate(login_data, ip_address=ip_address)
         return APIResponse.ok(data=token_response, message="تم تسجيل الدخول بنجاح")
+    except AccountLockedException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except InvalidCredentialsException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except InactiveUserException as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
 
 @router.post("/refresh", response_model=APIResponse[TokenResponse])
-async def refresh_token(request: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
+async def refresh_token(
+    request: RefreshTokenRequest,
+    _: Request,
+    db: AsyncSession = Depends(get_db),
+    __: None = Depends(check_login_rate_limit),
+):
     """
     تحديث رمز الوصول عبر رمز التحديث Refresh Token
     """
@@ -39,6 +54,8 @@ async def refresh_token(request: RefreshTokenRequest, db: AsyncSession = Depends
     try:
         token_response = await auth_service.refresh_access_token(request.refresh_token)
         return APIResponse.ok(data=token_response, message="تم تحديث الرمز بنجاح")
+    except AccountLockedException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except InvalidTokenException as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except InactiveUserException as e:

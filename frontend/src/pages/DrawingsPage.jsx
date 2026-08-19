@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
 import { LogoutButton } from '../components/ui/LogoutButton';
+import { confirmDialog } from '../utils/alerts';
 import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import {
@@ -216,7 +217,7 @@ export const DrawingsPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المخطط؟')) return;
+    if (!(await confirmDialog('حذف المخطط', 'هل أنت متأكد من حذف هذا المخطط؟'))) return;
     const res = await drawingsApi.delete(id);
     if (res.success) { showSuccess('تم حذف المخطط'); fetchData(); }
   };

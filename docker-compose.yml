@@ -26,7 +26,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://qb_user:qb_password@db:5432/qb_db
       ENVIRONMENT: production
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set explicitly in production}
-      ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
+      SEED_DEFAULT_USERS: "false"
+      LOGIN_RATE_LIMIT_ATTEMPTS: ${LOGIN_RATE_LIMIT_ATTEMPTS:-5}
+      LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}
+      MAX_FAILED_LOGIN_ATTEMPTS: ${MAX_FAILED_LOGIN_ATTEMPTS:-5}
+      ACCOUNT_LOCKOUT_MINUTES: ${ACCOUNT_LOCKOUT_MINUTES:-15}
     ports:
       - "8000:8000"
     volumes:

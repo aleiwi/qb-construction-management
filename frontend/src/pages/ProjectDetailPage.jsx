@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
 import { LogoutButton } from '../components/ui/LogoutButton';
+import { confirmDialog, promptInput, showAlert } from '../utils/alerts';
 import { projectsApi, buildingsApi, stagesApi } from '../features/projects/projectsApi';
 import api from '../api/axios';
 import {
@@ -196,7 +197,7 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
   };
 
   const handleDeleteBuilding = async () => {
-    if (!confirm(`هل أنت متأكد من حذف "${building.name}" وجميع مراحله؟`)) return;
+    if (!(await confirmDialog('حذف المبنى', `هل أنت متأكد من حذف "${building.name}" وجميع مراحله؟`))) return;
     const res = await buildingsApi.delete(building.id);
     if (res.success) onRefresh();
   };
@@ -285,8 +286,8 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
                       <div className="text-[10px] text-slate-500">من {parseFloat(stage.weight_percent)}%</div>
                     </div>
                     {(permissions.isAdmin || permissions.isProjectManager || permissions.isEngineer) && (
-                      <button onClick={() => {
-                        const newVal = prompt('أدخل نسبة الإنجاز الجديدة (0-100):', stage.progress_percent);
+                      <button onClick={async () => {
+                        const newVal = await promptInput('تحديث نسبة الإنجاز', 'نسبة الإنجاز الجديدة (0-100)', stage.progress_percent);
                         if (newVal !== null) {
                           const val = parseFloat(newVal);
                           if (!isNaN(val) && val >= 0 && val <= 100) {
@@ -533,10 +534,10 @@ export const ProjectDetailPage = () => {
                 if (res.data.success) {
                   const data = res.data.data;
                   const msg = `مقارنة التصنيف:\nمطابق: ${data.type_agreements}\nمختلف: ${data.type_mismatches}\nتغير الكمية: ${data.summary.qty_variance_pct}%\nتغير التكلفة: ${data.summary.cost_variance_pct}%`;
-                  alert(msg);
+                  showAlert('info', 'تقرير المقارنة', msg);
                 }
               } catch {
-                alert('فشل تحميل تقرير المقارنة');
+                showAlert('error', 'فشل تحميل تقرير المقارنة');
               }
             }}
               className="p-4 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/40 rounded-2xl transition text-right">

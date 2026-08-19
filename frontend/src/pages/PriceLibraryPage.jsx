@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { priceLibraryApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
 import { LogoutButton } from '../components/ui/LogoutButton';
+import { confirmDialog } from '../utils/alerts';
 import { DollarSign, Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw } from 'lucide-react';
 
 const UNIT_OPTIONS = ['م2', 'م3', 'م', 'عدد', 'كجم', 'طن', 'م2.سقف', 'م2.جدار'];
@@ -70,7 +71,7 @@ export const PriceLibraryPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا السعر؟')) return;
+    if (!(await confirmDialog('حذف السعر', 'هل أنت متأكد من حذف هذا السعر؟'))) return;
     try {
       await priceLibraryApi.delete(id);
       await fetchPrices();

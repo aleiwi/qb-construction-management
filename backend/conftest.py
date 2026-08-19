@@ -15,6 +15,7 @@ sys.path.insert(0, str(backend_path))
 _TEST_DB = backend_path / "qb_test.db"
 os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{_TEST_DB.as_posix()}")
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-not-for-production-0123456789abcdef")
+os.environ.setdefault("LOGIN_RATE_LIMIT_ATTEMPTS", "100000")
 
 from app.main import app, init_db_seed
 

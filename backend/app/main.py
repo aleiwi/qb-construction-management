@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.exceptions import RequestValidationError, HTTPException
 from contextlib import asynccontextmanager
 import logging
@@ -31,7 +32,7 @@ from app.models.completion_report import CompletionReport
 from app.models.audit_log import AuditLog
 from app.models.boq_project import BOQProject, BOQProjectStatus
 from app.models.classification_training import ClassificationTraining
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from sqlalchemy.future import select
 
 logging.basicConfig(
@@ -48,9 +49,41 @@ SEED_USERS = [
     ("contractor@qb.com",  "contractor123", "مؤسسة المقاول الذهبية",     UserRole.CONTRACTOR),
 ]
 
+async def _ensure_user_security_columns() -> None:
+    """SQLite-only lightweight migration: add lockout columns to existing dev DBs
+    (create_all does not alter existing tables). Fresh Postgres DBs are fully
+    created by create_all and need no migration."""
+    if not str(settings.DATABASE_URL).startswith("sqlite"):
+        return
+    async with engine.begin() as conn:
+        cols = (await conn.execute(text("PRAGMA table_info(users)"))).fetchall()
+        existing = {c[1] for c in cols}
+        if "failed_login_attempts" not in existing:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0"))
+            logger.info("migration: added users.failed_login_attempts column")
+        if "locked_until" not in existing:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN locked_until DATETIME"))
+            logger.info("migration: added users.locked_until column")
+
+
 async def init_db_seed():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    await _ensure_user_security_columns()
+
+    # Production: never seed demo users/entities; fail fast if the default
+    # admin still exists with its default password.
+    if settings.ENVIRONMENT == "production":
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(User).filter(User.email == "admin@qb.com"))
+            default_admin = result.scalars().first()
+            if default_admin and verify_password("admin123", default_admin.hashed_password):
+                raise RuntimeError(
+                    "رفض بدء التشغيل: مستخدم admin@qb.com موجود بكلمة المرور الافتراضية. "
+                    "غيّر كلمة المرور أو احذف المستخدم قبل تشغيل بيئة الإنتاج."
+                )
+        return
 
     async with AsyncSessionLocal() as session:
         for email, password, full_name, role in SEED_USERS:
@@ -144,6 +177,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Trusted hosts: reject requests with forged/unknown Host headers in production
+trusted_hosts = [h.strip() for h in settings.TRUSTED_HOSTS.split(",") if h.strip()]
+if trusted_hosts and trusted_hosts != ["*"]:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+
+# HTTPS enforcement in production (terminated by nginx/caddy: X-Forwarded-Proto)
+if settings.ENVIRONMENT == "production":
+    @app.middleware("http")
+    async def enforce_https(request: Request, call_next):
+        proto = request.headers.get("x-forwarded-proto", "")
+        if request.url.scheme == "http" and proto.lower() != "https":
+            url = request.url.replace(scheme="https")
+            return RedirectResponse(url=str(url), status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+        return await call_next(request)
 
 # Global Exception Handlers for Unified API Error Shape (api-structure.md)
 @app.exception_handler(HTTPException)
