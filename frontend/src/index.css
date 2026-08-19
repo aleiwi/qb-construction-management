@@ -33,25 +33,76 @@ body {
   animation: fade-in 0.35s ease-out both;
 }
 
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
-}
-.animate-glow {
-  animation: glow-pulse 6s ease-in-out infinite;
-}
-.animate-glow-delayed {
-  animation: glow-pulse 7s ease-in-out 1.5s infinite;
+/* ===== Blueprint / construction theme ===== */
+.bp-bg {
+  background-color: #081426;
 }
 
-/* Landing grid background */
-.bg-grid {
+/* coarse blueprint grid */
+.bp-grid {
   background-image:
-    linear-gradient(to left, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
+    linear-gradient(to left, rgba(125, 211, 252, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(125, 211, 252, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* fine grid overlay */
+.bp-grid-fine {
+  background-image:
+    linear-gradient(to left, rgba(125, 211, 252, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(125, 211, 252, 0.045) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+/* marching-ants dashed lines (SVG stroke) */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -32; }
+}
+.dash-flow {
+  animation: dash-flow 1.4s linear infinite;
+}
+
+/* crane pendulum swing */
+@keyframes crane-swing {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50% { transform: rotate(3.5deg); }
+}
+.crane-swing {
+  animation: crane-swing 5.5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+}
+
+/* hoisting block bob */
+@keyframes block-hoist {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
+}
+.block-hoist {
+  animation: block-hoist 4.5s ease-in-out infinite;
+}
+
+/* window lights blinking */
+@keyframes blink-dim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.blink {
+  animation: blink-dim 3.2s ease-in-out infinite;
+}
+.blink-delayed {
+  animation: blink-dim 3.2s ease-in-out 1.4s infinite;
+}
+
+/* animated dashed connector (CSS backgrounds) */
+@keyframes dash-scroll {
+  to { background-position-x: 16px; }
+}
+.dash-line {
+  background-image: linear-gradient(to left, rgba(56, 189, 248, 0.7) 55%, transparent 55%);
+  background-size: 16px 2px;
+  background-repeat: repeat-x;
+  animation: dash-scroll 1s linear infinite;
 }
 
 html {
