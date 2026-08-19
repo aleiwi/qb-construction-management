@@ -22,3 +22,5 @@ class UserContext(BaseModel):
     linked_contractor: Optional[ContractorContext] = None
     total_projects: int = 0
     total_contracts: int = 0
+    # Project-level access (M4): ids the user may access; empty for admin
+    allowed_project_ids: List[int] = []

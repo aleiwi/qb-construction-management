@@ -6,7 +6,7 @@ import { canAccessPage } from '../config/roleAccess';
 import api from '../api/axios';
 import {
   Building2, Users, ShieldCheck, LogOut, Plus,
-  CheckCircle2, AlertTriangle, FileText, Wallet, HardHat, UserCheck, RefreshCw, ArrowLeft, UsersRound, ScrollText, BarChart3, History
+  CheckCircle2, AlertTriangle, FileText, Wallet, HardHat, UserCheck, RefreshCw, ArrowLeft, UsersRound, ScrollText, BarChart3, History, UserCircle
 } from 'lucide-react';
 
 export const DashboardPage = () => {
@@ -350,6 +350,8 @@ export const DashboardPage = () => {
             { route: '/reports',      icon: BarChart3,  title: 'لوحة التقارير و KPIs',                desc: 'مؤشرات الأداء العامة والرسوم البيانية عبر كل الوحدات.',                                       color: 'cyan' },
             { route: '/completion-percentage', icon: FileText, title: 'تقرير نسب الإنجاز الشامل',    desc: 'تقرير دوري (58 بنداً + 9 دفعات) قابل للطباعة والتصدير إلى PDF.',                              color: 'amber' },
             { route: '/audit-logs',   icon: History,    title: 'سجل التتبع (Audit Log)',              desc: 'سجل كامل للعمليات المالية الحساسة — مراجعة شاملة للأمان.',                                    color: 'orange' },
+            { route: '/users',        icon: UsersRound, title: 'إدارة المستخدمين',                    desc: 'إنشاء الحسابات بالدعوات، الأدوار، وتعيين المشاريع المسموحة.',                                color: 'blue' },
+            { route: '/profile',      icon: UserCircle, title: 'الملف الشخصي',                        desc: 'بيانات حسابك وتغيير كلمة المرور.',                                                         color: 'teal' },
           ]
             .filter(m => canAccessPage(permissions.role, m.route))
             .map((m) => {

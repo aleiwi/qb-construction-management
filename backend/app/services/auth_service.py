@@ -23,6 +23,9 @@ class InvalidTokenException(Exception):
 class AccountLockedException(Exception):
     pass
 
+class InvalidPasswordException(Exception):
+    pass
+
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -152,6 +155,20 @@ class AuthService:
             user.id, "email_verify", settings.EMAIL_TOKEN_EXPIRE_MINUTES
         )
         return send_activation_email(user.email, user.full_name, token)
+
+    async def change_password(self, user: User, current_password: str, new_password: str) -> None:
+        if not verify_password(current_password, user.hashed_password):
+            raise InvalidPasswordException("كلمة المرور الحالية غير صحيحة")
+        user.hashed_password = get_password_hash(new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        await self.db.commit()
+        await self.audit_service.log(
+            user_id=user.id,
+            action="password_changed",
+            entity_type="user",
+            entity_id=user.id,
+        )
 
     async def _user_from_email_token(self, token: str, expected_type: str) -> User:
         try:

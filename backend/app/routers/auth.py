@@ -6,11 +6,12 @@ from app.core.rate_limit import check_login_rate_limit
 from app.schemas.auth import (
     LoginRequest, TokenResponse, RefreshTokenRequest,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
+    ChangePasswordRequest,
 )
 from app.schemas.user import UserOut
 from app.schemas.auth_context import UserContext, ContractorContext
 from app.schemas.response import APIResponse
-from app.services.auth_service import AuthService, InvalidCredentialsException, InactiveUserException, InvalidTokenException, AccountLockedException
+from app.services.auth_service import AuthService, InvalidCredentialsException, InactiveUserException, InvalidTokenException, AccountLockedException, InvalidPasswordException
 from app.dependencies.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.project import Project
@@ -71,6 +72,22 @@ async def get_me(current_user: User = Depends(get_current_user)):
     """
     return APIResponse.ok(data=UserOut.model_validate(current_user), message="تم جلب البيانات بنجاح")
 
+@router.post("/change-password", response_model=APIResponse)
+async def change_password(
+    request: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    تغيير كلمة مرور المستخدم الحالي
+    """
+    auth_service = AuthService(db)
+    try:
+        await auth_service.change_password(current_user, request.current_password, request.new_password)
+        return APIResponse.ok(message="تم تغيير كلمة المرور بنجاح")
+    except InvalidPasswordException as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
 @router.post("/forgot-password", response_model=APIResponse)
 async def forgot_password(
     request: ForgotPasswordRequest,
@@ -128,6 +145,11 @@ async def get_my_context(
         full_name=current_user.full_name,
         email=current_user.email,
     )
+
+    # M4: project-level access (admin has full access → empty means "all")
+    from app.services.user_service import UserService
+    if current_user.role != UserRole.ADMIN:
+        ctx.allowed_project_ids = await UserService(db).get_project_ids(current_user.id)
 
     # Count all accessible data
     result = await db.execute(select(Project))

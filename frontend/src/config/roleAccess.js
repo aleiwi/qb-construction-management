@@ -25,6 +25,8 @@ export const PAGE_ROLES = {
   '/boq-analytics': ['admin', 'project_manager', 'engineer'],
   '/drawings/batch': ['admin', 'project_manager', 'engineer'],
   '/drawings/:drawingId': ['admin', 'project_manager', 'engineer'],
+  '/users': ['admin'],
+  '/profile': ['admin', 'project_manager', 'engineer', 'accountant', 'contractor'],
 };
 
 export function canAccessPage(role, path) {

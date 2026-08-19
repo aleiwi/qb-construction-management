@@ -30,6 +30,7 @@ from app.models.quality_check import QualityCheck, QCStatus
 from app.models.employee import Employee, Attendance
 from app.models.completion_report import CompletionReport
 from app.models.audit_log import AuditLog
+from app.models.user_project import UserProject
 from app.models.boq_project import BOQProject, BOQProjectStatus
 from app.models.classification_training import ClassificationTraining
 from app.core.security import get_password_hash, verify_password

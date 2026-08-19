@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from app.models.user import UserRole
 
@@ -10,6 +10,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
+    project_ids: Optional[List[int]] = None
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -17,11 +18,13 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     password: Optional[str] = None
+    project_ids: Optional[List[int]] = None
 
 class UserOut(UserBase):
     id: int
     is_active: bool
     is_email_verified: bool
+    project_ids: List[int] = []
     created_at: datetime
     updated_at: datetime
 
