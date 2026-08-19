@@ -154,26 +154,26 @@ export const ContractsPage = () => {
 
   const initialContractorId = searchParams.get('contractor_id');
 
+  const canManage = permissions.isAdmin || permissions.isProjectManager;
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const params = {};
       if (initialContractorId) params.contractor_id = initialContractorId;
-      const [contractsRes, contractorsRes, buildingsRes] = await Promise.all([
-        contractsApi.list(params),
-        contractorsApi.list(1, 100),
-        buildingsApi.list(),
-      ]);
+      const requests = [contractsApi.list(params)];
+      if (canManage) requests.push(contractorsApi.list(1, 100), buildingsApi.list());
+      const [contractsRes, contractorsRes, buildingsRes] = await Promise.all(requests);
       if (contractsRes.success) setContracts(contractsRes.data);
-      if (contractorsRes.success) setContractors(contractorsRes.data);
-      if (buildingsRes.success) setBuildings(buildingsRes.data);
+      if (contractorsRes?.success) setContractors(contractorsRes.data);
+      if (buildingsRes?.success) setBuildings(buildingsRes.data);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'فشل تحميل البيانات');
     } finally {
       setLoading(false);
     }
-  }, [initialContractorId]);
+  }, [initialContractorId, canManage]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

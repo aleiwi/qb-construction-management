@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Building2, LayoutDashboard, FolderKanban, FileImage, UploadCloud,
   ListChecks, ShieldCheck, TrendingUp, FileSignature, Wallet, BookOpen,
@@ -62,7 +62,7 @@ const ROLE_BADGE_COLORS = {
   contractor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
-const AppLayout = ({ children }) => {
+const AppLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -223,7 +223,9 @@ const AppLayout = ({ children }) => {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Outlet />
+      </main>
     </div>
   );
 };
