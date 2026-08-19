@@ -3,7 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.database import get_db
 from app.core.rate_limit import check_login_rate_limit
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshTokenRequest
+from app.schemas.auth import (
+    LoginRequest, TokenResponse, RefreshTokenRequest,
+    ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
+)
 from app.schemas.user import UserOut
 from app.schemas.auth_context import UserContext, ContractorContext
 from app.schemas.response import APIResponse
@@ -67,6 +70,49 @@ async def get_me(current_user: User = Depends(get_current_user)):
     جلب بيانات المستخدم الحالي وصلاحياته
     """
     return APIResponse.ok(data=UserOut.model_validate(current_user), message="تم جلب البيانات بنجاح")
+
+@router.post("/forgot-password", response_model=APIResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(check_login_rate_limit),
+):
+    """
+    إرسال رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني
+    """
+    auth_service = AuthService(db)
+    await auth_service.request_password_reset(request.email)
+    return APIResponse.ok(message="إذا كان البريد مسجلاً لدينا، ستصل رسالة إعادة التعيين خلال دقائق")
+
+@router.post("/reset-password", response_model=APIResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    تعيين كلمة مرور جديدة عبر الرابط المرسل بالبريد
+    """
+    auth_service = AuthService(db)
+    try:
+        await auth_service.reset_password(request.token, request.new_password)
+        return APIResponse.ok(message="تم تحديث كلمة المرور بنجاح، يمكنك تسجيل الدخول الآن")
+    except InvalidTokenException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+@router.post("/verify-email", response_model=APIResponse)
+async def verify_email(
+    request: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    تفعيل الحساب عبر الرابط المرسل بالبريد
+    """
+    auth_service = AuthService(db)
+    try:
+        await auth_service.verify_email(request.token)
+        return APIResponse.ok(message="تم تفعيل الحساب بنجاح")
+    except InvalidTokenException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
 
 @router.get("/me/context", response_model=APIResponse[UserContext])

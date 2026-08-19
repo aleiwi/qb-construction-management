@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LANDING } from '../config/roleAccess';
 import { Building2, Lock, Mail, Shield, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
@@ -108,6 +108,12 @@ export const LoginPage = () => {
             )}
           </button>
         </form>
+
+        <div className="mt-4 text-center">
+          <Link to="/forgot-password" className="text-xs text-slate-500 hover:text-blue-400 transition">
+            نسيت كلمة المرور؟
+          </Link>
+        </div>
 
         {/* Demo toggle — collapsed by default */}
         <div className="mt-6 pt-4 border-t border-slate-800/60">

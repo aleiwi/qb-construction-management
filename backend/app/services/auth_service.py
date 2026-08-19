@@ -5,10 +5,11 @@ from jose import jwt, JWTError
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.user import UserOut
-from app.core.security import verify_password, create_access_token, create_refresh_token
+from app.core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
 from app.core.config import settings
 from app.services.user_service import UserService
 from app.services.audit_log_service import AuditLogService
+from app.services.email_service import send_activation_email, send_password_reset_email
 
 class InvalidCredentialsException(Exception):
     pass
@@ -105,3 +106,62 @@ class AuthService:
             refresh_token=new_refresh_token,
             user=UserOut.model_validate(user)
         )
+
+    def _email_token(self, user_id: int, token_type: str, expires_minutes: int) -> str:
+        payload = {
+            "sub": str(user_id),
+            "type": token_type,
+            "exp": datetime.utcnow() + timedelta(minutes=expires_minutes),
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    async def request_password_reset(self, email: str) -> bool:
+        """Send a password reset email. Always returns True to avoid email enumeration."""
+        user = await self.user_service.get_by_email(email)
+        if not user or not user.is_active:
+            return True
+        token = self._email_token(
+            user.id, "password_reset", settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+        )
+        send_password_reset_email(user.email, user.full_name, token)
+        return True
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        user = await self._user_from_email_token(token, "password_reset")
+        user.hashed_password = get_password_hash(new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        await self.db.commit()
+        await self.audit_service.log(
+            user_id=user.id,
+            action="password_reset",
+            entity_type="user",
+            entity_id=user.id,
+        )
+
+    async def verify_email(self, token: str) -> None:
+        user = await self._user_from_email_token(token, "email_verify")
+        user.is_email_verified = True
+        await self.db.commit()
+
+    async def send_activation_email(self, user_id: int) -> bool:
+        user = await self.user_service.get_by_id(user_id)
+        if not user:
+            return False
+        token = self._email_token(
+            user.id, "email_verify", settings.EMAIL_TOKEN_EXPIRE_MINUTES
+        )
+        return send_activation_email(user.email, user.full_name, token)
+
+    async def _user_from_email_token(self, token: str, expected_type: str) -> User:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            if payload.get("type") != expected_type or not payload.get("sub"):
+                raise InvalidTokenException("الرابط غير صالح")
+            user_id = int(payload["sub"])
+        except JWTError:
+            raise InvalidTokenException("الرابط انتهت صلاحيته أو غير صالح")
+        user = await self.user_service.get_by_id(user_id)
+        if not user:
+            raise InvalidTokenException("الرابط غير صالح")
+        return user

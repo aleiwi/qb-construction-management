@@ -28,6 +28,22 @@ class Settings(BaseSettings):
     # Hosts allowed to reach the API (comma-separated; "*" = any in dev)
     TRUSTED_HOSTS: str = "*"
 
+    # Email (SMTP) — used for account activation & password reset links.
+    # When SMTP_HOST is empty, emails are logged to console instead (dev mode).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "QB System <no-reply@qb-system.com>"
+    SMTP_USE_TLS: bool = True
+
+    # Public app URL used inside email links
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # Email token expiry
+    EMAIL_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+
     # CORS
     ALLOWED_ORIGINS: str = (
     "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002"

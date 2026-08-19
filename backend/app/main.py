@@ -64,6 +64,9 @@ async def _ensure_user_security_columns() -> None:
         if "locked_until" not in existing:
             await conn.execute(text("ALTER TABLE users ADD COLUMN locked_until DATETIME"))
             logger.info("migration: added users.locked_until column")
+        if "is_email_verified" not in existing:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN is_email_verified BOOLEAN NOT NULL DEFAULT 0"))
+            logger.info("migration: added users.is_email_verified column")
 
 
 async def init_db_seed():

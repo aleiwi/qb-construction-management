@@ -27,6 +27,9 @@ async def create_user(
             detail="البريد الإلكتروني مسجل بالفعل"
         )
     new_user = await user_service.create(user_in)
+    # M3: send activation email with link to set the password (dev: logged to console)
+    from app.services.auth_service import AuthService
+    await AuthService(db).send_activation_email(new_user.id)
     return APIResponse.ok(data=UserOut.model_validate(new_user), message="تم إنشاء المستخدم بنجاح")
 
 @router.get("", response_model=APIResponse[List[UserOut]])

@@ -1,0 +1,101 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../api/axios';
+import { Building2, Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+
+export const ForgotPasswordPage = () => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError('يرجى إدخال البريد الإلكتروني');
+      return;
+    }
+    setError('');
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      setSent(true);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'حدث خطأ، حاول مرة أخرى');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-1/4 -right-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-blue-950/20 relative z-10">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">استعادة كلمة المرور</h1>
+          <p className="text-sm text-slate-400 mt-2">أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين</p>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-950/40 border border-red-800/50 rounded-2xl flex items-start gap-3 text-red-200 text-sm">
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {sent ? (
+          <div className="p-6 bg-emerald-950/40 border border-emerald-800/50 rounded-2xl flex items-start gap-3 text-emerald-200 text-sm animate-fade-in">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold mb-1">تم إرسال الرابط</p>
+              <p>إذا كان البريد مسجلاً لدينا، ستصل رسالة إعادة التعيين خلال دقائق. تحقق من صندوق الوارد (وبريد المهملات).</p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-2">البريد الإلكتروني</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="example@qb.com"
+                  className="w-full bg-slate-800/80 border border-slate-700/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition"
+                />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>إرسال رابط الاستعادة</span>
+                  <ArrowLeft className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-6 text-center">
+          <Link to="/" className="text-xs text-slate-500 hover:text-slate-300 transition">
+            العودة إلى تسجيل الدخول
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -24,6 +24,9 @@ const PriceLibraryPage = lazy(() => import('./pages/PriceLibraryPage').then(m =>
 const ClassificationDashboard = lazy(() => import('./pages/ClassificationDashboard').then(m => ({ default: m.ClassificationDashboard })));
 const BatchUploadPage = lazy(() => import('./pages/BatchUploadPage').then(m => ({ default: m.BatchUploadPage })));
 const DrawingViewerPage = lazy(() => import('./pages/DrawingViewerPage').then(m => ({ default: m.DrawingViewerPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
@@ -67,6 +70,9 @@ const AppRoutes = () => {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           <Route path="/dashboard" element={
             <ProtectedRoute roles={getRouteRoles('/dashboard')}><DashboardPage /></ProtectedRoute>
