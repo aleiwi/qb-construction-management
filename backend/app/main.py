@@ -137,6 +137,22 @@ async def init_db_seed():
 
             await session.commit()
 
+        # Link CONTRACTOR-role users to their Contractor records. Fresh seeds and
+        # existing dev DBs may have Contractor.user_id unset; the auth context and
+        # RLS filtering rely on this link, so heal it here (company_name fallback).
+        result = await session.execute(select(Contractor).where(Contractor.user_id.is_(None)))
+        for contractor in result.scalars().all():
+            user_result = await session.execute(
+                select(User).where(
+                    User.role == UserRole.CONTRACTOR,
+                    User.full_name.ilike(f"%{contractor.company_name}%"),
+                )
+            )
+            linked_user = user_result.scalars().first()
+            if linked_user:
+                contractor.user_id = linked_user.id
+        await session.commit()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db_seed()

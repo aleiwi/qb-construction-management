@@ -228,46 +228,67 @@ async def get_my_context(
     if current_user.role != UserRole.ADMIN:
         ctx.allowed_project_ids = await UserService(db).get_project_ids(current_user.id)
 
-    # Count all accessible data
-    result = await db.execute(select(Project))
-    all_projects = result.scalars().all()
-    ctx.total_projects = len(all_projects)
+    # Contractor record linked to this user (prefer the real FK; fall back to
+    # the company_name match used by older seeds where user_id was never set)
+    contractor = None
+    if current_user.role == UserRole.CONTRACTOR:
+        result = await db.execute(select(Contractor).filter(Contractor.user_id == current_user.id))
+        contractor = result.scalars().first()
+        if contractor is None:
+            result = await db.execute(
+                select(Contractor).filter(Contractor.company_name.ilike(f"%{current_user.full_name}%"))
+            )
+            contractor = result.scalars().first()
 
-    result = await db.execute(select(Contract))
-    all_contracts = result.scalars().all()
-    ctx.total_contracts = len(all_contracts)
+    # Role-scoped counts (RLS: never leak totals across tenants)
+    scoped_projects = []
+    if current_user.role == UserRole.ADMIN:
+        result = await db.execute(select(Project))
+        scoped_projects = result.scalars().all()
+        ctx.total_projects = len(scoped_projects)
+        result = await db.execute(select(Contract))
+        ctx.total_contracts = len(result.scalars().all())
+    elif current_user.role == UserRole.CONTRACTOR:
+        ctx.total_projects = 0
+        if contractor:
+            result = await db.execute(select(Contract).filter(Contract.contractor_id == contractor.id))
+            ctx.total_contracts = len(result.scalars().all())
+    elif ctx.allowed_project_ids:
+        result = await db.execute(select(Project).where(Project.id.in_(ctx.allowed_project_ids)))
+        scoped_projects = result.scalars().all()
+        ctx.total_projects = len(scoped_projects)
+        result = await db.execute(
+            select(Contract)
+            .join(Building, Contract.building_id == Building.id)
+            .where(Building.project_id.in_(ctx.allowed_project_ids))
+        )
+        ctx.total_contracts = len(result.scalars().all())
 
     # Role-specific enrichment
-    if current_user.role == UserRole.CONTRACTOR:
-        # Try to find a contractor whose company_name matches the user's full_name
-        result = await db.execute(
-            select(Contractor).filter(Contractor.company_name.ilike(f"%{current_user.full_name}%"))
+    if contractor:
+        ctx.linked_contractor = ContractorContext(
+            company_name=contractor.company_name,
+            contract_title="",
+            contract_value=0,
+            contract_status="",
         )
-        contractor = result.scalars().first()
-        if contractor:
-            ctx.linked_contractor = ContractorContext(
-                company_name=contractor.company_name,
-                contract_title="",
-                contract_value=0,
-                contract_status="",
-            )
-            # Get their first contract
-            result = await db.execute(
-                select(Contract).filter(Contract.contractor_id == contractor.id).limit(1)
-            )
-            contract = result.scalars().first()
-            if contract:
-                ctx.linked_contractor.contract_title = contract.title
-                ctx.linked_contractor.contract_value = float(contract.total_value)
-                ctx.linked_contractor.contract_status = contract.status
+        # Get their first contract
+        result = await db.execute(
+            select(Contract).filter(Contract.contractor_id == contractor.id).limit(1)
+        )
+        contract = result.scalars().first()
+        if contract:
+            ctx.linked_contractor.contract_title = contract.title
+            ctx.linked_contractor.contract_value = float(contract.total_value)
+            ctx.linked_contractor.contract_status = contract.status
 
     # Link to first project for PM/Engineer
     if current_user.role in (UserRole.PROJECT_MANAGER, UserRole.ENGINEER):
-        if all_projects:
-            ctx.linked_project = all_projects[0].name
+        if scoped_projects:
+            ctx.linked_project = scoped_projects[0].name
             # Get first building of first project
             result = await db.execute(
-                select(Building).filter(Building.project_id == all_projects[0].id).limit(1)
+                select(Building).filter(Building.project_id == scoped_projects[0].id).limit(1)
             )
             building = result.scalars().first()
             if building:

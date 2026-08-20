@@ -1,17 +1,63 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
 import { canAccessPage } from '../config/roleAccess';
 import { PageHeader } from '../components/ui/PageHeader';
+import { StatCard } from '../components/ui/StatCard';
+import { Badge } from '../components/ui/Badge';
+import api from '../api/axios';
 import {
-  Building2, Users, ShieldCheck, CheckCircle2, AlertTriangle, FileText, Wallet, HardHat, ArrowLeft, UsersRound, ScrollText, BarChart3, History, UserCircle
+  Building2, Users, ShieldCheck, AlertTriangle, FileText, Wallet, HardHat, ArrowLeft, UsersRound, ScrollText, BarChart3, History, UserCircle
 } from 'lucide-react';
+
+const STAT_SOURCES = [
+  { key: 'projects', route: '/projects', endpoint: '/projects', label: 'المشاريع والمباني', icon: Building2, accent: 'blue' },
+  { key: 'contracts', route: '/contracts', endpoint: '/contracts', label: 'العقود', icon: ScrollText, accent: 'emerald' },
+  { key: 'payments', route: '/payments', endpoint: '/payments', label: 'الدفعات', icon: Wallet, accent: 'amber' },
+  { key: 'quality', route: '/quality-checks', endpoint: '/quality-checks', label: 'فحوصات الجودة', icon: ShieldCheck, accent: 'teal' },
+  { key: 'users', route: '/users', endpoint: '/users', label: 'المستخدمون', icon: UsersRound, accent: 'indigo' },
+];
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { user, userContext } = useAuth();
   const permissions = usePermissions();
+  const [stats, setStats] = useState({});
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const allowed = STAT_SOURCES.filter((s) => canAccessPage(permissions.role, s.route));
+
+    if (allowed.length === 0) {
+      setStatsLoading(false);
+      return;
+    }
+
+    const results = {};
+    Promise.allSettled(
+      allowed.map((s) => api.get(s.endpoint).then((res) => ({ key: s.key, count: res?.data?.data?.length ?? 0 })))
+    ).then((settled) => {
+      settled.forEach((item) => {
+        if (item.status === 'fulfilled') results[item.value.key] = item.value.count;
+      });
+      if (!cancelled) {
+        setStats(results);
+        setStatsLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [permissions.role]);
+
+  const statValue = (key, fallback) => {
+    if (!statsLoading && stats[key] !== undefined) return stats[key];
+    if (key === 'projects' && userContext?.total_projects !== undefined) return userContext.total_projects;
+    if (key === 'contracts' && userContext?.total_contracts !== undefined) return userContext.total_contracts;
+    return fallback;
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -22,6 +68,21 @@ export const DashboardPage = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        {/* Live stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          {STAT_SOURCES.filter((s) => canAccessPage(permissions.role, s.route)).map((s) => (
+            <StatCard
+              key={s.key}
+              label={s.label}
+              value={statValue(s.key, 0)}
+              icon={s.icon}
+              accent={s.accent}
+              loading={statsLoading}
+              onClick={() => navigate(s.route)}
+            />
+          ))}
+        </div>
 
         {/* Role Custom Banner & Permissions Notice */}
         <div className="bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900 border border-blue-900/30 rounded-3xl p-6 relative overflow-hidden shadow-xl">
@@ -36,20 +97,20 @@ export const DashboardPage = () => {
                 تصفح الواجهة مخصص تلقائياً بحسب دورك الوظيفي الحالي: <strong className="text-blue-400">{user?.role}</strong>
               </p>
             </div>
-            
-            <div className="flex flex-wrap gap-2 text-xs">
-              <div className={`px-3 py-2 rounded-xl border ${permissions.canManageUsers ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-slate-800/40 border-slate-700/50 text-slate-500'}`}>
+
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={permissions.canManageUsers ? 'success' : 'neutral'}>
                 إدارة المستخدمين: {permissions.canManageUsers ? 'متاح' : 'محظور'}
-              </div>
-              <div className={`px-3 py-2 rounded-xl border ${permissions.canManageProjects ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-slate-800/40 border-slate-700/50 text-slate-500'}`}>
+              </Badge>
+              <Badge variant={permissions.canManageProjects ? 'success' : 'neutral'}>
                 إدارة المشاريع: {permissions.canManageProjects ? 'متاح' : 'محظور'}
-              </div>
-              <div className={`px-3 py-2 rounded-xl border ${permissions.canApproveQualityChecks ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-slate-800/40 border-slate-700/50 text-slate-500'}`}>
+              </Badge>
+              <Badge variant={permissions.canApproveQualityChecks ? 'success' : 'neutral'}>
                 فحوص الجودة QC: {permissions.canApproveQualityChecks ? 'متاح' : 'محظور'}
-              </div>
-              <div className={`px-3 py-2 rounded-xl border ${permissions.canProcessPayments ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-slate-800/40 border-slate-700/50 text-slate-500'}`}>
+              </Badge>
+              <Badge variant={permissions.canProcessPayments ? 'success' : 'neutral'}>
                 المستحقات المالية: {permissions.canProcessPayments ? 'متاح' : 'محظور'}
-              </div>
+              </Badge>
             </div>
           </div>
         </div>
@@ -161,3 +222,5 @@ export const DashboardPage = () => {
     </div>
   );
 };
+
+export default DashboardPage;
