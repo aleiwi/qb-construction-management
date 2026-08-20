@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { ROLE_LANDING } from '../config/roleAccess';
 import {
   motion, useScroll, useTransform, useMotionValueEvent, useInView,
 } from 'framer-motion';
@@ -617,13 +615,8 @@ const SectionHead = ({ kicker, title, desc }) => (
 /* ===== Page ===== */
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
-
-  React.useEffect(() => {
-    if (user) navigate(ROLE_LANDING[user.role] || '/dashboard', { replace: true });
-  }, [user, navigate]);
 
   const navLinks = [
     { href: '#modules', label: 'الأجنحة' },
