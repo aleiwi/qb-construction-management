@@ -74,7 +74,7 @@ export const BOQSummaryPage = () => {
   const qtyChartData = byType.map(t => ({ name: t.element_type, quantity: t.total_quantity }));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="BOQ المشروع"
         subtitle={project?.name || `مشروع #${projectId}`}
@@ -108,7 +108,7 @@ export const BOQSummaryPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {loading && !boq && (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
@@ -258,7 +258,7 @@ export const BOQSummaryPage = () => {
             <p className="text-sm text-slate-500">ارفع مخططات CAD للمشروع لبدء حصر الكميات</p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };

@@ -96,10 +96,10 @@ const AppLayout = () => {
       end
       onClick={onClick}
       className={({ isActive: active }) =>
-        `flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+        `flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
           active
-            ? 'bg-blue-600/15 text-blue-300 border border-blue-500/20'
-            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 border border-transparent'
+            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500'
+            : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
         }`
       }
     >
@@ -110,16 +110,18 @@ const AppLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/70 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
+        {/* Premium gold accent line */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo + title */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/10">
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div className="hidden md:block min-w-0">
-              <h1 className="text-base font-bold text-white leading-tight truncate">نظام إدارة المقاولات المتكامل</h1>
-              <p className="text-[11px] text-slate-400 truncate">بوابة المشاريع والصلاحيات الموحدة</p>
+              <h1 className="text-base font-extrabold text-white leading-tight truncate" style={{ fontFamily: "'Cairo','Tajawal',sans-serif" }}>نظام إدارة المقاولات المتكامل</h1>
+              <p className="text-[11px] text-slate-400 truncate font-medium tracking-wide">بوابة المشاريع والصلاحيات الموحدة</p>
             </div>
           </div>
 

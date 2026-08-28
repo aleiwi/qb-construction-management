@@ -60,14 +60,13 @@ export const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         title="نظام إدارة المقاولات المتكامل"
         subtitle="لوحة التحكم والمصادقة الموحدة"
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="space-y-8">
 
         {/* Live stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -84,8 +83,9 @@ export const DashboardPage = () => {
           ))}
         </div>
 
-        {/* Role Custom Banner & Permissions Notice */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900 border border-blue-900/30 rounded-3xl p-6 relative overflow-hidden shadow-xl">
+        {/* Role Custom Banner & Permissions Notice — Premium */}
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-dark">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold-500/20 to-transparent pointer-events-none" />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-semibold mb-3">
@@ -202,7 +202,7 @@ export const DashboardPage = () => {
               const hoverBorder = `hover:border-${m.color}-500/40`;
               return (
                 <button key={m.route} onClick={() => navigate(m.route)}
-                  className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-3 text-right hover:bg-slate-900/90 transition cursor-pointer group"
+                  className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-3xl p-6 space-y-3 text-right hover:border-slate-700/80 hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                 >
                   <div className={`w-10 h-10 ${colorMap[m.color].split(' ').slice(1).join(' ')} rounded-2xl flex items-center justify-center group-hover:opacity-80 transition`}>
                     <m.icon className="w-5 h-5" />
@@ -217,8 +217,7 @@ export const DashboardPage = () => {
               );
             })}
         </div>
-
-      </main>
+      </div>
     </div>
   );
 };

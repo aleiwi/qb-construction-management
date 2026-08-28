@@ -151,6 +151,7 @@ def build_authorize_url(provider: str) -> str:
         "response_type": "code",
         "scope": cfg.scope,
         "state": create_state_token(provider),
+        "prompt": "select_account",
         **cfg.extra_auth,
     }
     return f"{cfg.auth_url}?{urlencode(params)}"

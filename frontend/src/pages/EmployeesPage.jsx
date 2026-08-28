@@ -263,7 +263,7 @@ export const EmployeesPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="الموارد البشرية HR"
         subtitle="الموظفين والحضور والرواتب"
@@ -289,7 +289,7 @@ export const EmployeesPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">
             <CheckCircle2 className="w-5 h-5 shrink-0" /><span>{actionMsg}</span>
@@ -436,7 +436,7 @@ export const EmployeesPage = () => {
             </div>
           )
         )}
-      </main>
+      </div>
 
       {showEmployeeModal && (
         <EmployeeModal

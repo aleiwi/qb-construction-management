@@ -9,13 +9,7 @@ import {
   FileText, CheckCircle2, AlertTriangle, Clock, Loader2, Eye, Crosshair,
   Layers, Grid3X3, PanelRightClose, RefreshCw,   Maximize, Minimize, HelpCircle
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  pending: { label: 'في الانتظار', color: 'text-slate-400', icon: Clock },
-  processing: { label: 'قيد المعالجة', color: 'text-amber-400', icon: Loader2, pulse: true },
-  completed: { label: 'تم بنجاح', color: 'text-emerald-400', icon: CheckCircle2 },
-  failed: { label: 'فشل', color: 'text-red-400', icon: AlertTriangle },
-};
+import { DRAWING_STATUS as STATUS_CONFIG } from '../config/status';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -618,7 +612,7 @@ export const DrawingViewerPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-slate-400">جارٍ تحميل المخطط...</p>
@@ -629,7 +623,7 @@ export const DrawingViewerPage = () => {
 
   if (error && !drawing) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center p-4 py-20">
         <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 max-w-md text-center">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-lg font-bold text-slate-200 mb-2">خطأ</h2>
@@ -644,7 +638,7 @@ export const DrawingViewerPage = () => {
   }
 
   return (
-    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="flex flex-col -m-8 h-[calc(100vh-4rem)]">
       {!immersive && (
         <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md shrink-0">
           <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">

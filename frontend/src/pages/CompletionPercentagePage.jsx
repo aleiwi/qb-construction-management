@@ -260,7 +260,7 @@ export const CompletionPercentagePage = () => {
   const activeReport = reportsList.find((report) => report.id === activeReportId);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 print:bg-white print:text-black">
+    <div className="space-y-6 animate-fade-in print:bg-white print:text-black">
       <PageHeader
         title="تقرير نسب الإنجاز الشامل"
         subtitle={selectedProject ? `${selectedProject.name} · ${activeReport?.report_period || 'تقرير جديد'}` : 'ابدأ باختيار مشروع أو إنشاء مشروع جديد'}
@@ -292,7 +292,7 @@ export const CompletionPercentagePage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:p-0 print:m-0 print:max-w-none">
+      <div className="space-y-6 print:p-0 print:m-0 print:max-w-none">
         {selectedProjectId === null ? (
           loadingProjects ? (
             <div className="flex items-center justify-center py-24">
@@ -460,7 +460,7 @@ export const CompletionPercentagePage = () => {
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* Modals */}
       <ConfirmModal open={confirmReset} title="استعادة بيانات المرجع"

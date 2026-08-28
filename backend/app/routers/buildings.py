@@ -16,7 +16,7 @@ router = APIRouter(prefix="/buildings", tags=["Buildings"])
 async def list_buildings(
     project_id: Optional[int] = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):

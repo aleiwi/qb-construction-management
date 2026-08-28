@@ -50,6 +50,27 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, [fetchContext]);
 
+  const register = async (name, email, password, passwordConfirm) => {
+    try {
+      const res = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+      });
+      if (res.data.success) {
+        return { success: true };
+      }
+      return { success: false, message: res.data.message || 'فشل إنشاء الحساب' };
+    } catch (err) {
+      if (!err.response) {
+        return { success: false, message: 'تعذر الاتصال بالخادم. يرجى المحاولة لاحقاً' };
+      }
+      const message = err.response?.data?.error?.message || err.response?.data?.message || 'فشل إنشاء الحساب';
+      return { success: false, message };
+    }
+  };
+
   const login = async (email, password) => {
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -81,7 +102,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userContext, loading, login, logout, setUser, fetchContext }}>
+    <AuthContext.Provider value={{ user, userContext, loading, login, register, logout, setUser, fetchContext }}>
       {children}
     </AuthContext.Provider>
   );

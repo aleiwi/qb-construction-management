@@ -9,13 +9,7 @@ import {
   Building2, Plus, RefreshCw, Edit2, Trash2, ArrowLeft,
   X, CheckCircle2, AlertCircle, Users, Calendar, Percent
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  draft: { label: 'مسودة', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-  active: { label: 'نشط', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  completed: { label: 'مكتمل', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  terminated: { label: 'ملغي', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-};
+import { CONTRACT_STATUS as STATUS_CONFIG } from '../config/status';
 
 const ContractModal = ({ contract, contractors, buildings, onSave, onClose }) => {
   const [form, setForm] = useState({
@@ -202,7 +196,7 @@ export const ContractsPage = () => {
   const totalValue = contracts.reduce((s, c) => s + (c.total_value || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <PageHeader
         title="العقود"
@@ -225,7 +219,7 @@ export const ContractsPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">
             <CheckCircle2 className="w-5 h-5 shrink-0" /><span>{actionMsg}</span>
@@ -348,7 +342,7 @@ export const ContractsPage = () => {
             })}
           </div>
         )}
-      </main>
+      </div>
 
       {showModal && (
         <ContractModal

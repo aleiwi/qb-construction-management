@@ -8,14 +8,7 @@ import {
   Building2, Plus, RefreshCw, Edit2, Trash2,
   MapPin, Layers, X, CheckCircle2, AlertCircle, ChevronRight
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  planning: { label: 'قيد التخطيط', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', icon: '🔍' },
-  in_progress: { label: 'قيد التنفيذ', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: '🔨' },
-  on_hold: { label: 'معلق', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20', icon: '⏸️' },
-  completed: { label: 'مكتمل', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: '✅' },
-  cancelled: { label: 'ملغي', color: 'bg-red-500/10 text-red-400 border-red-500/20', icon: '❌' },
-};
+import { PROJECT_STATUS as STATUS_CONFIG } from '../config/status';
 
 const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
   const [form, setForm] = useState({
@@ -154,7 +147,7 @@ export const ProjectsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <PageHeader
         title="المشاريع والمباني"
@@ -177,7 +170,7 @@ export const ProjectsPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {/* Action feedback */}
         {actionMsg && (
           <div className={`p-4 rounded-2xl border flex items-center gap-3 text-sm ${actionType === 'success'
@@ -294,7 +287,7 @@ export const ProjectsPage = () => {
             })}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create/Edit Modal */}
       {showModal && (

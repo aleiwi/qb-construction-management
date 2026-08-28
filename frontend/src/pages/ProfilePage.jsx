@@ -52,13 +52,13 @@ export const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="الملف الشخصي"
         subtitle="بياناتك وتغيير كلمة المرور"
       />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
           <h2 className="font-bold text-sm mb-5 flex items-center gap-2">
             <User className="w-4 h-4 text-blue-400" /> بيانات الحساب
@@ -132,7 +132,7 @@ export const ProfilePage = () => {
             </button>
           </form>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

@@ -111,7 +111,7 @@ export const BatchUploadPage = () => {
   const failCount = results.filter(r => r.status === 'failed').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="رفع دفعة من المخططات"
         subtitle="رفع ومعالجة عدة ملفات CAD دفعة واحدة"
@@ -124,7 +124,7 @@ export const BatchUploadPage = () => {
         }
       />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {error && (
           <div className="p-3 bg-red-950/40 border border-red-800/50 rounded-xl text-red-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -304,7 +304,7 @@ export const BatchUploadPage = () => {
             الذهاب للمخططات
           </button>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

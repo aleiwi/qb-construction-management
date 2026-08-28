@@ -177,7 +177,7 @@ export const ContractorsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="المقاولون والعقود"
         subtitle="إدارة المقاولين وتتبع عقودهم"
@@ -201,7 +201,7 @@ export const ContractorsPage = () => {
         </>}
       />
 
-      <div className="space-y-6 mt-5">
+      <div className="space-y-6">
         {/* Action feedback */}
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">

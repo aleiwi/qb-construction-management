@@ -9,12 +9,7 @@ import {
   ShieldCheck, Plus, RefreshCw,
   X, CheckCircle2, AlertCircle, ClipboardCheck
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  pending: { label: 'في الانتظار', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  passed: { label: 'اجتاز الفحص', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  failed: { label: 'راسب', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-};
+import { QC_STATUS as STATUS_CONFIG } from '../config/status';
 
 const CreateQCModal = ({ stages, onSave, onClose }) => {
   const [form, setForm] = useState({ stage_id: '', notes: '' });
@@ -188,7 +183,7 @@ export const QualityChecksPage = () => {
   const failedCount = qcList.filter(q => q.status === 'failed').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="فحوصات الجودة QC"
         subtitle="فحوصات جودة إلزامية لكل مرحلة"
@@ -210,7 +205,7 @@ export const QualityChecksPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">
             <CheckCircle2 className="w-5 h-5 shrink-0" /><span>{actionMsg}</span>
@@ -303,9 +298,9 @@ export const QualityChecksPage = () => {
                 </div>
               );
             })}
-          </div>
+            </div>
         )}
-      </main>
+      </div>
 
       {showCreateModal && (
         <CreateQCModal

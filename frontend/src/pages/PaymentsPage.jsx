@@ -9,13 +9,7 @@ import {
   Wallet, Plus, RefreshCw,
   X, CheckCircle2, AlertCircle, Percent
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  pending: { label: 'في الانتظار', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  approved: { label: 'معتمدة', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  paid: { label: 'مدفوعة', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  rejected: { label: 'مرفوضة', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-};
+import { PAYMENT_STATUS as STATUS_CONFIG } from '../config/status';
 
 const formatCurrency = (val) => {
   if (!val && val !== 0) return '—';
@@ -174,7 +168,7 @@ export const PaymentsPage = () => {
   const totalPayments = payments.reduce((s, p) => s + (p.net_amount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="المستحقات المالية والضمان"
         subtitle="الدفعات المرحلية وتحرير الضمانات"
@@ -196,7 +190,7 @@ export const PaymentsPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="p-4 rounded-2xl border flex items-center gap-3 text-sm bg-emerald-950/40 border-emerald-800/50 text-emerald-300">
             <CheckCircle2 className="w-5 h-5 shrink-0" /><span>{actionMsg}</span>
@@ -348,7 +342,7 @@ export const PaymentsPage = () => {
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {showModal && (
         <CreatePaymentModal

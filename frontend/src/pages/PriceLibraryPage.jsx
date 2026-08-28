@@ -81,7 +81,7 @@ export const PriceLibraryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="المكتبة السعرية"
         subtitle="إدارة أسعار الوحدات للعناصر الإنشائية"
@@ -98,7 +98,7 @@ export const PriceLibraryPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {error && (
           <div className="p-4 bg-red-950/40 border border-red-800/50 rounded-2xl flex items-center gap-3 text-red-300 text-sm">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -167,7 +167,7 @@ export const PriceLibraryPage = () => {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Modal */}
       {showModal && (

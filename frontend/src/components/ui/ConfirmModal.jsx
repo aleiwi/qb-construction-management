@@ -21,8 +21,9 @@ export const ConfirmModal = ({
           exit={{ scale: 0.92, opacity: 0, y: 10 }}
           transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+          className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-dark overflow-hidden relative"
         >
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold-500/20 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between p-5 border-b border-slate-800">
             <h3 className="text-base font-bold text-white">{title}</h3>
             <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition">

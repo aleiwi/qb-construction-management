@@ -24,24 +24,24 @@ export const StatCard = ({
 
   if (loading) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-        <div className="w-10 h-10 rounded-xl bg-slate-800 animate-pulse mb-4" />
-        <div className="h-7 w-16 bg-slate-800 rounded-lg animate-pulse mb-2" />
-        <div className="h-3 w-24 bg-slate-800/60 rounded animate-pulse" />
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-soft">
+        <div className="w-11 h-11 rounded-xl bg-slate-800 animate-pulse mb-4" />
+        <div className="h-8 w-20 bg-slate-800 rounded-lg animate-pulse mb-2" />
+        <div className="h-3.5 w-28 bg-slate-800/60 rounded animate-pulse" />
       </div>
     );
   }
 
   const inner = (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${accentCls}`}>
+      <div className="flex items-center justify-between mb-5">
+        <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shadow-sm ${accentCls}`}>
           <Icon className="w-5 h-5" />
         </div>
-        {hint && <span className="text-[10px] text-slate-500 font-semibold">{hint}</span>}
+        {hint && <span className="text-xs text-slate-400 font-bold tracking-wide">{hint}</span>}
       </div>
-      <div className="text-2xl md:text-3xl font-black text-white tabular-nums leading-none">{value}</div>
-      <div className="mt-2 text-xs text-slate-400 font-semibold">{label}</div>
+      <div className="text-2xl md:text-3xl font-black text-white tabular-nums leading-none tracking-tight">{value}</div>
+      <div className="mt-2.5 text-sm text-slate-300 font-semibold">{label}</div>
     </>
   );
 
@@ -49,14 +49,14 @@ export const StatCard = ({
     return (
       <button
         onClick={onClick}
-        className="text-right bg-slate-900/60 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition group cursor-pointer"
+        className="text-right bg-slate-900/70 backdrop-blur border border-slate-800 hover:border-slate-700/80 hover:shadow-elevated rounded-2xl p-6 transition-all duration-200 group cursor-pointer text-right w-full"
       >
         {inner}
       </button>
     );
   }
 
-  return <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">{inner}</div>;
+  return <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-soft hover:shadow-card transition-shadow">{inner}</div>;
 };
 
 export default StatCard;

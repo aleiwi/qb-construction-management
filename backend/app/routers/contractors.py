@@ -14,7 +14,7 @@ router = APIRouter(prefix="/contractors", tags=["Contractors"])
 @router.get("", response_model=APIResponse[List[ContractorListOut]])
 async def list_contractors(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT, UserRole.CONTRACTOR])),
 ):

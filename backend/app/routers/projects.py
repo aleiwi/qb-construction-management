@@ -16,7 +16,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 @router.get("", response_model=APIResponse[List[ProjectListOut]])
 async def list_projects(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):

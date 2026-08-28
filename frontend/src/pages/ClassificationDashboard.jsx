@@ -44,7 +44,7 @@ export const ClassificationDashboard = () => {
   const hasLlm = stats?.using_llm;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="تحليلات التصنيف"
         subtitle="إحصائيات دقة التصنيف وتوزيع العناصر"
@@ -55,7 +55,7 @@ export const ClassificationDashboard = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {error && (
           <div className="p-4 bg-red-950/40 border border-red-800/50 rounded-2xl flex items-center gap-3 text-red-300 text-sm">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -189,7 +189,7 @@ export const ClassificationDashboard = () => {
             <p className="text-sm text-slate-500">قم برفع مخططات CAD وتصنيف العناصر لعرض الإحصائيات</p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };

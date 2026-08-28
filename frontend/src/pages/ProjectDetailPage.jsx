@@ -11,14 +11,7 @@ import {
   Layers, X, CheckCircle2, AlertCircle, ChevronDown,
   FileText, BarChart3, DollarSign, BrainCircuit, MapPin
 } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  planning: { label: 'قيد التخطيط', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  in_progress: { label: 'قيد التنفيذ', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  on_hold: { label: 'معلق', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-  completed: { label: 'مكتمل', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  cancelled: { label: 'ملغي', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-};
+import { PROJECT_STATUS as STATUS_CONFIG } from '../config/status';
 
 const BuildingModal = ({ building, projectId, onSave, onClose, isEditing }) => {
   const [form, setForm] = useState({ name: building?.name || '', floors_count: building?.floors_count || 1 });
@@ -394,7 +387,7 @@ export const ProjectDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-slate-400">جارٍ تحميل بيانات المشروع...</p>
@@ -405,7 +398,7 @@ export const ProjectDetailPage = () => {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
           <p className="text-red-300 text-sm">{error || 'المشروع غير موجود'}</p>
@@ -420,7 +413,7 @@ export const ProjectDetailPage = () => {
   const statusCfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.planning;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title={project.name}
         subtitle="تفاصيل المشروع والمباني"
@@ -442,7 +435,7 @@ export const ProjectDetailPage = () => {
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="p-4 bg-emerald-950/40 border border-emerald-800/50 rounded-2xl text-emerald-300 text-sm flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 shrink-0" /><span>{actionMsg}</span>
@@ -551,7 +544,7 @@ export const ProjectDetailPage = () => {
             </button>
           </div>
         </div>
-      </main>
+      </div>
 
       {showBuildingModal && (
         <BuildingModal

@@ -20,7 +20,6 @@ export const showAlert = (type, title, text = "") => {
     text,
     confirmButtonText: "حسناً",
     confirmButtonColor: "#2563eb",
-    rtl: true,
   });
 };
 
@@ -35,7 +34,6 @@ export const confirmDialog = async (title, text = "") => {
     confirmButtonColor: "#dc2626",
     cancelButtonColor: "#6b7280",
     reverseButtons: true,
-    rtl: true,
   });
   return result.isConfirmed;
 };
@@ -52,7 +50,6 @@ export const promptInput = async (title, inputLabel, initialValue = "") => {
     cancelButtonText: "إلغاء",
     confirmButtonColor: "#2563eb",
     reverseButtons: true,
-    rtl: true,
     inputValidator: (value) => {
       const num = Number(value);
       if (value === "" || Number.isNaN(num)) return "الرجاء إدخال رقم صحيح";
