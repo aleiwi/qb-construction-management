@@ -14,7 +14,10 @@ engine = create_async_engine(
 
 @event.listens_for(engine.sync_engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, connection_record):
-    """ج8: تفعيل WAL + مهلة قفل أطول حتى لا تحجب المعالجة الخلفية الطلبات الأخرى."""
+    """ج8: تفعيل WAL + مهلة قفل أطول حتى لا تحجب المعالجة الخلفية الطلبات الأخرى.
+    Only applies to SQLite connections; PostgreSQL does not support PRAGMA."""
+    if not str(settings.DATABASE_URL).startswith("sqlite"):
+        return
     try:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
