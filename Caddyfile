@@ -1,0 +1,32 @@
+# QB — Caddy reverse proxy + automatic HTTPS (Let's Encrypt)
+# SITE_ADDRESS is injected by docker-compose from the .env file:
+#   - a real domain  -> automatic HTTPS certificate
+#   - ":80"          -> plain HTTP (IP-only fallback, no TLS)
+
+{$SITE_ADDRESS} {
+	encode gzip zstd
+
+	# API + docs -> FastAPI backend
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /docs* {
+		reverse_proxy backend:8000
+	}
+	handle /redoc* {
+		reverse_proxy backend:8000
+	}
+	handle /openapi.json {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else -> React SPA (nginx)
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
