@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # Seed: default demo users/entities (admin@qb.com ...) — OFF in production
     SEED_DEFAULT_USERS: bool = True
 
+    # First-admin bootstrap (production). When all three are set and the user
+    # table is empty, this admin is created on startup. Idempotent — ignored
+    # once any user exists.
+    FIRST_ADMIN_EMAIL: str = ""
+    FIRST_ADMIN_FULL_NAME: str = ""
+    FIRST_ADMIN_PASSWORD: str = ""
+
     # Login security: rate limit (per IP) + account lockout (per user)
     LOGIN_RATE_LIMIT_ATTEMPTS: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60

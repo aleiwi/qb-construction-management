@@ -93,6 +93,27 @@ async def init_db_seed():
                     "رفض بدء التشغيل: مستخدم admin@qb.com موجود بكلمة المرور الافتراضية. "
                     "غيّر كلمة المرور أو احذف المستخدم قبل تشغيل بيئة الإنتاج."
                 )
+
+            # First-admin bootstrap: production seeds no demo users, so when the
+            # users table is empty we create the initial admin from env vars.
+            # Idempotent — only runs while there is no user at all.
+            if (settings.FIRST_ADMIN_EMAIL and settings.FIRST_ADMIN_FULL_NAME
+                    and settings.FIRST_ADMIN_PASSWORD):
+                any_user = (await session.execute(select(User).limit(1))).scalars().first()
+                if not any_user:
+                    session.add(User(
+                        email=settings.FIRST_ADMIN_EMAIL,
+                        full_name=settings.FIRST_ADMIN_FULL_NAME,
+                        hashed_password=get_password_hash(settings.FIRST_ADMIN_PASSWORD),
+                        role=UserRole.ADMIN,
+                        is_active=True,
+                        is_email_verified=True,
+                    ))
+                    await session.commit()
+                    logger.info(
+                        "تم إنشاء أول مدير من متغيرات البيئة: %s",
+                        settings.FIRST_ADMIN_EMAIL,
+                    )
         return
 
     async with AsyncSessionLocal() as session:

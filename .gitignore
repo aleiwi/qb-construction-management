@@ -22,6 +22,8 @@ temp/
 # Environment
 .env
 .env.local
+deploy/.env
+deploy/.admin_password
 
 # OS / editor
 .DS_Store

@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./qb_local.db
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-key-change-in-production-32-chars-minimum-length
+      ALLOWED_ORIGINS: https://qb-local.trycloudflare.com,http://localhost:8080,http://localhost:5173
+      TRUSTED_HOSTS: "*"
+      SEED_DEFAULT_USERS: "true"
+      FRONTEND_URL: https://qb-local.trycloudflare.com
+      FIRST_ADMIN_EMAIL: admin@local.dev
+      FIRST_ADMIN_FULL_NAME: مدير محلي
+      FIRST_ADMIN_PASSWORD: Admin123!
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: https://qb-local.trycloudflare.com/api/v1
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/dist
+
+volumes:
+  uploads_data:
