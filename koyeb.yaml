@@ -1,0 +1,41 @@
+# Koyeb definition for the QB FastAPI backend (free tier: 1 web service).
+# Deploy:  koyeb app init qb-backend --docker ./backend  (or via dashboard import)
+#
+# Required instance env vars (set in the Koyeb dashboard or here):
+#   ENVIRONMENT=production
+#   SECRET_KEY=<long random hex>
+#   DATABASE_URL=postgresql+asyncpg://<user>:<pass>@<host>/<db>   (Neon free tier)
+#   ALLOWED_ORIGINS=https://<your-frontend-domain>
+#   TRUSTED_HOSTS=*
+#   SEED_DEFAULT_USERS=false
+#   FIRST_ADMIN_EMAIL=<your email>
+#   FIRST_ADMIN_PASSWORD=<strong password>
+#   FRONTEND_URL=https://<your-frontend-domain>
+#   PUBLIC_API_URL=https://<koyeb-app-url>
+#   FORCE_HTTPS=false   (Koyeb terminates TLS; requests arrive as http to uvicorn
+#                        with X-Forwarded-Proto=https — Koyeb sets it, keep true is fine)
+
+integrations:
+  github:
+    repo: aleiwi/qb-construction-management
+    branch: master
+    deploy_on: push
+    build_context: backend
+    dockerfile: backend/Dockerfile
+
+service:
+  name: qb-backend
+  instance_type: free
+  ports:
+    - port: 8000
+      protocol: http
+  routes:
+    - path: /
+  scalings:
+    - generic:
+        min: 1
+        max: 1
+  healthchecks:
+    - http:
+        path: /api/v1/health
+        port: 8000

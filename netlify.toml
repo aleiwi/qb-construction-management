@@ -1,0 +1,31 @@
+# Netlify config for the QB React SPA (frontend/).
+# Backend is hosted separately (VPS docker-compose or PaaS) — set
+# VITE_API_URL at build time or via Netlify env var (no trailing slash),
+# e.g. https://your-backend-host/api/v1
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback: all routes -> index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Long-cache hashed assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

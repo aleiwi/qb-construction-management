@@ -230,8 +230,11 @@ trusted_hosts = [h.strip() for h in settings.TRUSTED_HOSTS.split(",") if h.strip
 if trusted_hosts and trusted_hosts != ["*"]:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
-# HTTPS enforcement in production (terminated by nginx/caddy: X-Forwarded-Proto)
-if settings.ENVIRONMENT == "production":
+# HTTPS enforcement in production (terminated by nginx/caddy: X-Forwarded-Proto).
+# FORCE_HTTPS=false disables the redirect for intentional plain-HTTP deployments
+# (e.g. IP-only setups without a domain) — otherwise every API call would 307
+# into an unreachable https:// URL.
+if settings.ENVIRONMENT == "production" and settings.FORCE_HTTPS:
     @app.middleware("http")
     async def enforce_https(request: Request, call_next):
         proto = request.headers.get("x-forwarded-proto", "")

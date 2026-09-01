@@ -55,6 +55,7 @@ else
     ORIGIN="http://$PUBIP:80"
     HOSTS="*"
     BASE_URL="http://$PUBIP"
+    FORCE_HTTPS="false"   # no TLS terminator here — otherwise the backend would 307 every call to an unreachable https:// URL
     echo "[!] No domain set -> plain HTTP on http://$PUBIP (no HTTPS)."
     echo "    For free HTTPS, create a DuckDNS subdomain and re-run with DOMAIN set."
   fi
@@ -70,6 +71,7 @@ FIRST_ADMIN_FULL_NAME=مدير النظام
 FIRST_ADMIN_PASSWORD=${FIRST_ADMIN_PASSWORD}
 ALLOWED_ORIGINS=${ORIGIN}
 TRUSTED_HOSTS=${HOSTS}
+FORCE_HTTPS=${FORCE_HTTPS:-true}
 FRONTEND_URL=${BASE_URL}
 PUBLIC_API_URL=${BASE_URL}
 SMTP_HOST=

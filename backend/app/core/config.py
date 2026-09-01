@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
 
+    # Force HTTPS redirect middleware in production. Set false ONLY when the app
+    # is intentionally served over plain HTTP (e.g. IP-only deployments without
+    # a domain / TLS termination). With Caddy or nginx terminating TLS, keep true.
+    FORCE_HTTPS: bool = True
+
     # CORS
     ALLOWED_ORIGINS: str = (
     "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002"
