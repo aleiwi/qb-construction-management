@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نظام إدارة المقاولات المتكامل</title>
+    <!-- Runtime API override: set window.__QB_API_URL__ before app loads (used on GitHub Pages) -->
+    <script>
+      try {
+        var ls = localStorage.getItem('QB_API_URL');
+        if (ls) window.__QB_API_URL__ = ls;
+      } catch(e) {}
+      // Fix favicon for GitHub Pages base path
+      (function(){
+        var base = document.querySelector('base') ? document.querySelector('base').href : (window.location.pathname.indexOf('/qb-construction-management')===0 ? '/qb-construction-management/' : '/');
+        var icon = document.querySelector('link[rel="icon"]');
+        if(icon && base !== '/') {
+          var href = icon.getAttribute('href');
+          if(href && href.charAt(0) === '/' && href.indexOf('/qb-construction-management')!==0) {
+            icon.href = base.replace(/\/$/,'') + href;
+          }
+        }
+      })();
+    </script>
+    <!-- Google Fonts Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/qb-construction-management/assets/index-CV4j1qj3.js"></script>
+    <link rel="modulepreload" crossorigin href="/qb-construction-management/assets/react-vendor-BmcJfOrp.js">
+    <link rel="modulepreload" crossorigin href="/qb-construction-management/assets/motion-vendor-CqZAqN-v.js">
+    <link rel="modulepreload" crossorigin href="/qb-construction-management/assets/pdf-vendor-CaM6FwOe.js">
+    <link rel="modulepreload" crossorigin href="/qb-construction-management/assets/icons-vendor-BPeSAACD.js">
+    <link rel="stylesheet" crossorigin href="/qb-construction-management/assets/index-BQ_7pzUE.css">
+  </head>
+  <body class="bg-slate-900 text-slate-100 font-arabic min-h-screen antialiased">
+    <div id="root"></div>
+  </body>
+</html>
