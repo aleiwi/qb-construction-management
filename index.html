@@ -5,7 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نظام إدارة المقاولات المتكامل</title>
-    <!-- Runtime API override: set window.__QB_API_URL__ before app loads (used on GitHub Pages) -->
+    <!-- Runtime config: load runtime-config.js (optional, for GH Pages without rebuild) -->
+    <script src="./runtime-config.js"></script>
+    <!-- Runtime API override: localStorage takes precedence -->
     <script>
       try {
         var ls = localStorage.getItem('QB_API_URL');
