@@ -1,6 +1,15 @@
 # نظام إدارة المقاولات المتكامل (QB)
 
+[![CI](https://github.com/aleiwi/qb-construction-management/actions/workflows/ci.yml/badge.svg)](https://github.com/aleiwi/qb-construction-management/actions/workflows/ci.yml)
+[![Deploy](https://github.com/aleiwi/qb-construction-management/actions/workflows/deploy.yml/badge.svg)](https://github.com/aleiwi/qb-construction-management/actions/workflows/deploy.yml)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue)](https://aleiwi.github.io/qb-construction-management/)
+[![GHCR](https://img.shields.io/badge/GHCR-qb--backend-blue?logo=docker)](https://github.com/aleiwi/qb-construction-management/pkgs/container/qb-backend)
+
 نظام ويب متكامل لإدارة شركة مقاولات: مشاريع، مباني، مراحل، مقاولون، عقود، BOQ من CAD، مستحقات، ضمان محتجز، فحوصات جودة، HR، تقارير/KPIs، ونسب الإنجاز.
+
+> **🚀 Live Demo (مجاني):** `https://aleiwi.github.io/qb-construction-management/` — انظر `FREE_DEPLOYMENT.md` للنشر بضغطة واحدة (GH Pages + Koyeb + Neon، مجاني 100%)
+
+> **📊 الحالة:** Frontend مرفوع على `gh-pages` (1.5M) + Backend يبنى على `ghcr.io/aleiwi/qb-backend:latest` — فعّل Pages من `Settings -> Pages` ليصبح الرابط حيا.
 
 ## Tech Stack
 - **Backend**: FastAPI + SQLAlchemy (async) + JWT auth
@@ -38,7 +47,21 @@ npm run dev
 
 For a custom backend URL (e.g. when the API is on another host), copy `frontend/.env.example` to `frontend/.env` and set `VITE_API_URL`.
 
-## Deployment (Docker)
+## Deployment — Free (ضغطة واحدة)
+
+**الأسرع (GitHub Pages + Koyeb + Neon — مجاني 100% وبدون بطاقة):**
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File scripts/free-deploy.ps1
+
+# أو Linux/macOS
+bash scripts/free-deploy.sh
+```
+ثم فعّل Pages: `Settings -> Pages -> gh-pages` -> `https://aleiwi.github.io/qb-construction-management/` حية.
+التفاصيل الكاملة: `FREE_DEPLOYMENT.md` + `koyeb.yaml` + `render.yaml` + `netlify.toml`
+
+## Deployment — Docker (Local / Oracle Free VPS)
 
 ```bash
 # 1. Copy & edit env
@@ -53,6 +76,8 @@ docker compose up -d --build
 # Backend:  http://localhost:8000/docs
 # Login:    admin@qb.com / admin123
 ```
+
+للـ VPS المجاني للأبد (Oracle 4 OCPU/24GB): `deploy/DEPLOYMENT.md` + `deploy/setup.sh` (Caddy HTTPS تلقائي).
 
 The compose file spins up:
 - `db` (PostgreSQL 16) — persistent volume `pgdata`
