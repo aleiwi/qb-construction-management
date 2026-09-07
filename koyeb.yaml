@@ -1,19 +1,29 @@
-# Koyeb definition for the QB FastAPI backend (free tier: 1 web service).
-# Deploy:  koyeb app init qb-backend --docker ./backend  (or via dashboard import)
+# Koyeb definition for the QB FastAPI backend (free tier: 1 web service)
 #
-# Required instance env vars (set in the Koyeb dashboard or here):
+# === Option A: GitHub build (free, auto-deploy on push) ===
+# Deploy via dashboard: Import from GitHub -> aleiwi/qb-construction-management -> branch master
+# Koyeb will build backend/Dockerfile automatically.
+#
+# === Option B: GHCR image (recommended, faster) ===
+# GitHub Actions (.github/workflows/deploy.yml) pushes backend to ghcr.io/aleiwi/qb-backend:latest on every master push.
+# In Koyeb dashboard: Create Service -> Docker image -> ghcr.io/aleiwi/qb-backend:latest
+# Make image public: ghcr.io -> Package settings -> Change visibility to Public
+#
+# Required instance env vars (set in Koyeb dashboard -> Service -> Environment):
 #   ENVIRONMENT=production
-#   SECRET_KEY=<long random hex>
-#   DATABASE_URL=postgresql+asyncpg://<user>:<pass>@<host>/<db>   (Neon free tier)
-#   ALLOWED_ORIGINS=https://<your-frontend-domain>
+#   SECRET_KEY=<long random hex>  (generate: openssl rand -hex 48)
+#   DATABASE_URL=postgresql+asyncpg://<user>:<pass>@<host>/<db>   (Neon free tier: https://neon.tech)
+#   ALLOWED_ORIGINS=https://aleiwi.github.io  (or your frontend domain)
 #   TRUSTED_HOSTS=*
 #   SEED_DEFAULT_USERS=false
 #   FIRST_ADMIN_EMAIL=<your email>
 #   FIRST_ADMIN_PASSWORD=<strong password>
-#   FRONTEND_URL=https://<your-frontend-domain>
-#   PUBLIC_API_URL=https://<koyeb-app-url>
-#   FORCE_HTTPS=false   (Koyeb terminates TLS; requests arrive as http to uvicorn
-#                        with X-Forwarded-Proto=https — Koyeb sets it, keep true is fine)
+#   FRONTEND_URL=https://aleiwi.github.io/qb-construction-management
+#   PUBLIC_API_URL=https://<your-koyeb-app>.koyeb.app
+#   FORCE_HTTPS=false   (Koyeb terminates TLS; requests arrive as http to uvicorn)
+#
+# Free tier limits: 512 MB RAM, 0.1 vCPU, sleeps after inactivity (cold start ~10s).
+# Note: First PDF export loads Chromium (~300 MB) — may be slow on free tier, but works.
 
 integrations:
   github:

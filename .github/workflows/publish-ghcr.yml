@@ -1,11 +1,8 @@
-name: Publish backend image to GHCR
+name: Publish backend image to GHCR (manual)
 
+# NOTE: Automated GHCR push is now handled by .github/workflows/deploy.yml (deploy-backend job)
+# This workflow is kept for manual rebuilds only (workflow_dispatch).
 on:
-  push:
-    branches: [master]
-    paths:
-      - "backend/**"
-      - ".github/workflows/publish-ghcr.yml"
   workflow_dispatch:
 
 permissions:

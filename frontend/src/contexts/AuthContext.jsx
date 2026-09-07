@@ -85,7 +85,14 @@ export const AuthProvider = ({ children }) => {
       }
       return { success: false, message: res.data.message || "فشل تسجيل الدخول" };
     } catch (err) {
+      if (err && err.__qbNoBackend) {
+        return { success: false, message: "الواجهة الأمامية منشورة على GitHub Pages لكن الخادم (Backend) لم يُنشر بعد. راجع koyeb.yaml و DEPLOYMENT.md لإنشاء Neon Postgres + Koyeb backend مجاناً، ثم اضبط VITE_API_URL في إعدادات المستودع." };
+      }
       if (!err.response) {
+        const isGhPages = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+        if (isGhPages) {
+          return { success: false, message: "تعذر الاتصال بالخادم. الخادم غير مُكوّن بعد على GitHub Pages. راجع دليل النشر المجاني: koyeb.yaml (Koyeb) أو render.yaml (Render) مع Neon Postgres." };
+        }
         return { success: false, message: "تعذر الاتصال بالخادم. يرجى التأكد من تشغيل خادم FastAPI على المنفذ 8000" };
       }
       const message = err.response?.data?.error?.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة";

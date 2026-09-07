@@ -2,7 +2,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// GitHub Pages (project site: aleiwi.github.io/qb-construction-management/) needs base path.
+// Docker/Caddy and local dev use root "/". Toggle via VITE_GH_PAGES=true at build time.
+const isGhPages = process.env.VITE_GH_PAGES === 'true';
+
 export default defineConfig({
+  base: isGhPages ? '/qb-construction-management/' : '/',
   plugins: [react()],
   test: {
     globals: true,

@@ -1,0 +1,35 @@
+# Render free tier alternative for QB Backend (if Koyeb not preferred)
+# Deploy: connect GitHub repo -> Render dashboard -> New Web Service -> select this file
+# Free: 512 MB RAM, 0.1 CPU, sleeps after 15 min inactivity, 750h/month
+# Docs: https://render.com/docs/free
+
+services:
+  - type: web
+    name: qb-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false  # set to Neon Postgres URL: postgresql+asyncpg://...
+      - key: ALLOWED_ORIGINS
+        value: https://aleiwi.github.io
+      - key: TRUSTED_HOSTS
+        value: "*"
+      - key: SEED_DEFAULT_USERS
+        value: "false"
+      - key: FIRST_ADMIN_EMAIL
+        value: admin@qb.com
+      - key: FIRST_ADMIN_PASSWORD
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://aleiwi.github.io/qb-construction-management
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: FORCE_HTTPS
+        value: "false"
