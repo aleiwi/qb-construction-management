@@ -2,29 +2,28 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Early favicon + runtime config fix for GH Pages base path (must run before <link> fetch)
+      (function(){
+        var isGhPages = location.hostname.includes('github.io') && location.pathname.indexOf('/qb-construction-management')===0;
+        var base = isGhPages ? '/qb-construction-management/' : '/';
+        // Inject favicon with correct base before browser fetches it
+        var link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/svg+xml';
+        link.href = base + 'favicon.svg';
+        document.head.appendChild(link);
+        // Runtime API override
+        try {
+          var ls = localStorage.getItem('QB_API_URL');
+          if (ls) window.__QB_API_URL__ = ls;
+        } catch(e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نظام إدارة المقاولات المتكامل</title>
     <!-- Runtime config: load runtime-config.js (optional, for GH Pages without rebuild) -->
     <script src="./runtime-config.js"></script>
-    <!-- Runtime API override: localStorage takes precedence -->
-    <script>
-      try {
-        var ls = localStorage.getItem('QB_API_URL');
-        if (ls) window.__QB_API_URL__ = ls;
-      } catch(e) {}
-      // Fix favicon for GitHub Pages base path
-      (function(){
-        var base = document.querySelector('base') ? document.querySelector('base').href : (window.location.pathname.indexOf('/qb-construction-management')===0 ? '/qb-construction-management/' : '/');
-        var icon = document.querySelector('link[rel="icon"]');
-        if(icon && base !== '/') {
-          var href = icon.getAttribute('href');
-          if(href && href.charAt(0) === '/' && href.indexOf('/qb-construction-management')!==0) {
-            icon.href = base.replace(/\/$/,'') + href;
-          }
-        }
-      })();
-    </script>
     <!-- Google Fonts Arabic -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

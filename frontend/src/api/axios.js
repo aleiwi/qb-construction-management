@@ -29,13 +29,15 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    // Friendly guard: GitHub Pages without backend configured -> abort API calls that would 404 on Pages
+    // Friendly guard: GitHub Pages without backend configured -> abort ALL API calls that would 404/405 on Pages
     if (!API_BASE && typeof window !== 'undefined' && window.location.hostname.includes('github.io')) {
-      // Allow the request to fail fast with a clear message; callers (login) will show error toast
-      // For background checks (/auth/me) we just want silent failure, so mark it
-      if (config.url && config.url.includes('/auth/me')) {
+      // Silent for background checks, friendly for user actions (login, oauth)
+      const isBackground = config.url && (config.url.includes('/auth/me') || config.url.includes('/auth/oauth/providers'));
+      if (isBackground) {
         return Promise.reject({ __qbNoBackend: true, message: 'Backend not configured for GitHub Pages' });
       }
+      // For login and other explicit actions, abort with clear message so UI can show friendly toast
+      return Promise.reject({ __qbNoBackend: true, message: 'Backend not configured for GitHub Pages - see FREE_DEPLOYMENT.md' });
     }
     const token = localStorage.getItem('access_token');
     if (token) {
