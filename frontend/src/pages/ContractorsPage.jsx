@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   Plus, RefreshCw, Edit2, Trash2, ArrowLeft,
-  Building2, X, CheckCircle2, AlertCircle, ChevronRight, UserCheck, Phone, Mail
+  Building2, X, CheckCircle2, AlertCircle, ChevronRight, UserCheck, Phone, Mail, HardHat
 } from 'lucide-react';
 
 const SPECS = {
