@@ -39,6 +39,10 @@ api.interceptors.request.use(
       // For login and other explicit actions, abort with clear message so UI can show friendly toast
       return Promise.reject({ __qbNoBackend: true, message: 'Backend not configured for GitHub Pages - see FREE_DEPLOYMENT.md' });
     }
+    // LocalTunnel (temp) requires bypass header, otherwise returns HTML warning page
+    if (API_BASE && API_BASE.includes('loca.lt')) {
+      config.headers['Bypass-Tunnel-Reminder'] = 'true';
+    }
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -69,7 +73,8 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refreshToken }, { timeout: 5000 });
+          const refreshHeaders = API_BASE && API_BASE.includes('loca.lt') ? { 'Bypass-Tunnel-Reminder': 'true' } : {};
+          const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refreshToken }, { timeout: 5000, headers: refreshHeaders });
           if (res.data.success) {
             const { access_token, refresh_token: new_refresh } = res.data.data;
             localStorage.setItem('access_token', access_token);
