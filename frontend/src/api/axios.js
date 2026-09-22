@@ -21,7 +21,7 @@ if (!API_BASE && isGhPagesHost) {
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '15000', 10),
+  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -74,7 +74,7 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const refreshHeaders = API_BASE && API_BASE.includes('loca.lt') ? { 'Bypass-Tunnel-Reminder': 'true' } : {};
-          const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refreshToken }, { timeout: 5000, headers: refreshHeaders });
+          const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refreshToken }, { timeout: 10000, headers: refreshHeaders });
           if (res.data.success) {
             const { access_token, refresh_token: new_refresh } = res.data.data;
             localStorage.setItem('access_token', access_token);
