@@ -174,3 +174,29 @@ def catalog() -> List[Dict]:
          "factor_locked": name in _FACTOR_LOCKED}
         for name, meta in ITEMS.items()
     ]
+
+
+# Legacy marketRates.current defaults (used when the price library has no
+# matching entry — the library is the live reference, these are fallback).
+MARKET_DEFAULTS = {"concrete": 300.0, "steel": 3000.0, "block": 1.5}
+
+
+def market_comparison(concrete_price: float, steel_price: float, block_price: float,
+                      library: Dict[str, float]) -> Dict:
+    refs = {
+        "concrete": library.get("concrete_slab") or library.get("concrete_wall")
+        or MARKET_DEFAULTS["concrete"],
+        "steel": library.get("rebar") or MARKET_DEFAULTS["steel"],
+        # No per-piece block price exists in the library — legacy default.
+        "block": MARKET_DEFAULTS["block"],
+    }
+    entered = {"concrete": concrete_price, "steel": steel_price, "block": block_price}
+    diffs = {
+        k: round((entered[k] - refs[k]) / refs[k] * 100, 1) if refs[k] else 0.0
+        for k in refs
+    }
+    avg = sum(abs(v) for v in diffs.values()) / 3
+    risk = "عالي" if avg > 15 else ("متوسط" if avg > 8 else "منخفض")
+    return {"refs": refs, "diffs_pct": diffs, "risk": risk,
+            "from_library": {"concrete": "concrete_slab" in library or "concrete_wall" in library,
+                             "steel": "rebar" in library, "block": False}}

@@ -5,7 +5,7 @@ import api from '../api/axios';
 import { formatCount } from '../components/dxf/DrawingViewerWidgets';
 import {
   Calculator, Plus, Trash2, RefreshCw, AlertCircle, Sparkles,
-  FileText, DollarSign, TrendingUp, Ruler,
+  FileText, DollarSign, TrendingUp, Ruler, Search, Download,
 } from 'lucide-react';
 
 const EMPTY_PRICES = {
@@ -27,8 +27,11 @@ export const QuickEstimatorPage = () => {
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState({ name: '', length: '', width: '', thickness: '', pre_area: '', conversion_factor: '' });
   const [result, setResult] = useState(null);
+  const [stale, setStale] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState('');
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const fetchCatalog = useCallback(async () => {
     try {
@@ -42,9 +45,12 @@ export const QuickEstimatorPage = () => {
   useEffect(() => { fetchCatalog(); }, [fetchCatalog]);
 
   const groups = catalog.reduce((acc, c) => {
+    if (search && !c.name.includes(search)) return acc;
     (acc[c.group_label] = acc[c.group_label] || []).push(c);
     return acc;
   }, {});
+
+  const markStale = () => { if (result) setStale(true); };
 
   const prefillFromLibrary = async () => {
     try {
@@ -78,6 +84,10 @@ export const QuickEstimatorPage = () => {
 
   const calculate = async () => {
     if (items.length === 0) { setError('أضف بندًا واحدًا على الأقل'); return; }
+    // Legacy parity: material prices are mandatory and positive.
+    if (!(num(prices.concrete_price) > 0)) { setError('سعر الخرسانة يجب أن يكون أكبر من صفر'); return; }
+    if (!(num(prices.steel_price) > 0)) { setError('سعر الحديد يجب أن يكون أكبر من صفر'); return; }
+    if (!(num(prices.block_price) > 0)) { setError('سعر البلوك يجب أن يكون أكبر من صفر'); return; }
     setError('');
     setLoading(true);
     try {
@@ -86,11 +96,38 @@ export const QuickEstimatorPage = () => {
           ({ name, length, width, thickness, pre_area, conversion_factor })),
         prices: Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, num(v)])),
       });
-      if (res.data.success) setResult(res.data.data);
+      if (res.data.success) { setResult(res.data.data); setStale(false); }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'فشل الحساب');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadFile = async (format) => {
+    setExporting(format);
+    try {
+      const res = await api.post(`/estimate/export/${format}`, {
+        items: items.map(({ name, length, width, thickness, pre_area, conversion_factor }) =>
+          ({ name, length, width, thickness, pre_area, conversion_factor })),
+        prices: Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, num(v)])),
+      }, { responseType: 'blob' });
+      const blob = new Blob([res.data], {
+        type: format === 'pdf' ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `estimate.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('فشل تصدير الملف');
+    } finally {
+      setExporting('');
     }
   };
 
@@ -99,12 +136,22 @@ export const QuickEstimatorPage = () => {
       <label className="block text-xs text-slate-400 mb-1.5">{label} ({unit})</label>
       <input
         type="number" min="0" value={prices[key]}
-        onChange={e => setPrices({ ...prices, [key]: e.target.value })}
+        onChange={e => { setPrices({ ...prices, [key]: e.target.value }); markStale(); }}
         placeholder="0"
         className="w-full bg-slate-800/80 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
       />
     </div>
   );
+
+  const updateItem = (key, field, value) => {
+    setItems(prev => prev.map(x => x.key === key ? { ...x, [field]: num(value) } : x));
+    markStale();
+  };
+
+  const removeItem = (key) => {
+    setItems(prev => prev.filter(x => x.key !== key));
+    markStale();
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -159,6 +206,14 @@ export const QuickEstimatorPage = () => {
             <Ruler className="w-5 h-5 text-blue-400" />
             بنود التقدير ({formatCount(items.length)})
           </h3>
+          <div className="relative max-w-xs mb-4">
+            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="بحث عن بند..."
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pr-10 pl-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-4">
             <select
               value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })}
@@ -207,10 +262,17 @@ export const QuickEstimatorPage = () => {
           {items.length > 0 && (
             <div className="space-y-1.5">
               {items.map(it => (
-                <div key={it.key} className="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2 text-xs">
-                  <span className="text-slate-200 font-semibold">{it.name}</span>
-                  <span className="text-slate-500" dir="ltr">{it.length} × {it.width} × {it.thickness}</span>
-                  <button onClick={() => { setItems(prev => prev.filter(x => x.key !== it.key)); }} className="p-1 text-slate-400 hover:text-red-400">
+                <div key={it.key} className="flex items-center gap-2 bg-slate-800/60 rounded-lg px-3 py-2 text-xs flex-wrap">
+                  <span className="text-slate-200 font-semibold min-w-28 flex-1">{it.name}</span>
+                  {[['length', 'طول'], ['width', 'عرض'], ['thickness', 'سماكة']].map(([k, ph]) => (
+                    <input
+                      key={k} type="number" min="0" value={it[k]}
+                      onChange={e => updateItem(it.key, k, e.target.value)}
+                      placeholder={ph} title={ph}
+                      className="w-20 bg-slate-900/80 border border-slate-700 focus:border-amber-500 rounded-lg px-2 py-1.5 text-xs text-slate-100 outline-none transition"
+                    />
+                  ))}
+                  <button onClick={() => removeItem(it.key)} className="p-1 text-slate-400 hover:text-red-400">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -222,6 +284,12 @@ export const QuickEstimatorPage = () => {
         {/* Results */}
         {result && (
           <>
+            {stale && (
+              <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-2xl text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>تغيرت المدخلات — أعد الحساب لنتائج محدثة</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: 'خرسانة', value: `${fmt(result.totals.concrete_m3)} م³`, color: 'text-slate-200' },
@@ -236,16 +304,60 @@ export const QuickEstimatorPage = () => {
               ))}
             </div>
 
+            {result.market && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h3 className="font-bold text-white text-base">مقارنة أسعارك بالسوق</h3>
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
+                    result.market.risk === 'عالي'
+                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                      : result.market.risk === 'متوسط'
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    المخاطر: {result.market.risk}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[['concrete', 'الخرسانة', 'ر.س/م³'], ['steel', 'الحديد', 'ر.س/طن'], ['block', 'البلوك', 'ر.س']].map(([k, label, unit]) => {
+                    const d = result.market.diffs_pct?.[k] ?? 0;
+                    const color = Math.abs(d) > 15 ? 'text-red-400' : Math.abs(d) > 8 ? 'text-amber-400' : 'text-emerald-400';
+                    return (
+                      <div key={k} className="bg-slate-800/60 rounded-xl px-4 py-3 text-xs">
+                        <div className="text-slate-400 mb-1">{label}</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">المرجع: {fmt(result.market.refs?.[k])} {unit}</span>
+                          <span className={`font-bold ${color}`} dir="ltr">{d > 0 ? '+' : ''}{d}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3">
                 <h3 className="font-bold text-white text-base flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-400" />
                   تفصيل البنود
                 </h3>
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  {fmt(result.totals.cost_per_m2)} ر.س/م²
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    {fmt(result.totals.cost_per_m2)} ر.س/م² قبل الربح ·
+                    {' '}
+                    {fmt(result.totals.area_m2 > 0 ? result.totals.final_price / result.totals.area_m2 : 0)} ر.س/م² بعد الربح
+                  </span>
+                  <button onClick={() => downloadFile('excel')} disabled={!!exporting} className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 disabled:opacity-50 text-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5" />
+                    {exporting === 'excel' ? '...' : 'Excel'}
+                  </button>
+                  <button onClick={() => downloadFile('pdf')} disabled={!!exporting} className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 disabled:opacity-50 text-red-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5" />
+                    {exporting === 'pdf' ? '...' : 'PDF'}
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

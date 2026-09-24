@@ -86,7 +86,7 @@ async def test_conversion_factor_applies_to_area(admin_client):
             {"name": "القواعد", "length": 10, "width": 5, "thickness": 0.5, "conversion_factor": 5},
             {"name": "كل المصاعد", "length": 2, "width": 2, "thickness": 3, "pre_area": 50, "conversion_factor": 2},
         ],
-        "prices": {"factory_rate": 100},
+        "prices": {"concrete_price": 400, "steel_price": 3000, "block_price": 5, "factory_rate": 100},
     }
     res = await admin_client.post("/api/v1/estimate/calculate", json=payload)
     assert res.status_code == 200, res.text
@@ -104,5 +104,46 @@ async def test_conversion_factor_applies_to_area(admin_client):
 async def test_estimator_rbac(accountant_client, contractor_client):
     res = await accountant_client.get("/api/v1/estimate/catalog")
     assert res.status_code == 200, res.text
-    res = await contractor_client.post("/api/v1/estimate/calculate", json={"items": [], "prices": {}})
+    payload = {"items": [], "prices": {"concrete_price": 1, "steel_price": 1, "block_price": 1}}
+    res = await contractor_client.post("/api/v1/estimate/calculate", json=payload)
     assert res.status_code == 403, res.text
+
+
+@pytest.mark.asyncio
+async def test_calculate_requires_positive_prices(admin_client):
+    res = await admin_client.post("/api/v1/estimate/calculate", json={
+        "items": [{"name": "القواعد", "length": 1, "width": 1, "thickness": 1}],
+        "prices": {"concrete_price": 0, "steel_price": 3000, "block_price": 5},
+    })
+    assert res.status_code == 422, res.text
+    assert "سعر الخرسانة" in res.text
+
+
+@pytest.mark.asyncio
+async def test_market_comparison_against_defaults(admin_client):
+    # Test DB price library is empty -> legacy default refs (300/3000/1.5)
+    res = await admin_client.post("/api/v1/estimate/calculate", json={
+        "items": [{"name": "القواعد", "length": 1, "width": 1, "thickness": 1}],
+        "prices": {"concrete_price": 330, "steel_price": 3000, "block_price": 1.5},
+    })
+    assert res.status_code == 200, res.text
+    market = res.json()["data"]["market"]
+    assert market["diffs_pct"]["concrete"] == pytest.approx(10.0)
+    assert market["diffs_pct"]["steel"] == pytest.approx(0.0)
+    assert market["risk"] == "منخفض"
+
+
+@pytest.mark.asyncio
+async def test_estimate_exports_return_files(admin_client):
+    payload = {
+        "items": [{"name": "القواعد", "length": 10, "width": 5, "thickness": 0.5}],
+        "prices": {"concrete_price": 400, "steel_price": 3000, "block_price": 5},
+    }
+    res = await admin_client.post("/api/v1/estimate/export/excel", json=payload)
+    assert res.status_code == 200, res.text
+    assert "spreadsheetml.sheet" in res.headers["content-type"]
+    assert len(res.content) > 2000
+    res = await admin_client.post("/api/v1/estimate/export/pdf", json=payload)
+    assert res.status_code == 200, res.text
+    assert res.headers["content-type"] == "application/pdf"
+    assert res.content[:4] == b"%PDF"
