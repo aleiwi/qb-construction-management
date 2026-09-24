@@ -79,6 +79,28 @@ async def test_calculate_rejects_negative(admin_client):
 
 
 @pytest.mark.asyncio
+async def test_conversion_factor_applies_to_area(admin_client):
+    payload = {
+        "items": [
+            {"name": "الأرضي", "length": 10, "width": 8, "thickness": 0.3, "conversion_factor": 2},
+            {"name": "القواعد", "length": 10, "width": 5, "thickness": 0.5, "conversion_factor": 5},
+            {"name": "كل المصاعد", "length": 2, "width": 2, "thickness": 3, "pre_area": 50, "conversion_factor": 2},
+        ],
+        "prices": {"factory_rate": 100},
+    }
+    res = await admin_client.post("/api/v1/estimate/calculate", json=payload)
+    assert res.status_code == 200, res.text
+    items = {i["name"]: i for i in res.json()["data"]["items"]}
+    assert items["الأرضي"]["area_m2"] == pytest.approx(20.0)  # 10 × 2
+    assert items["القواعد"]["area_m2"] == pytest.approx(0.0)  # zero-area forced
+    assert items["كل المصاعد"]["area_m2"] == pytest.approx(100.0)  # 50 × 2
+    assert items["كل المصاعد"]["concrete_m3"] == pytest.approx(2 * 2)  # L×W, no thickness
+    t = res.json()["data"]["totals"]
+    assert t["area_m2"] == pytest.approx(120.0)
+    assert t["contractor_cost"] == pytest.approx(12000.0)
+
+
+@pytest.mark.asyncio
 async def test_estimator_rbac(accountant_client, contractor_client):
     res = await accountant_client.get("/api/v1/estimate/catalog")
     assert res.status_code == 200, res.text

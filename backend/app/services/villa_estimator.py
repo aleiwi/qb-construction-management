@@ -13,6 +13,9 @@ Conventions (legacy):
 from typing import Dict, List
 
 # name -> (group, steel_ratio kg/m³). Ported from calculationConstants.js.
+# Reachable dropdown names carry the legacy getSteelRatio values verbatim;
+# spelling aliases (no-hamza etc., unreachable in the legacy dropdown) take
+# the sensible ratio instead of the legacy dead-path default of 100.
 ITEMS: Dict[str, Dict] = {
     "صبة النظافة": {"group": "foundations", "steel_ratio": 0},
     "القواعد": {"group": "foundations", "steel_ratio": 150},
@@ -68,7 +71,22 @@ _ZERO_BLOCK = {
     "السور / كرنيش السور", "السور /كرنيش السور", "كل المصاعد",
 }
 
-_ZERO_AREA = _ZERO_BLOCK | {"الجدران", "جدار القبو", "الميدا", "اللبشة"}
+_ZERO_AREA = {
+    # Legacy zeroAreaItems verbatim (area math) — NOT the same as _ZERO_BLOCK.
+    # Alias spellings (no-hamza etc.) are intentionally absent here, exactly
+    # as in the legacy code, so they keep area = length × factor.
+    "صبة النظافة", "القواعد", "صبة اللبشة 2", "الميدا",
+    "الأرضية بين الميدات", "جدار القبو", "مسطح الاعمدة", "مسطح الأعمدة",
+    "الجدران", "اللبشة", "الاعمدة", "الأعمدة", "الطرنشات",
+    "اعمدة السور", "أعمدة السور",
+}
+
+# Legacy zeroConversionItems verbatim (UI shows locked "0 (ثابت)").
+_FACTOR_LOCKED = {
+    "صبة النظافة", "القواعد", "صبة اللبشة 2", "الميدا",
+    "الأرضية بين الميدات", "جدار القبو", "مسطح الأعمدة",
+    "الجدران", "اللبشة", "الأعمدة", "الطرنشات", "أعمدة السور",
+}
 
 
 def block_quantity(name: str, length: float, thickness: float) -> float:
@@ -91,19 +109,21 @@ def block_quantity(name: str, length: float, thickness: float) -> float:
 
 def calculate_item(name: str, length: float, width: float, thickness: float,
                    concrete_price: float, steel_price: float, block_price: float,
-                   pre_area: float = 0.0) -> Dict:
+                   pre_area: float = 0.0, conversion_factor: float = 1.0) -> Dict:
     concrete = length * width if name == "كل المصاعد" else length * width * thickness
     steel = concrete * ITEMS[name]["steel_ratio"] / 1000
     blocks = block_quantity(name, length, thickness)
     if name == "كل المصاعد":
-        area = pre_area  # legacy: elevator area is entered manually
+        area = pre_area * conversion_factor  # legacy: manual area × editable factor
     else:
-        area = 0.0 if name in _ZERO_AREA else length
+        # legacy: factor forced 0 for zero-area items, else user factor (default 1)
+        area = 0.0 if name in _ZERO_AREA else length * conversion_factor
     total = concrete * concrete_price + steel * steel_price + blocks * block_price
     return {
         "name": name,
         "group": ITEMS[name]["group"],
         "concrete_m3": round(concrete, 2),
+        "volume_m3": round(concrete, 2),
         "steel_tons": round(steel, 3),
         "blocks": round(blocks, 2),
         "area_m2": round(area, 2),
@@ -150,6 +170,7 @@ def catalog() -> List[Dict]:
     return [
         {"name": name, "group": meta["group"],
          "group_label": ITEM_GROUPS[meta["group"]],
-         "steel_ratio": meta["steel_ratio"]}
+         "steel_ratio": meta["steel_ratio"],
+         "factor_locked": name in _FACTOR_LOCKED}
         for name, meta in ITEMS.items()
     ]

@@ -8,6 +8,7 @@ class EstimatorItemIn(BaseModel):
     width: float = Field(default=0.0, ge=0.0, le=100000.0)
     thickness: float = Field(default=0.0, ge=0.0, le=100.0)
     pre_area: float = Field(default=0.0, ge=0.0, le=1000000.0)
+    conversion_factor: float = Field(default=1.0, ge=0.0, le=10000.0)
 
 
 class EstimatorPricesIn(BaseModel):
@@ -33,5 +34,6 @@ class EstimatorCatalogItem(BaseModel):
     group: str
     group_label: str
     steel_ratio: float
+    factor_locked: bool = False
 
     model_config = ConfigDict(from_attributes=True)

@@ -37,6 +37,7 @@ async def estimate_calculate(
         villa_estimator.calculate_item(
             i.name, i.length, i.width, i.thickness,
             p.concrete_price, p.steel_price, p.block_price, i.pre_area,
+            i.conversion_factor,
         )
         for i in payload.items
     ]

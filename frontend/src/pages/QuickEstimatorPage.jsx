@@ -25,7 +25,7 @@ export const QuickEstimatorPage = () => {
   const [catalog, setCatalog] = useState([]);
   const [prices, setPrices] = useState(EMPTY_PRICES);
   const [items, setItems] = useState([]);
-  const [draft, setDraft] = useState({ name: '', length: '', width: '', thickness: '', pre_area: '' });
+  const [draft, setDraft] = useState({ name: '', length: '', width: '', thickness: '', pre_area: '', conversion_factor: '' });
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,6 +61,8 @@ export const QuickEstimatorPage = () => {
     }
   };
 
+  const selectedCatalog = catalog.find(c => c.name === draft.name);
+
   const addItem = () => {
     if (!draft.name) { setError('اختر البند أولاً'); return; }
     setError('');
@@ -69,8 +71,9 @@ export const QuickEstimatorPage = () => {
       name: draft.name,
       length: num(draft.length), width: num(draft.width),
       thickness: num(draft.thickness), pre_area: num(draft.pre_area),
+      conversion_factor: draft.conversion_factor === '' ? 1 : num(draft.conversion_factor),
     }]);
-    setDraft({ name: '', length: '', width: '', thickness: '', pre_area: '' });
+    setDraft({ name: '', length: '', width: '', thickness: '', pre_area: '', conversion_factor: '' });
   };
 
   const calculate = async () => {
@@ -79,8 +82,8 @@ export const QuickEstimatorPage = () => {
     setLoading(true);
     try {
       const res = await api.post('/estimate/calculate', {
-        items: items.map(({ name, length, width, thickness, pre_area }) =>
-          ({ name, length, width, thickness, pre_area })),
+        items: items.map(({ name, length, width, thickness, pre_area, conversion_factor }) =>
+          ({ name, length, width, thickness, pre_area, conversion_factor })),
         prices: Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, num(v)])),
       });
       if (res.data.success) setResult(res.data.data);
@@ -156,7 +159,7 @@ export const QuickEstimatorPage = () => {
             <Ruler className="w-5 h-5 text-blue-400" />
             بنود التقدير ({formatCount(items.length)})
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-4">
             <select
               value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })}
               className="md:col-span-2 bg-slate-800/80 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
@@ -176,6 +179,19 @@ export const QuickEstimatorPage = () => {
                 className="bg-slate-800/80 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
               />
             ))}
+            {selectedCatalog?.factor_locked ? (
+              <div className="px-4 py-2.5 rounded-xl text-center text-xs font-bold bg-slate-800/60 text-slate-500">
+                0 (ثابت)
+              </div>
+            ) : (
+              <input
+                type="number" min="0" value={draft.conversion_factor}
+                onChange={e => setDraft({ ...draft, conversion_factor: e.target.value })}
+                placeholder="معامل التحويل (1)"
+                title="معامل التحويل"
+                className="bg-slate-800/80 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
+              />
+            )}
             <button onClick={addItem} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
               <Plus className="w-4 h-4" /> إضافة
             </button>
