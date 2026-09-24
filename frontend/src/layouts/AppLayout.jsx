@@ -4,7 +4,7 @@ import {
   Building2, LayoutDashboard, FolderKanban, FileImage, UploadCloud,
   ListChecks, ShieldCheck, TrendingUp, FileSignature, Wallet, BookOpen,
   HardHat, BarChart3, UsersRound, UserCog, History, Menu, X, ChevronDown,
-  UserCircle, LogOut, PieChart,
+  UserCircle, LogOut, PieChart, Calculator,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessPage } from '../config/roleAccess';
@@ -40,6 +40,7 @@ const NAV_GROUPS = [
       { path: '/contracts', label: 'العقود', icon: FileSignature },
       { path: '/payments', label: 'المدفوعات', icon: Wallet },
       { path: '/price-library', label: 'بنك الأسعار', icon: BookOpen },
+      { path: '/quick-estimator', label: 'الحاسبة التقديرية', icon: Calculator },
       { path: '/contractors', label: 'المقاولون', icon: HardHat },
     ],
   },

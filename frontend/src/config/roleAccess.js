@@ -22,6 +22,7 @@ export const PAGE_ROLES = {
   '/audit-logs': ['admin'],
   '/boq-summary/:projectId': ['admin', 'project_manager', 'engineer', 'accountant'],
   '/price-library': ['admin', 'project_manager', 'accountant'],
+  '/quick-estimator': ['admin', 'project_manager', 'engineer', 'accountant'],
   '/boq-analytics': ['admin', 'project_manager', 'engineer'],
   '/drawings/batch': ['admin', 'project_manager', 'engineer'],
   '/drawings/:drawingId': ['admin', 'project_manager', 'engineer'],

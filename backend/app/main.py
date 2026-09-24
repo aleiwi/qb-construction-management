@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base, AsyncSessionLocal
-from app.routers import auth, users, projects, buildings, stages, contractors, contracts, drawings, boq_elements, price_library, boq_items, payments, retentions, quality_checks, employees, reports, completion_reports, audit_logs, boq_summary
+from app.routers import auth, users, projects, buildings, stages, contractors, contracts, drawings, boq_elements, price_library, boq_items, payments, retentions, quality_checks, employees, reports, completion_reports, audit_logs, boq_summary, estimator
 from app.schemas.response import APIResponse
 from app.models.user import User, UserRole
 from app.models.project import Project, ProjectStatus
@@ -313,6 +313,7 @@ app.include_router(boq_elements.router, prefix=settings.API_V1_STR)
 app.include_router(price_library.router, prefix=settings.API_V1_STR)
 app.include_router(boq_items.router, prefix=settings.API_V1_STR)
 app.include_router(boq_summary.router, prefix=settings.API_V1_STR)
+app.include_router(estimator.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(retentions.router, prefix=settings.API_V1_STR)
 app.include_router(quality_checks.router, prefix=settings.API_V1_STR)

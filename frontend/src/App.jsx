@@ -24,6 +24,7 @@ const CompletionPercentagePage = lazy(() => import('./pages/CompletionPercentage
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
 const BOQSummaryPage = lazy(() => import('./pages/BOQSummaryPage').then(m => ({ default: m.BOQSummaryPage })));
 const PriceLibraryPage = lazy(() => import('./pages/PriceLibraryPage').then(m => ({ default: m.PriceLibraryPage })));
+const QuickEstimatorPage = lazy(() => import('./pages/QuickEstimatorPage').then(m => ({ default: m.QuickEstimatorPage })));
 const ClassificationDashboard = lazy(() => import('./pages/ClassificationDashboard').then(m => ({ default: m.ClassificationDashboard })));
 const BatchUploadPage = lazy(() => import('./pages/BatchUploadPage').then(m => ({ default: m.BatchUploadPage })));
 const DrawingViewerPage = lazy(() => import('./pages/DrawingViewerPage').then(m => ({ default: m.DrawingViewerPage })));
@@ -138,6 +139,9 @@ const AppRoutes = () => {
               } />
               <Route path="/price-library" element={
                 <ProtectedRoute roles={getRouteRoles('/price-library')}><PriceLibraryPage /></ProtectedRoute>
+              } />
+              <Route path="/quick-estimator" element={
+                <ProtectedRoute roles={getRouteRoles('/quick-estimator')}><QuickEstimatorPage /></ProtectedRoute>
               } />
               <Route path="/boq-analytics" element={
                 <ProtectedRoute roles={getRouteRoles('/boq-analytics')}><ClassificationDashboard /></ProtectedRoute>
