@@ -2,6 +2,36 @@ import api from '../../api/axios';
 
 const BASE = api.defaults.baseURL;
 
+// Shared CAD upload policy (P1: single source — both DrawingsPage modal and
+// BatchUploadPage previously re-implemented extension checks with no size cap).
+export const CAD_EXTENSIONS = ['dxf', 'dwg'];
+export const MAX_CAD_FILE_SIZE_MB = 50;
+export const MAX_CAD_FILE_SIZE = MAX_CAD_FILE_SIZE_MB * 1024 * 1024;
+
+/** Returns an Arabic error message, or null when the file is acceptable. */
+export function validateCadFile(file) {
+  if (!file) return 'ملف غير صالح';
+  const ext = (file.name?.split('.').pop() || '').toLowerCase();
+  if (!CAD_EXTENSIONS.includes(ext)) return `الصيغة غير مدعومة (${file.name}): يُقبل .dxf و .dwg فقط`;
+  if (file.size === 0) return `الملف فارغ (${file.name})`;
+  if (file.size > MAX_CAD_FILE_SIZE) {
+    return `الملف كبير جدًا (${file.name} — ${(file.size / 1048576).toFixed(1)}MB، الحد ${MAX_CAD_FILE_SIZE_MB}MB)`;
+  }
+  return null;
+}
+
+/** Splits a FileList/array into {valid, rejected:[{file, error}]}. */
+export function partitionCadFiles(files) {
+  const valid = [];
+  const rejected = [];
+  for (const f of files || []) {
+    const err = validateCadFile(f);
+    if (err) rejected.push({ file: f, error: err });
+    else valid.push(f);
+  }
+  return { valid, rejected };
+}
+
 export const drawingsApi = {
   list: async (params = {}) => {
     const res = await api.get('/drawings', { params });
@@ -24,19 +54,28 @@ export const drawingsApi = {
       return err.response?.data || { success: false, data: null, message: null, error: { code: 'ERROR', message: err.message || 'فشل الرفع' } };
     }
   },
-  uploadBatch: async (buildingId, files, onProgress) => {
-    const results = [];
+  uploadBatch: async (buildingId, files, onProgress, concurrency = 3) => {
+    // P1: bounded-parallel uploads (was strictly sequential — N files took N
+    // round-trips back-to-back; unbounded Promise.all would spike memory).
+    const results = new Array(files.length);
     let completed = 0;
-    for (const file of files) {
-      try {
-        const res = await drawingsApi.upload(buildingId, file);
-        results.push({ file: file.name, success: true, data: res.data });
-      } catch (err) {
-        results.push({ file: file.name, success: false, error: err.response?.data?.error?.message || err.response?.data?.message || err.message });
+    let next = 0;
+    const worker = async () => {
+      while (true) {
+        const i = next++;
+        if (i >= files.length) return;
+        try {
+          const res = await drawingsApi.upload(buildingId, files[i]);
+          results[i] = { file: files[i].name, success: !!res.success, data: res.data, error: res.success ? undefined : (res.error?.message || res.message || 'فشل الرفع') };
+        } catch (err) {
+          results[i] = { file: files[i].name, success: false, error: err.response?.data?.error?.message || err.response?.data?.message || err.message || 'فشل الرفع' };
+        }
+        completed++;
+        if (onProgress) onProgress(completed, files.length);
       }
-      completed++;
-      if (onProgress) onProgress(completed, files.length);
-    }
+    };
+    const workers = Array.from({ length: Math.min(Math.max(concurrency, 1), files.length) }, () => worker());
+    await Promise.all(workers);
     return results;
   },
   delete: async (id) => {
@@ -88,6 +127,10 @@ export const boqElementsApi = {
     const res = await api.get('/boq-elements/unclassified', { params: { skip, limit } });
     return res.data;
   },
+  unclassifiedCount: async () => {
+    const res = await api.get('/boq-elements/unclassified/count');
+    return res.data;
+  },
   classify: async (elementId, data) => {
     const res = await api.patch(`/boq-elements/${elementId}/classify`, data);
     return res.data;
@@ -125,6 +168,10 @@ export const priceLibraryApi = {
   },
   delete: async (id) => {
     const res = await api.delete(`/price-library/${id}`);
+    return res.data;
+  },
+  history: async (id, limit = 50) => {
+    const res = await api.get(`/price-library/${id}/history`, { params: { limit } });
     return res.data;
   },
 };

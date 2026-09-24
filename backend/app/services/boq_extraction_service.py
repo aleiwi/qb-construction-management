@@ -17,6 +17,13 @@ LAYER_RULES: List[Tuple[List[str], ElementType]] = [
     (["roof", "roofs", "تسقيف", "roofing", "roof tile", "a52"], ElementType.ROOF),
     (["partition", "partitionwall", " partition", "حاجز", "فاصل", "drywall", "gypsum", "partition"], ElementType.PARTITION),
     (["opening", "openings", "فتحه", "فتحات", "فتحة", "فتحة", "shaft", "void"], ElementType.OPENING),
+    # ج11: أثاث وتجهيزات — في آخر القائمة عمدًا حتى تسبقها القواعد الإنشائية
+    # عند الأسماء المختلطة (مثل WALL-FIXTURE → جدار). تُحصى بالقطعة.
+    (["fixture", "fixtures", "furniture", "equipment", "equipments", "sanitary",
+      "toilet", "toilets", "bidet", "sink", "sinks", "washbasin", "bathtub",
+      "shower", "showers", "faucet", "faucets", "wc", "handrail", "railing",
+      "vent", "ventilation", "أثاث", "اثاث", "تجهيز", "تجهيزات", "مغسلة", "مغاسل"],
+     ElementType.FURNITURE),
 ]
 
 # ج4: طبقات دقيقة تُفحص قبل الكلمات المفتاحية (تمنع "drywall" → wall)
@@ -30,6 +37,27 @@ EXACT_LAYER_MAP: Dict[str, ElementType] = {
     "doorframe": ElementType.DOOR,
     "windowframe": ElementType.WINDOW,
 }
+
+
+# ج10: طبقات الشرح/الأبعاد — رسومات قياس وتعليق، ليست كميات إنشائية.
+# كانت طبقة مثل S-DIMENSION (عشرات آلاف الخطوط) تُغرق طابور المراجعة
+# بعناصر OTHER/UNCLASSIFIED خردة (0.001م). تُستبعد من العناصر، لكن كيانات
+# DIMENSION تُعالَج دائمًا لاستخلاص القياس (all_dims) الذي تُبنى عليه الأطوال.
+_ANNOTATION_LAYER_EXACT = {"0", "defpoints", "point", "", "annot", "annotations", "annotation", "viewports", "viewport"}
+
+
+def _is_annotation_layer(layer_name: str) -> bool:
+    normalized = (layer_name or "").lower().strip()
+    if not normalized or normalized in _ANNOTATION_LAYER_EXACT:
+        return True
+    return "dim" in normalized
+
+
+def _is_dimension_entity(entity) -> bool:
+    try:
+        return entity.dxftype().startswith("DIM")
+    except Exception:
+        return False
 
 
 def classify_layer_name(layer_name: str) -> Tuple[ElementType, ClassificationStatus]:
@@ -110,6 +138,15 @@ def extract_elements_from_dxf(dxf_file_path: str) -> List[dict]:
     for entity in msp:
         layer = entity.dxf.layer if hasattr(entity.dxf, 'layer') else "UNKNOWN"
         if layer in ("0", "DEFPOINTS", "POINT", ""):
+            continue
+        # ج10: طبقات الشرح (S-DIMENSION وأخواتها) لا تنتج عناصر — باستثناء
+        # كيانات DIMENSION التي تُستخلص قياساتها فقط (all_dims) لربط الأطوال.
+        if _is_annotation_layer(layer):
+            if _is_dimension_entity(entity):
+                try:
+                    _process_dimension(entity, layer, {}, all_dims, collect_element=False)
+                except Exception:
+                    pass
             continue
 
         if layer not in elements_by_layer:
@@ -502,7 +539,9 @@ def _process_spline(entity, layer: str, elements_by_layer: Dict[str, List[dict]]
         })
 
 
-def _process_dimension(entity, layer: str, elements_by_layer: Dict[str, List[dict]], all_dims: List[dict]) -> None:
+def _process_dimension(entity, layer: str, elements_by_layer: Dict[str, List[dict]], all_dims: List[dict], collect_element: bool = False) -> None:
+    """ج10: كيان القياس يُغذي all_dims فقط — القياس شرحٌ وليس كمية، لذا لا
+    يُنشئ عنصر BOQ (كان كل بُعد يُضيف خردة OTHER/UNCLASSIFIED للمراجعة)."""
     measurement = None
     try:
         if hasattr(entity.dxf, 'measurement'):
@@ -543,12 +582,13 @@ def _process_dimension(entity, layer: str, elements_by_layer: Dict[str, List[dic
     if midpoint:
         all_dims.append({"value": round(measurement, 4), "midpoint": midpoint, "dim_type": dim_type})
 
-    elements_by_layer[layer].append({
-        "type": dim_type,
-        "quantity": round(measurement, 4),
-        "unit": unit,
-        "dimensions": {"measurement": round(measurement, 4), "dim_type": dim_type},
-    })
+    if collect_element:
+        elements_by_layer[layer].append({
+            "type": dim_type,
+            "quantity": round(measurement, 4),
+            "unit": unit,
+            "dimensions": {"measurement": round(measurement, 4), "dim_type": dim_type},
+        })
 
 
 def _link_dimensions_to_elements(results: List[dict], all_dims: List[dict]) -> None:

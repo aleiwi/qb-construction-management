@@ -6,11 +6,38 @@ from sqlalchemy import func
 from app.models.boq_element import BOQElement, ElementType, ClassificationStatus
 from app.models.boq_item import BOQItem
 from app.models.price_library import PriceLibrary
-from app.models.project import Project
 from app.models.building import Building
 from app.models.drawing import Drawing
-from app.services.pricing_engine import price_element, calculate_markup
-from app.services.quantity_engine import compute_quantity
+from app.services.pricing_engine import calculate_markup
+from app.services.quantity_engine import compute_quantity, estimate_rebar
+
+
+# Canonical ElementType -> PriceLibrary keys fallback (P0 fix: SEED_PRICES uses
+# concrete_*/door_* keys while BOQElement uses wall/column/... — direct lookup
+# returned ~0 for estimated_auto_cost).
+ELEMENT_TO_PRICE_KEYS: Dict[str, List[str]] = {
+    "wall": ["wall", "concrete_wall", "partition"],
+    "column": ["column", "concrete_column"],
+    "slab": ["slab", "concrete_slab"],
+    "beam": ["beam", "concrete_beam"],
+    "foundation": ["foundation", "concrete_foundation"],
+    "door": ["door", "door_wood", "door_metal", "door_aluminum"],
+    "window": ["window", "window_aluminum", "window_glass"],
+    "stairs": ["stairs", "concrete_stairs"],
+    "roof": ["roof", "concrete_slab"],
+    "partition": ["partition", "partition_gypsum", "partition_plaster", "plastering"],
+    "opening": ["opening"],
+    "furniture": ["furniture"],
+    "other": ["other"],
+}
+
+
+def _lookup_unit_price(element_type_key: str, price_map: Dict[str, float]) -> float:
+    """Best-match unit price for a canonical element type key."""
+    for key in ELEMENT_TO_PRICE_KEYS.get(element_type_key, [element_type_key]):
+        if key in price_map and price_map[key]:
+            return float(price_map[key] or 0)
+    return float(price_map.get(element_type_key, 0) or 0)
 
 
 async def aggregate_project_boq(
@@ -19,13 +46,6 @@ async def aggregate_project_boq(
     markup_config: Optional[Dict] = None,
 ) -> Dict:
     """Aggregate complete BOQ for a project including all drawings and elements."""
-    # Get all buildings in project
-    buildings = await db.execute(
-        select(BOQElement.__table__.c.id).select_from(BOQElement)
-        .join(Drawing, BOQElement.drawing_id == Drawing.id)
-        .join(Building, Drawing.building_id == Building.id)
-        .where(Building.project_id == project_id)
-    )
 
     # Get all drawings for project buildings
     drawings = await db.execute(
@@ -41,30 +61,25 @@ async def aggregate_project_boq(
             "drawings_count": 0,
             "elements_count": 0,
             "classified_count": 0,
+            "unclassified_count": 0,
             "items_count": 0,
+            "unpriced_count": 0,
+            "estimated_count": 0,
+            "is_partial": False,
             "summary": _empty_summary(),
             "by_type": {},
             "by_drawing": [],
         }
 
-    # Get all BOQ elements for these drawings
-    elements = await db.execute(
-        select(BOQElement).filter(BOQElement.drawing_id.in_(drawing_ids))
-    )
-    elements_list = elements.scalars().all()
+    # Stream BOQ elements in chunks (P1: a big project can hold tens of
+    # thousands of elements — loading them + all BOQItems in two giant
+    # queries OOMs the worker; per-chunk aggregation keeps memory bounded
+    # while producing byte-identical totals). IN-clauses are sub-chunked at
+    # 500 to stay under SQLite's variable limit.
+    ELEMENT_CHUNK = 2000
+    IN_CHUNK = 500
 
-    # Get all BOQ items (priced)
-    element_ids = [e.id for e in elements_list]
-    boq_items = []
-    if element_ids:
-        items_result = await db.execute(
-            select(BOQItem).filter(BOQItem.boq_element_id.in_(element_ids))
-        )
-        boq_items = items_result.scalars().all()
-
-    item_map = {item.boq_element_id: item for item in boq_items}
-
-    # Get price library for unit prices
+    # Get price library for unit prices (small table — single query)
     price_lib = await db.execute(select(PriceLibrary))
     price_map: Dict[str, float] = {}
     for p in price_lib.scalars().all():
@@ -74,13 +89,15 @@ async def aggregate_project_boq(
     by_type: Dict[str, Dict] = {}
     total_elements = 0
     classified_count = 0
+    estimated_count = 0
     total_base_cost = 0.0
     total_quantity = 0.0
     items_count = 0
 
     by_drawing: Dict[int, Dict] = {}
 
-    for el in elements_list:
+    def _track_element(el, item) -> None:
+        nonlocal total_elements, classified_count, estimated_count, total_base_cost, items_count
         total_elements += 1
         if el.classification_status != ClassificationStatus.UNCLASSIFIED:
             classified_count += 1
@@ -95,6 +112,7 @@ async def aggregate_project_boq(
                 "unit": el.unit or "م2",
                 "base_cost": 0.0,
                 "items_count": 0,
+                "estimated_count": 0,
             }
 
         by_type[et_key]["count"] += 1
@@ -114,9 +132,11 @@ async def aggregate_project_boq(
             dimensions=dims,
         )
         by_type[et_key]["unit"] = unit
+        if params.get("is_estimated"):
+            estimated_count += 1
+            by_type[et_key]["estimated_count"] += 1
 
         # Check if this element has a priced item
-        item = item_map.get(el.id)
         if item:
             items_count += 1
             base = float(item.total_price or 0)
@@ -140,15 +160,63 @@ async def aggregate_project_boq(
         if item:
             by_drawing[d_id]["base_cost"] += float(item.total_price or 0)
 
+    offset = 0
+    while True:
+        chunk = (
+            await db.execute(
+                select(BOQElement)
+                .filter(BOQElement.drawing_id.in_(drawing_ids))
+                .order_by(BOQElement.id)
+                .offset(offset)
+                .limit(ELEMENT_CHUNK)
+            )
+        ).scalars().all()
+        if not chunk:
+            break
+        chunk_ids = [e.id for e in chunk]
+        chunk_items = {}
+        for i in range(0, len(chunk_ids), IN_CHUNK):
+            sub = chunk_ids[i:i + IN_CHUNK]
+            res = await db.execute(
+                select(BOQItem).filter(BOQItem.boq_element_id.in_(sub))
+            )
+            for it in res.scalars().all():
+                chunk_items[it.boq_element_id] = it
+        for el in chunk:
+            _track_element(el, chunk_items.get(el.id))
+        if len(chunk) < ELEMENT_CHUNK:
+            break
+        offset += ELEMENT_CHUNK
+
     # Calculate markup
     markup = calculate_markup(total_base_cost, **(markup_config or {}))
 
-    # Compare automatic vs manual pricing
+    # Compare automatic vs manual pricing (best-match fallback across key namespaces)
     auto_cost = sum(
-        price_map.get(et, 0) * by_type[et]["total_quantity"]
+        _lookup_unit_price(et, price_map) * by_type[et]["total_quantity"]
         for et in by_type
     )
 
+    # Reinforcement estimate (M3 merge): planning-level steel kg from concrete
+    # volumes only — count/area types (door/window/partition/...) get 0.
+    total_rebar_kg = 0.0
+    for et, data in by_type.items():
+        try:
+            et_enum = ElementType(et)
+        except ValueError:
+            et_enum = ElementType.OTHER
+        if et_enum in (
+            ElementType.WALL, ElementType.COLUMN, ElementType.SLAB,
+            ElementType.BEAM, ElementType.FOUNDATION, ElementType.STAIRS,
+            ElementType.ROOF,
+        ):
+            kg, _ = estimate_rebar(et_enum, data["total_quantity"])
+        else:
+            kg = 0.0
+        data["rebar_kg"] = round(kg, 2)
+        total_rebar_kg += kg
+
+    unpriced_classified = max(classified_count - items_count, 0)
     return {
         "project_id": project_id,
         "drawings_count": len(drawings_list),
@@ -156,9 +224,14 @@ async def aggregate_project_boq(
         "classified_count": classified_count,
         "unclassified_count": total_elements - classified_count,
         "items_count": items_count,
+        "unpriced_count": unpriced_classified,
+        "estimated_count": estimated_count,
+        "is_partial": (total_elements - classified_count) > 0 or unpriced_classified > 0 or estimated_count > 0,
         "summary": {
             "total_base_cost": round(total_base_cost, 2),
             "estimated_auto_cost": round(auto_cost, 2),
+            "total_rebar_kg": round(total_rebar_kg, 2),
+            "total_rebar_tons": round(total_rebar_kg / 1000, 3),
             **markup,
             "elements_per_drawing": round(total_elements / max(len(drawings_list), 1), 1),
         },
@@ -172,6 +245,8 @@ def _empty_summary() -> Dict:
     return {
         "total_base_cost": 0,
         "estimated_auto_cost": 0,
+        "total_rebar_kg": 0,
+        "total_rebar_tons": 0,
         **markup,
         "elements_per_drawing": 0,
     }

@@ -10,55 +10,9 @@ import {
   Layers, Grid3X3, PanelRightClose, RefreshCw,   Maximize, Minimize, HelpCircle
 } from 'lucide-react';
 import { DRAWING_STATUS as STATUS_CONFIG } from '../config/status';
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-const BackgroundGrid = () => (
-  <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns={SVG_NS}>
-    <defs>
-      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(148,163,184,0.04)" strokeWidth="1" />
-      </pattern>
-      <pattern id="grid-large" width="200" height="200" patternUnits="userSpaceOnUse">
-        <path d="M 200 0 L 0 0 0 200" fill="none" stroke="rgba(148,163,184,0.08)" strokeWidth="1" />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#grid-large)" />
-    <rect width="100%" height="100%" fill="url(#grid)" />
-  </svg>
-);
-
-const ELEMENT_TYPE_MAP = {
-  wall: { label: 'جدار', color: 'border-r-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
-  column: { label: 'عمود', color: 'border-r-blue-500', bg: 'bg-blue-500/10', text: 'text-blue-400', dot: 'bg-blue-400' },
-  slab: { label: 'بلاطة', color: 'border-r-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-400', dot: 'bg-purple-400' },
-  beam: { label: 'جسر', color: 'border-r-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
-  footing: { label: 'قاعدة', color: 'border-r-rose-500', bg: 'bg-rose-500/10', text: 'text-rose-400', dot: 'bg-rose-400' },
-  door: { label: 'باب', color: 'border-r-cyan-500', bg: 'bg-cyan-500/10', text: 'text-cyan-400', dot: 'bg-cyan-400' },
-  window: { label: 'نافذة', color: 'border-r-sky-500', bg: 'bg-sky-500/10', text: 'text-sky-400', dot: 'bg-sky-400' },
-  staircase: { label: 'درج', color: 'border-r-orange-500', bg: 'bg-orange-500/10', text: 'text-orange-400', dot: 'bg-orange-400' },
-  other: { label: 'أخرى', color: 'border-r-slate-500', bg: 'bg-slate-500/10', text: 'text-slate-400', dot: 'bg-slate-400' },
-};
-
-const CoordDisplay = ({ svgX, svgY, visible }) => {
-  if (!visible) return null;
-  return (
-    <span className="flex items-center gap-1 shrink-0 text-slate-400 font-mono text-[10px]" dir="ltr">
-      <Crosshair className="w-3 h-3" />
-      {Math.round(svgX)}, {Math.round(svgY)}
-    </span>
-  );
-};
-
-const formatFileSize = (bytes) => {
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
-};
-
-const formatDistance = (dist) => {
-  const num = dist >= 100 ? Math.round(dist) : dist >= 10 ? +dist.toFixed(1) : +dist.toFixed(2);
-  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
-};
+import { normalizeElementType } from '../config/elementTypes';
+import { ELEMENT_TYPE_MAP } from '../components/dxf/elementTypeStyles';
+import { BackgroundGrid, CoordDisplay, formatFileSize, formatDistance, formatDuration, formatCount } from '../components/dxf/DrawingViewerWidgets';
 
 export const DrawingViewerPage = () => {
   const { drawingId } = useParams();
@@ -598,7 +552,7 @@ export const DrawingViewerPage = () => {
   }, {}) || {};
 
   const elementTypeCounts = Object.entries(elementsSummary?.by_type || {}).reduce((acc, [type, count]) => {
-    const key = ELEMENT_TYPE_MAP[type] ? type : 'other';
+    const key = normalizeElementType(type);
     const existing = acc.find(i => i.type === key);
     if (existing) {
       existing.count += count;
@@ -652,7 +606,7 @@ export const DrawingViewerPage = () => {
               <div className="min-w-0">
                 <h1 className="text-sm font-bold text-white truncate">{drawing?.file_name}</h1>
                 <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                  <span>{elementsTotal || drawing?.elements_count || 0} عناصر</span>
+                  <span>{formatCount(elementsTotal || drawing?.elements_count || 0)} عناصر</span>
                   <span>•</span>
                   {statusCfg && (
                     <span className={`flex items-center gap-1 ${statusCfg.color} ${statusCfg.pulse ? 'animate-pulse' : ''}`}>
@@ -956,8 +910,8 @@ export const DrawingViewerPage = () => {
                   >طي</button>
                   <span className="text-[10px] text-slate-500">
                     {filteredTotal > 0 || hasActiveFilters
-                      ? `${elements.length} من ${filteredTotal}`
-                      : `${elementsTotal} عنصر`}
+                      ? `${formatCount(elements.length)} من ${formatCount(filteredTotal)}`
+                      : `${formatCount(elementsTotal)} عنصر`}
                   </span>
                 </div>
               </div>
@@ -1037,7 +991,8 @@ export const DrawingViewerPage = () => {
                 <p className="text-[10px] text-slate-500 text-center py-4">لا توجد نتائج للبحث</p>
               ) : (
                 Object.entries(groupedElements).map(([type, items]) => {
-                const config = ELEMENT_TYPE_MAP[type] || ELEMENT_TYPE_MAP.other;
+                const normKey = normalizeElementType(type);
+                const config = ELEMENT_TYPE_MAP[normKey] || ELEMENT_TYPE_MAP.other;
                 const isOpen = expandedGroups.has(type);
                 return (
                   <div key={type}>
@@ -1148,24 +1103,24 @@ export const DrawingViewerPage = () => {
               <span className="shrink-0 text-slate-600">|</span>
               {elementTypeCounts.map(({ type, count, config }) => (
                 <span key={type} className={`shrink-0 ${config.text}`} dir="ltr">
-                  {count} {config.label}
+                  {formatCount(count)} {config.label}
                 </span>
               ))}
               {drawing.classified_count > 0 && (
                 <>
                   <span className="shrink-0 text-slate-600">|</span>
-                  <span className="text-emerald-400 shrink-0">{drawing.classified_count} مصنف</span>
+                  <span className="text-emerald-400 shrink-0">{formatCount(drawing.classified_count)} مصنف</span>
                 </>
               )}
               {drawing.unclassified_count > 0 && (
-                <span className="text-orange-400 shrink-0">{drawing.unclassified_count} غير مصنف</span>
+                <span className="text-orange-400 shrink-0">{formatCount(drawing.unclassified_count)} غير مصنف</span>
               )}
             </>
           )}
           {drawing && drawing.processing_time > 0 && (
             <>
               <span className="shrink-0 text-slate-600">|</span>
-              <span className="shrink-0">{drawing.processing_time} ث</span>
+              <span className="shrink-0">{formatDuration(drawing.processing_time)}</span>
             </>
           )}
           {measureStart && (measureEnd || cursorSvg) && (

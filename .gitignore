@@ -17,7 +17,11 @@ frontend/dist/
 *.db
 *.sqlite3
 backend/uploads/
+uploads/
 temp/
+
+# Windows reserved-name accidents & stray files
+nul
 
 # Environment
 .env

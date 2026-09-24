@@ -16,6 +16,10 @@ _TEST_DB = backend_path / "qb_test.db"
 os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{_TEST_DB.as_posix()}")
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-not-for-production-0123456789abcdef")
 os.environ.setdefault("LOGIN_RATE_LIMIT_ATTEMPTS", "100000")
+# CRITICAL: force development seed behavior. Without this, running pytest from
+# backend/ loads backend/.env (ENVIRONMENT=production) which disables demo
+# seeding entirely and breaks every login fixture depending on CWD.
+os.environ.setdefault("ENVIRONMENT", "development")
 
 from app.main import app, init_db_seed
 

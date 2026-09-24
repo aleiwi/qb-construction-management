@@ -3,14 +3,20 @@ import { priceLibraryApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { confirmDialog } from '../utils/alerts';
-import { Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, AlertCircle, RefreshCw, History } from 'lucide-react';
 
 const UNIT_OPTIONS = ['م2', 'م3', 'م', 'عدد', 'كجم', 'طن', 'م2.سقف', 'م2.جدار'];
 
 const ELEMENT_TYPES = [
   'wall', 'column', 'slab', 'beam', 'foundation',
-  'door', 'window', 'stairs', 'roof', 'partition', 'opening', 'other',
+  'door', 'window', 'stairs', 'roof', 'partition', 'opening', 'furniture', 'other',
 ];
+
+const CHANGE_LABELS = {
+  create: { label: 'إنشاء', color: 'text-emerald-400' },
+  update: { label: 'تعديل', color: 'text-blue-400' },
+  delete: { label: 'حذف', color: 'text-red-400' },
+};
 
 export const PriceLibraryPage = () => {
   const [prices, setPrices] = useState([]);
@@ -20,6 +26,9 @@ export const PriceLibraryPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ element_type: '', unit: 'م2', unit_price: '', description: '' });
+  const [historyFor, setHistoryFor] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchPrices = async () => {
     setLoading(true);
@@ -74,9 +83,25 @@ export const PriceLibraryPage = () => {
     if (!(await confirmDialog('حذف السعر', 'هل أنت متأكد من حذف هذا السعر؟'))) return;
     try {
       await priceLibraryApi.delete(id);
+      if (historyFor === id) { setHistoryFor(null); setHistory([]); }
       await fetchPrices();
     } catch {
       setError('فشل حذف السعر');
+    }
+  };
+
+  const toggleHistory = async (id) => {
+    if (historyFor === id) { setHistoryFor(null); setHistory([]); return; }
+    setHistoryFor(id);
+    setHistory([]);
+    setHistoryLoading(true);
+    try {
+      const res = await priceLibraryApi.history(id);
+      if (res.success) setHistory(res.data);
+    } catch {
+      setError('فشل تحميل سجل الأسعار');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -136,7 +161,8 @@ export const PriceLibraryPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {filtered.map(p => (
-                    <tr key={p.id} className="hover:bg-slate-800/30 transition">
+                    <React.Fragment key={p.id}>
+                    <tr className="hover:bg-slate-800/30 transition">
                       <td className="py-3 px-4">
                         <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-xs font-bold text-emerald-400">
                           {p.element_type}
@@ -147,6 +173,9 @@ export const PriceLibraryPage = () => {
                       <td className="py-3 px-4 text-white font-bold">{p.unit_price.toLocaleString()} ر.س</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => toggleHistory(p.id)} title="سجل الأسعار" className={`p-1.5 rounded-lg transition ${historyFor === p.id ? 'bg-amber-600/40 text-amber-300' : 'bg-slate-600/20 hover:bg-slate-600/40 text-slate-400'}`}>
+                            <History className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => openEdit(p)} className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -156,6 +185,31 @@ export const PriceLibraryPage = () => {
                         </div>
                       </td>
                     </tr>
+                    {historyFor === p.id && (
+                      <tr className="bg-slate-950/60">
+                        <td colSpan={5} className="py-3 px-6">
+                          {historyLoading ? (
+                            <p className="text-xs text-slate-500">جارٍ تحميل السجل...</p>
+                          ) : history.length === 0 ? (
+                            <p className="text-xs text-slate-500">لا يوجد سجل لهذا السعر بعد</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {history.map(h => {
+                                const cfg = CHANGE_LABELS[h.change] || CHANGE_LABELS.update;
+                                return (
+                                  <div key={h.id} className="flex items-center gap-3 text-xs text-slate-400">
+                                    <span className={`font-bold ${cfg.color}`}>{cfg.label}</span>
+                                    <span className="text-white font-semibold">{Number(h.unit_price).toLocaleString()} ر.س / {h.unit}</span>
+                                    <span className="text-slate-600">{new Date(h.created_at).toLocaleString('ar-SA-u-nu-latn')}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                   {filtered.length === 0 && (
                     <tr>

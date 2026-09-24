@@ -9,6 +9,8 @@ import {
   Building2, Layers, DollarSign, PieChart as PieChartIcon, TrendingUp, Percent, AlertCircle
 } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { elementLabel } from '../config/elementTypes';
+import { formatCount } from '../components/dxf/DrawingViewerWidgets';
 
 const CHART_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#a855f7', '#14b8a6', '#f43f5e', '#06b6d4', '#f97316', '#64748b'];
 
@@ -70,8 +72,7 @@ export const BOQSummaryPage = () => {
 
   const summary = boq?.summary;
   const byType = boq?.by_type ? Object.values(boq.by_type) : [];
-  const typeChartData = byType.map(t => ({ name: t.element_type, value: t.base_cost }));
-  const qtyChartData = byType.map(t => ({ name: t.element_type, quantity: t.total_quantity }));
+  const typeChartData = byType.map(t => ({ name: elementLabel(t.element_type), value: t.base_cost }));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -127,6 +128,21 @@ export const BOQSummaryPage = () => {
 
         {boq && (
           <>
+            {/* Partial-total warning: unclassified or classified-but-unpriced elements */}
+            {(boq.unclassified_count > 0 || (boq.unpriced_count || 0) > 0 || (boq.estimated_count || 0) > 0 || boq.is_partial) && (
+              <div className="p-4 bg-amber-950/40 border border-amber-800/50 rounded-2xl flex items-start gap-3 text-amber-300 text-sm">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold mb-1">الإجمالي جزئي — غير مكتمل</p>
+                  <p className="text-xs leading-5">
+                    {boq.unclassified_count > 0 && <span>يوجد {formatCount(boq.unclassified_count)} عنصر غير مصنف. </span>}
+                    {(boq.unpriced_count || 0) > 0 && <span>يوجد {formatCount(boq.unpriced_count)} عنصر مصنف بلا سعر. </span>}
+                    {(boq.estimated_count || 0) > 0 && <span>يوجد {formatCount(boq.estimated_count)} عنصر بكمية تقديرية (لا قياس حقيقي). </span>}
+                    الأرقام المالية لا تشمل هذه العناصر بدقة. راجع صفحة المراجعة والمكتبة السعرية قبل الاعتماد.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
@@ -134,8 +150,8 @@ export const BOQSummaryPage = () => {
                   <Layers className="w-3.5 h-3.5" />
                   <span>العناصر</span>
                 </div>
-                <div className="text-xl font-bold text-white">{boq.elements_count}</div>
-                <div className="text-[10px] text-slate-500">{boq.classified_count} مصنف · {boq.unclassified_count} غير مصنف</div>
+                <div className="text-xl font-bold text-white">{formatCount(boq.elements_count)}</div>
+                <div className="text-[10px] text-slate-500">{formatCount(boq.classified_count)} مصنف · {formatCount(boq.unclassified_count)} غير مصنف</div>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
@@ -167,6 +183,14 @@ export const BOQSummaryPage = () => {
                 </div>
                 <div className="text-xl font-bold text-amber-400">{formatCurrency(summary?.contingency)}</div>
                 <div className="text-[10px] text-slate-500">ر.س</div>
+              </div>
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                  <Layers className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-orange-400">حديد تقديري</span>
+                </div>
+                <div className="text-xl font-bold text-orange-400">{summary?.total_rebar_tons ?? 0} طن</div>
+                <div className="text-[10px] text-slate-500">تقدير تخطيطي، ليس تصميمًا</div>
               </div>
             </div>
 
@@ -232,16 +256,18 @@ export const BOQSummaryPage = () => {
                       <th className="text-right py-3 px-4 font-semibold">الكمية</th>
                       <th className="text-right py-3 px-4 font-semibold">الوحدة</th>
                       <th className="text-right py-3 px-4 font-semibold">التكلفة الأساسية</th>
+                      <th className="text-right py-3 px-4 font-semibold">حديد تقديري (كجم)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
                     {byType.map(t => (
                       <tr key={t.element_type} className="hover:bg-slate-800/30 transition">
-                        <td className="py-3 px-4 text-white font-semibold">{t.element_type}</td>
-                        <td className="py-3 px-4 text-slate-300">{t.count}</td>
+                        <td className="py-3 px-4 text-white font-semibold">{elementLabel(t.element_type)}</td>
+                        <td className="py-3 px-4 text-slate-300">{formatCount(t.count)}</td>
                         <td className="py-3 px-4 text-slate-300">{t.total_quantity.toLocaleString('en-US')}</td>
                         <td className="py-3 px-4 text-slate-400">{t.unit}</td>
                         <td className="py-3 px-4 text-emerald-400 font-semibold">{formatCurrency(t.base_cost)}</td>
+                        <td className="py-3 px-4 text-orange-400/90">{t.rebar_kg ? Number(t.rebar_kg).toLocaleString('en-US') : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

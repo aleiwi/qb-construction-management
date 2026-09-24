@@ -79,6 +79,85 @@ def test_thickness_cm_unit_conversion():
     assert params["thickness"] == pytest.approx(0.25, abs=0.01)
 
 
+# ---------- ج10: طبقات الشرح لا تنتج عناصر (لكن قياساتها تُربط) ----------
+
+# ---------- ج11: الأثاث والتجهيزات نوع عدّي مستقل ----------
+
+def test_fixture_layers_auto_classify_as_furniture():
+    import os
+    import tempfile
+    import ezdxf
+    from app.services.boq_extraction_service import extract_elements_from_dxf
+
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 0), (2, 0), (2, 1), (0, 1)], close=True, dxfattribs={"layer": "A-FIXTURE"})
+    msp.add_circle((10, 10), 0.4, dxfattribs={"layer": "equipments"})
+    msp.add_lwpolyline([(20, 0), (32, 0), (32, 0.2), (20, 0.2)], close=True, dxfattribs={"layer": "WALLS"})
+
+    tmp = os.path.join(tempfile.gettempdir(), "qb_furniture_test.dxf")
+    doc.saveas(tmp)
+    try:
+        extracted = extract_elements_from_dxf(tmp)
+        by_layer = {}
+        for e in extracted:
+            by_layer.setdefault(e["source_layer_name"], e["element_type"])
+        assert by_layer.get("A-FIXTURE") == ElementType.FURNITURE
+        assert by_layer.get("equipments") == ElementType.FURNITURE
+        assert by_layer.get("WALLS") == ElementType.WALL
+    finally:
+        os.unlink(tmp)
+
+
+def test_furniture_keyword_rule_beats_arch_prefix():
+    from app.services.classifier_rules import classify
+    m = classify({"layer_name": "a-fixtures", "text_labels": [], "geometry_type": "", "dimensions": {}})
+    assert m is not None and m.element_type == ElementType.FURNITURE
+    assert m.confidence >= 0.6  # pipeline auto-classify threshold
+    m2 = classify({"layer_name": "S-VENTILATOR", "text_labels": [], "geometry_type": "", "dimensions": {}})
+    assert m2 is not None and m2.element_type == ElementType.FURNITURE
+
+
+def test_annotation_layers_excluded_but_dims_still_link():
+    import os
+    import tempfile
+    import ezdxf
+    from app.services.boq_extraction_service import extract_elements_from_dxf
+
+    doc = ezdxf.new("R2010")
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 0), (12, 0), (12, 0.2), (0, 0.2)], close=True, dxfattribs={"layer": "WALLS"})
+    # خردة شرح: خطوط على طبقة أبعاد + بُعد خطي على طبقة أبعاد
+    msp.add_line((0, -2), (12, -2), dxfattribs={"layer": "S-DIMENSION"})
+    msp.add_line((0, -2.5), (12, -2.5), dxfattribs={"layer": "S-DIMENSION"})
+    msp.add_linear_dim(base=(0, -1), p1=(0, 0), p2=(12, 0), dxfattribs={"layer": "DIMS"}).render()
+
+    tmp = os.path.join(tempfile.gettempdir(), "qb_annotation_skip_test.dxf")
+    doc.saveas(tmp)
+    try:
+        extracted = extract_elements_from_dxf(tmp)
+        layers = {e["source_layer_name"] for e in extracted}
+        assert "S-DIMENSION" not in layers, f"annotation layer leaked: {layers}"
+        assert "DIMS" not in layers, f"dimension junk element leaked: {layers}"
+        walls = [e for e in extracted if e["element_type"] == ElementType.WALL]
+        assert walls, "no wall extracted"
+        # ربط القياس ما زال يعمل رغم الاستبعاد
+        assert walls[0]["dimensions_json"].get("dim_length") == pytest.approx(12.0, abs=0.01)
+    finally:
+        os.unlink(tmp)
+
+
+def test_annotation_layer_matcher():
+    from app.services.boq_extraction_service import _is_annotation_layer
+    assert _is_annotation_layer("S-DIMENSION")
+    assert _is_annotation_layer("DIMS")
+    assert _is_annotation_layer("A-DIM-01")
+    assert _is_annotation_layer("DEFPOINTS")
+    assert not _is_annotation_layer("WALLS")
+    assert not _is_annotation_layer("A-WALL-FULL")
+    assert not _is_annotation_layer("DOORS")
+
+
 def test_dimension_entity_linking_in_dxf():
     import os
     import tempfile

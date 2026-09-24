@@ -16,7 +16,7 @@ router = APIRouter(prefix="/boq-summary", tags=["BOQ Summary"])
 async def get_project_boq(
     project_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER, UserRole.ACCOUNTANT])),
 ):
     result = await aggregate_project_boq(db, project_id)
     if not result or result["elements_count"] == 0:

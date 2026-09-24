@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/drawings", tags=["Drawings"])
 
-# ج8: حد أقصى لمعالجة مخطط واحد في الخلفية في كل مرة — الملفات الضخمة (DWG)
-# تستهلك CPU وكتابة ضخمة، وتزاحم المعالجات المتعددة تحجب الخادم عن الطلبات الأخرى.
+# ج8: حد أقصى لمعالجة المخططات في الخلفية بالتزامن — الملفات الضخمة (DWG)
+# تستهلك CPU وكتابة ضخمة. 3 توازن بين الإنتاجية وعدم حجب الخادم
+# (كانت 1: ملف ضخم واحد يجمّد الطابور كله).
 import asyncio
-_drawings_process_semaphore = asyncio.Semaphore(1)
+_drawings_process_semaphore = asyncio.Semaphore(3)
 
 
 @router.get("", response_model=APIResponse[List[DrawingListOut]])
@@ -178,6 +179,16 @@ async def preview_drawing(
     if not os.path.exists(file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ملف المخطط غير موجود على الخادم")
 
+    # P1: cache المعاينة بجانب الملف — توليد SVG مكلف (ezdxf render كامل)
+    # ويعيد نفس الناتج ما لم يتغير الملف. مفتاح الصلاحية: mtime الملف.
+    cache_path = file_path + ".preview.svg"
+    try:
+        if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(file_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return APIResponse.ok(data={"svg": f.read()}, message="تم جلب المعاينة بنجاح")
+    except OSError:
+        pass
+
     svg_content = None
     try:
         import ezdxf
@@ -202,6 +213,12 @@ async def preview_drawing(
 
     if not svg_content:
         return APIResponse.ok(data={"svg": None}, message="تعذر إنشاء معاينة للمخطط")
+
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(svg_content)
+    except OSError:
+        logger.warning("Failed to write SVG preview cache for drawing %s", drawing_id)
 
     return APIResponse.ok(data={"svg": svg_content}, message="تم إنشاء المعاينة بنجاح")
 

@@ -111,6 +111,12 @@ QUANTITY_RULES: Dict[ElementType, dict] = {
         "description": "فتحة",
         "unit_price_ref": "opening",
     },
+    ElementType.FURNITURE: {
+        "primary_unit": "قطعة",
+        "formula": "count",
+        "description": "أثاث وتجهيزات",
+        "unit_price_ref": "furniture",
+    },
     ElementType.OTHER: {
         "primary_unit": "م2",
         "formula": "area",
@@ -138,10 +144,14 @@ def compute_quantity(
     geometry_length = _num(geometry_length)
     params = {}
     qty = 0.0
+    # P1: flag quantities invented from hardcoded fallbacks (no measured extent).
+    # Callers surface `is_estimated` instead of silently trusting the number.
+    estimated = False
 
-    if element_type in (ElementType.DOOR, ElementType.WINDOW):
+    if element_type in (ElementType.DOOR, ElementType.WINDOW, ElementType.FURNITURE):
         qty = 1.0  # Count-based
         params["count"] = 1
+        params["is_estimated"] = False
         return (qty, rule["primary_unit"], params)
 
     if element_type == ElementType.WALL:
@@ -149,7 +159,9 @@ def compute_quantity(
         # الطول = الضلع الأطول من المستطيل المحيط (bbox)، السماكة = الأقصر.
         # ج5: قياس DIMENSION المرتبط مكانيًا له الأولوية.
         bbox_len, bbox_thk = _bbox_length_thickness(dims)
-        length = dims.get("dim_length", 0) or geometry_length or dims.get("length", 0) or bbox_len or 5.0
+        length_src = dims.get("dim_length", 0) or geometry_length or dims.get("length", 0) or bbox_len
+        estimated = not bool(length_src)
+        length = length_src or 5.0
         thickness = dims.get("dim_thickness", 0) or _extract_dim_from_text(dims, "thickness") or bbox_thk or rule["default_thickness"]
         height = _extract_dim_from_text(dims, "height") or rule["default_height"]
         qty = length * height * thickness
@@ -166,61 +178,88 @@ def compute_quantity(
             eq_side = math.sqrt(math.pi) * radius  # side بحيث side² = πr²
             width = dims.get("dim_width", 0) or _extract_dim_from_text(dims, "width") or eq_side
             depth = dims.get("dim_depth", 0) or _extract_dim_from_text(dims, "depth") or eq_side
+            estimated = False
         else:
-            width = dims.get("dim_width", 0) or _extract_dim_from_text(dims, "width") or dims.get("width", 0) or rule["default_width"]
+            width_src = dims.get("dim_width", 0) or _extract_dim_from_text(dims, "width") or dims.get("width", 0)
+            estimated = not bool(width_src)
+            width = width_src or rule["default_width"]
             depth = dims.get("dim_depth", 0) or _extract_dim_from_text(dims, "depth") or width or rule["default_depth"]
         height = _extract_dim_from_text(dims, "height") or rule["default_height"]
         qty = width * depth * height
         params = {"width": round(width, 2), "depth": round(depth, 2), "height": round(height, 2)}
 
     elif element_type in (ElementType.SLAB, ElementType.ROOF):
-        area = geometry_area or dims.get("area", 0) or 10.0
+        area_src = geometry_area or dims.get("area", 0)
+        estimated = not bool(area_src)
+        area = area_src or 10.0
         thickness = _extract_dim_from_text(dims, "thickness") or rule["default_thickness"]
         qty = area * thickness
         params = {"area": round(area, 2), "thickness": round(thickness, 2)}
 
     elif element_type == ElementType.BEAM:
         bbox_len, bbox_w = _bbox_length_thickness(dims)
-        length = dims.get("dim_length", 0) or geometry_length or dims.get("length", 0) or bbox_len or 4.0
+        length_src = dims.get("dim_length", 0) or geometry_length or dims.get("length", 0) or bbox_len
+        estimated = not bool(length_src)
+        length = length_src or 4.0
         width = dims.get("dim_width", 0) or _extract_dim_from_text(dims, "width") or bbox_w or rule["default_width"]
         depth = _extract_dim_from_text(dims, "depth") or rule["default_depth"]
         qty = width * depth * length
         params = {"width": round(width, 2), "depth": round(depth, 2), "length": round(length, 2)}
 
     elif element_type == ElementType.FOUNDATION:
-        area = geometry_area or dims.get("area", 0) or 4.0
+        area_src = geometry_area or dims.get("area", 0)
+        estimated = not bool(area_src)
+        area = area_src or 4.0
         depth = _extract_dim_from_text(dims, "depth") or rule["default_depth"]
         qty = area * depth
         params = {"area": round(area, 2), "depth": round(depth, 2)}
 
     elif element_type == ElementType.STAIRS:
-        width = _extract_dim_from_text(dims, "width") or rule["default_width"]
-        length = dims.get("length", 0) or rule["default_length"]
+        width_src = _extract_dim_from_text(dims, "width") or dims.get("width", 0)
+        length_src = dims.get("length", 0) or dims.get("dim_length", 0)
+        estimated = not bool(width_src and length_src)
+        width = width_src or rule["default_width"]
+        length = length_src or rule["default_length"]
         height = _extract_dim_from_text(dims, "height") or rule["default_height"]
         qty = width * length * height / 2
         params = {"width": round(width, 2), "length": round(length, 2), "height": round(height, 2)}
 
     elif element_type == ElementType.PARTITION:
-        length = geometry_length or dims.get("length", 0) or 3.0
+        length_src = geometry_length or dims.get("length", 0) or dims.get("dim_length", 0)
+        estimated = not bool(length_src)
+        length = length_src or 3.0
         height = _extract_dim_from_text(dims, "height") or rule["default_height"]
         qty = length * height
         params = {"length": round(length, 2), "height": round(height, 2)}
 
     elif element_type == ElementType.OPENING:
-        width = _extract_dim_from_text(dims, "width") or rule["default_width"]
-        height = _extract_dim_from_text(dims, "height") or rule["default_height"]
+        width_src = _extract_dim_from_text(dims, "width") or dims.get("width", 0)
+        height_src = _extract_dim_from_text(dims, "height") or dims.get("height", 0)
+        estimated = not bool(width_src and height_src)
+        width = width_src or rule["default_width"]
+        height = height_src or rule["default_height"]
         qty = width * height
         params = {"width": round(width, 2), "height": round(height, 2)}
 
     else:
         qty = geometry_area or 0
+        estimated = not bool(geometry_area)
         params = {"area": round(qty, 2)}
 
+    params["is_estimated"] = bool(estimated)
     return (round(qty, 4), rule["primary_unit"], params)
 
 
 def estimate_rebar(element_type: ElementType, concrete_volume: float) -> Tuple[float, str]:
-    """Estimate reinforcement steel weight in kg."""
+    """Estimate reinforcement steel weight in kg.
+
+    Rates are planning-level rules of thumb within SBC-practice ranges
+    (slabs ~80-100, beams ~100-150, columns ~120-200, foundations ~80-120
+    kg/m³ depending on design) — NEVER a structural design value. Results
+    are labeled تقديري wherever surfaced.
+    """
+    if element_type == ElementType.FURNITURE:
+        return (0.0, "كجم")  # Count-based fittings carry no concrete/steel
     rates = {
         ElementType.WALL: 80,       # kg/m³
         ElementType.COLUMN: 120,

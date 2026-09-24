@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { drawingsApi } from '../features/boq/boqApi';
+import { drawingsApi, partitionCadFiles } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -43,13 +43,12 @@ export const BatchUploadPage = () => {
 
   const addFiles = useCallback((newFiles) => {
     setError('');
-    const valid = [];
-    for (const f of newFiles) {
-      const ext = f.name.split('.').pop().toLowerCase();
-      if (ext === 'dxf' || ext === 'dwg') valid.push(f);
+    const { valid, rejected } = partitionCadFiles(newFiles);
+    if (rejected.length > 0) {
+      setError(rejected.length === 1 ? rejected[0].error : `تم رفض ${rejected.length} ملف: ${rejected[0].error}`);
     }
     if (valid.length === 0) {
-      setError('يُرجى اختيار ملفات .dxf أو .dwg فقط');
+      if (rejected.length === 0) setError('يُرجى اختيار ملفات .dxf أو .dwg فقط');
       return;
     }
     setFiles(prev => [...prev, ...valid]);
@@ -88,21 +87,14 @@ export const BatchUploadPage = () => {
     setCompleted(0);
     setTotal(files.length);
 
-    const items = [];
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      items.push({ file: f.name, status: 'uploading' });
-      setResults([...items]);
-      try {
-        const res = await drawingsApi.upload(selectedBuilding, f);
-        const drawingId = res.data?.id;
-        items[i] = { file: f.name, status: res.success ? 'completed' : 'failed', error: res.error?.detail || '', drawingId };
-        if (res.success) setCompleted(prev => prev + 1);
-      } catch (err) {
-        items[i] = { file: f.name, status: 'failed', error: err.response?.data?.detail || err.message || 'فشل الرفع' };
-      }
-      setResults([...items]);
-    }
+    // Bounded-parallel batch upload via shared helper (concurrency 3).
+    const onProgress = (done) => setCompleted(done);
+    const batch = await drawingsApi.uploadBatch(selectedBuilding, files, onProgress);
+    const items = batch.map((r) => r.success
+      ? { file: r.file, status: 'completed', drawingId: r.data?.id }
+      : { file: r.file, status: 'failed', error: r.error || 'فشل الرفع' });
+    setResults(items);
+    setCompleted(items.filter(i => i.status === 'completed').length);
 
     setUploading(false);
   };
@@ -166,7 +158,7 @@ export const BatchUploadPage = () => {
             <Upload className="w-3.5 h-3.5" />
             اختر ملفات
           </div>
-          <p className="text-[10px] text-slate-600 mt-3">يدعم .dxf و .dwg — يمكن اختيار عدة ملفات</p>
+          <p className="text-[10px] text-slate-600 mt-3">يدعم .dxf و .dwg — عدة ملفات — الحد 50MB للملف</p>
           <input
             ref={fileInputRef}
             type="file"

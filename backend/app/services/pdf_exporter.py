@@ -6,8 +6,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, cm
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+
+from app.services.arabic_pdf import register_arabic_font, shape_ar
 
 
 # Colors
@@ -17,12 +17,8 @@ SLATE = HexColor("#64748B")
 LIGHT = HexColor("#F8FAFC")
 BORDER_COLOR = HexColor("#CBD5E1")
 
-# Try to register Arabic font; fallback to Helvetica
-try:
-    pdfmetrics.registerFont(TTFont("NotoNaskhArabic", "NotoNaskhArabic-Regular.ttf"))
-    BASE_FONT = "NotoNaskhArabic"
-except Exception:
-    BASE_FONT = "Helvetica"
+# Bundled Amiri (OFL) via shared helper; falls back to Helvetica
+BASE_FONT = register_arabic_font()
 
 
 def _build_styles():
@@ -65,7 +61,7 @@ def export_boq_to_pdf(boq_data: Dict, project_name: str = "BOQ Report") -> bytes
     elements.append(Spacer(1, 100))
     elements.append(Paragraph("Bill of Quantities", styles["CoverTitle"]))
     elements.append(Spacer(1, 12))
-    elements.append(Paragraph(project_name, styles["CoverSub"]))
+    elements.append(Paragraph(shape_ar(project_name), styles["CoverSub"]))
     elements.append(Spacer(1, 6))
     elements.append(Paragraph(f"Date: {datetime.utcnow().strftime('%Y-%m-%d')}", styles["CoverSub"]))
     elements.append(Spacer(1, 30))
@@ -113,7 +109,7 @@ def export_boq_to_pdf(boq_data: Dict, project_name: str = "BOQ Report") -> bytes
             table_data.append([
                 str(idx),
                 et_key,
-                et_data.get("unit", "م2"),
+                shape_ar(et_data.get("unit", "م2")),
                 f"{et_data.get('total_quantity', 0):,.2f}",
                 f"{et_data.get('base_cost', 0):,.2f}",
             ])

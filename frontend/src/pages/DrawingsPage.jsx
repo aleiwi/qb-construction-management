@@ -4,7 +4,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { confirmDialog } from '../utils/alerts';
-import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
+import { drawingsApi, boqElementsApi, partitionCadFiles } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import {
   FileText, Upload, RefreshCw, X, AlertCircle,
@@ -12,6 +12,7 @@ import {
   UploadCloud, Loader2, FileWarning
 } from 'lucide-react';
 import { DRAWING_STATUS as STATUS_CONFIG } from '../config/status';
+import { formatDuration, formatCount } from '../components/dxf/DrawingViewerWidgets';
 
 const UploadModal = ({ buildings, onUpload, onClose }) => {
   const [selectedBuilding, setSelectedBuilding] = useState(buildings[0]?.id || '');
@@ -24,16 +25,16 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const validFiles = files.filter(f => {
-      const ext = f.name.split('.').pop().toLowerCase();
-      return ext === 'dxf' || ext === 'dwg';
-    });
-    if (validFiles.length === 0) {
-      setError('يُرجى اختيار ملفات .dxf أو .dwg فقط');
+    const { valid, rejected } = partitionCadFiles(files);
+    if (rejected.length > 0) {
+      setError(rejected.length === 1 ? rejected[0].error : `تم رفض ${rejected.length} ملف: ${rejected[0].error}`);
+    }
+    if (valid.length === 0) {
+      if (rejected.length === 0) setError('يُرجى اختيار ملفات .dxf أو .dwg فقط');
       return;
     }
     setError('');
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    setSelectedFiles(prev => [...prev, ...valid]);
     e.target.value = '';
   };
 
@@ -101,7 +102,7 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
               onClick={() => fileInputRef.current?.click()}>
               <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
               <p className="text-xs text-slate-400">اسحب وأفلت الملفات هنا أو اضغط للاختيار</p>
-              <p className="text-[10px] text-slate-600 mt-1">يدعم .dxf و .dwg — يمكن اختيار عدة ملفات</p>
+              <p className="text-[10px] text-slate-600 mt-1">يدعم .dxf و .dwg — عدة ملفات — الحد 50MB للملف</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -216,11 +217,7 @@ export const DrawingsPage = () => {
     if (res.success) { showSuccess('تم حذف المخطط'); fetchData(); }
   };
 
-  const formatTime = (seconds) => {
-    if (!seconds || seconds === 0) return '';
-    if (seconds < 60) return `${seconds.toFixed(1)} ث`;
-    return `${(seconds / 60).toFixed(1)} د`;
-  };
+  const formatTime = formatDuration;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -327,10 +324,10 @@ export const DrawingsPage = () => {
                           <span>مبنى #{d.building_id}</span>
                           {d.elements_count > 0 && (
                             <>
-                              <span className="text-blue-400">{d.elements_count} عنصر</span>
-                              <span className="text-emerald-400">{d.classified_count} مصنف</span>
+                              <span className="text-blue-400">{formatCount(d.elements_count)} عنصر</span>
+                              <span className="text-emerald-400">{formatCount(d.classified_count)} مصنف</span>
                               {d.unclassified_count > 0 && (
-                                <span className="text-orange-400">{d.unclassified_count} غير مصنف</span>
+                                <span className="text-orange-400">{formatCount(d.unclassified_count)} غير مصنف</span>
                               )}
                             </>
                           )}

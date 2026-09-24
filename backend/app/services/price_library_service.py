@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
 from app.models.price_library import PriceLibrary
+from app.models.price_history import PriceHistory
 from app.services.audit_log_service import AuditLogService
 
 
@@ -61,3 +62,29 @@ class PriceLibraryService:
         await self.db.delete(price)
         await self.db.commit()
         return True
+
+    async def record_history(
+        self, price: PriceLibrary, change: str, changed_by: Optional[int] = None
+    ) -> PriceHistory:
+        """Append an immutable history row (call AFTER the price change)."""
+        entry = PriceHistory(
+            price_id=price.id,
+            element_type=price.element_type,
+            unit=price.unit,
+            unit_price=price.unit_price,
+            change=change,
+            changed_by=changed_by,
+        )
+        self.db.add(entry)
+        await self.db.commit()
+        await self.db.refresh(entry)
+        return entry
+
+    async def get_history(self, price_id: int, limit: int = 50) -> List[PriceHistory]:
+        result = await self.db.execute(
+            select(PriceHistory)
+            .filter(PriceHistory.price_id == price_id)
+            .order_by(PriceHistory.created_at.desc(), PriceHistory.id.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()

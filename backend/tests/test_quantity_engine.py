@@ -107,6 +107,13 @@ class TestComputeQuantity:
         assert unit == "قطعة"
         assert params["count"] == 1
 
+    def test_furniture_is_count_based(self):
+        qty, unit, params = compute_quantity(ElementType.FURNITURE)
+        assert qty == 1.0
+        assert unit == "قطعة"
+        assert params["count"] == 1
+        assert params["is_estimated"] is False
+
     def test_stairs_computes_width_length_height_over_2(self):
         qty, unit, params = compute_quantity(
             ElementType.STAIRS,
@@ -187,6 +194,11 @@ class TestEstimateRebar:
 
     def test_zero_volume(self):
         weight, unit = estimate_rebar(ElementType.WALL, 0.0)
+        assert weight == 0.0
+        assert unit == "كجم"
+
+    def test_furniture_has_no_rebar(self):
+        weight, unit = estimate_rebar(ElementType.FURNITURE, 10.0)
         assert weight == 0.0
         assert unit == "كجم"
 

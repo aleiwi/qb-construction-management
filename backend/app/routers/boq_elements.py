@@ -73,6 +73,18 @@ async def list_unclassified(
     return APIResponse.ok(data=[BOQElementReviewOut.model_validate(e) for e in elements], message="تم جلب العناصر غير المصنفة")
 
 
+@router.get("/unclassified/count", response_model=APIResponse)
+async def count_unclassified(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
+):
+    """Total unclassified count so the review page can paginate honestly
+    (was showing the 200-item window as if it were the whole queue)."""
+    service = BOQElementService(db)
+    total = await service.get_unclassified_count()
+    return APIResponse.ok(data={"total": total}, message="تم جلب إجمالي العناصر غير المصنفة")
+
+
 @router.patch("/{element_id}/classify", response_model=APIResponse[BOQElementOut])
 async def classify_element(
     element_id: int,

@@ -103,6 +103,12 @@ def _exact_layer_match(layer: str) -> Optional[RuleMatch]:
         "opening": (ElementType.OPENING, 0.75), "openings": (ElementType.OPENING, 0.75),
         "shaft": (ElementType.OPENING, 0.75), "void": (ElementType.OPENING, 0.75),
         "duct opening": (ElementType.OPENING, 0.80),
+        # Furniture & fittings
+        "fixture": (ElementType.FURNITURE, 0.85), "fixtures": (ElementType.FURNITURE, 0.85),
+        "furniture": (ElementType.FURNITURE, 0.85), "equipment": (ElementType.FURNITURE, 0.85),
+        "equipments": (ElementType.FURNITURE, 0.85), "sanitary": (ElementType.FURNITURE, 0.85),
+        "toilet": (ElementType.FURNITURE, 0.85), "toilets": (ElementType.FURNITURE, 0.85),
+        "a-fixture": (ElementType.FURNITURE, 0.85), "a-fixtures": (ElementType.FURNITURE, 0.85),
     }
     if layer in EXACT_RULES:
         et, conf = EXACT_RULES[layer]
@@ -122,6 +128,10 @@ def _keyword_layer_match(layer: str) -> Optional[RuleMatch]:
         (re.compile(r"roof|تسقيف|roofing", re.IGNORECASE), ElementType.ROOF, 0.70, "keyword: roof"),
         (re.compile(r"partition|حاجز|فاصل|drywall|gypsum|gypboard", re.IGNORECASE), ElementType.PARTITION, 0.75, "keyword: partition"),
         (re.compile(r"opening|فتحه|فتحات|فتحة|shaft|void", re.IGNORECASE), ElementType.OPENING, 0.70, "keyword: opening"),
+        # Furniture & fittings (count-based) — before the loose arch/structural
+        # prefix rules so equipment layers aren't claimed as walls/columns.
+        (re.compile(r"fixture|furniture|equipment|sanitary|toilet|bidet|washbasin|bathtub|shower|faucet|\bwc\b|handrail|railing|ventilator|ventilation|\bvent\b|أثاث|اثاث|تجهيز|مغسلة", re.IGNORECASE), ElementType.FURNITURE, 0.75, "keyword: furniture"),
+        (re.compile(r"\bsink\b|\bsinks\b", re.IGNORECASE), ElementType.FURNITURE, 0.75, "keyword: sink"),
         # Arabic construction layer prefixes
         (re.compile(r"^(arch|arc|a-|a )", re.IGNORECASE), ElementType.WALL, 0.50, "arch layer"),
         (re.compile(r"^(struc|str|s-|s )", re.IGNORECASE), ElementType.COLUMN, 0.50, "structural layer"),

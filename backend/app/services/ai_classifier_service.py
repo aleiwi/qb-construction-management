@@ -1,7 +1,7 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, update
 
 from app.models.boq_element import BOQElement, ElementType, ClassificationStatus
 from app.models.drawing import Drawing
@@ -9,6 +9,31 @@ from app.services.classifier_rules import classify as rules_classify
 from app.services.confidence_scorer import score_classification
 from app.services.context_analyzer import build_context, get_classification_features
 from app.services.auto_learner import get_memory, record_classification
+
+
+async def _sync_drawing_counters(db: AsyncSession, per_drawing: Dict[int, int]) -> None:
+    """Apply newly-classified counts to parent drawings (read-then-write so a
+    stale counter can never go negative). Shared pattern with
+    BOQElementService.classify/bulk_classify."""
+    for drawing_id, n in per_drawing.items():
+        cur = (
+            await db.execute(
+                select(Drawing.unclassified_count, Drawing.classified_count).filter(
+                    Drawing.id == drawing_id
+                )
+            )
+        ).one_or_none()
+        if cur:
+            new_un = max(cur[0] - n, 0)
+            moved = cur[0] - new_un
+            await db.execute(
+                update(Drawing)
+                .where(Drawing.id == drawing_id)
+                .values(
+                    classified_count=cur[1] + moved,
+                    unclassified_count=new_un,
+                )
+            )
 
 
 async def run_pipeline_for_element(
@@ -87,6 +112,7 @@ async def reclassify_unclassified(
     classified = 0
     still_unclassified = 0
     errors = 0
+    per_drawing: Dict[int, int] = {}
 
     for element in elements:
         try:
@@ -110,6 +136,7 @@ async def reclassify_unclassified(
                     element.dimensions_json["classifier_source"] = source
                 db.add(element)
                 classified += 1
+                per_drawing[element.drawing_id] = per_drawing.get(element.drawing_id, 0) + 1
             else:
                 # Still unclassified — store confidence for UI
                 if element.dimensions_json is None:
@@ -122,6 +149,7 @@ async def reclassify_unclassified(
         except Exception:
             errors += 1
 
+    await _sync_drawing_counters(db, per_drawing)
     await db.commit()
 
     return {

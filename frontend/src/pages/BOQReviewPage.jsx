@@ -4,25 +4,35 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { boqElementsApi } from '../features/boq/boqApi';
+import { ELEMENT_TYPE_KEYS, elementLabel } from '../config/elementTypes';
+import { formatCount } from '../components/dxf/DrawingViewerWidgets';
 import {
   ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Tag,
   CheckSquare, Square, X, Info, Brain, Loader2
 } from 'lucide-react';
 
-const ELEMENT_TYPES = [
-  { key: 'wall', label: 'جدار', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-  { key: 'column', label: 'عمود', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  { key: 'slab', label: 'بلاطة', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  { key: 'beam', label: 'كمرة', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-  { key: 'foundation', label: 'أساس', color: 'bg-teal-500/10 text-teal-400 border-teal-500/20' },
-  { key: 'door', label: 'باب', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  { key: 'window', label: 'نافذة', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
-  { key: 'stairs', label: 'درج', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20' },
-  { key: 'roof', label: 'سقف', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-  { key: 'partition', label: 'فاصل', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-  { key: 'opening', label: 'فتحة', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
-  { key: 'other', label: 'أخرى', color: 'bg-slate-600/10 text-slate-400 border-slate-600/20' },
-];
+const TYPE_COLORS = {
+  wall: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  column: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  slab: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  beam: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  foundation: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+  door: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  window: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  stairs: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+  roof: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  partition: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  opening: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  furniture: 'bg-lime-500/10 text-lime-400 border-lime-500/20',
+  other: 'bg-slate-600/10 text-slate-400 border-slate-600/20',
+};
+
+// Canonical list from shared config — matches backend ElementType exactly.
+const ELEMENT_TYPES = ELEMENT_TYPE_KEYS.map((key) => ({
+  key,
+  label: elementLabel(key),
+  color: TYPE_COLORS[key] || TYPE_COLORS.other,
+}));
 
 const getTypeConfig = (type) => ELEMENT_TYPES.find(t => t.key === type) || ELEMENT_TYPES[ELEMENT_TYPES.length - 1];
 
@@ -47,25 +57,57 @@ export const BOQReviewPage = () => {
   const navigate = useNavigate();
   const permissions = usePermissions();
   const [elements, setElements] = useState([]);
+  const [totalUnclassified, setTotalUnclassified] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [classifyingType, setClassifyingType] = useState(null);
   const [isReclassifying, setIsReclassifying] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
 
+  const PAGE_LIMIT = 200;
+
+  const fetchTotal = useCallback(async () => {
+    try {
+      const res = await boqElementsApi.unclassifiedCount();
+      if (res.success) setTotalUnclassified(res.data.total);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   const fetchUnclassified = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await boqElementsApi.unclassified(0, 200);
-      if (res.success) setElements(res.data);
+      const [listRes] = await Promise.all([
+        boqElementsApi.unclassified(0, PAGE_LIMIT),
+        fetchTotal(),
+      ]);
+      if (listRes.success) setElements(listRes.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchTotal]);
 
   useEffect(() => { fetchUnclassified(); }, [fetchUnclassified]);
+
+  const handleLoadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await boqElementsApi.unclassified(elements.length, PAGE_LIMIT);
+      if (res.success) {
+        const seen = new Set(elements.map(e => e.id));
+        setElements(prev => [...prev, ...res.data.filter(e => !seen.has(e.id))]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const showSuccess = (msg) => {
     setActionMsg(msg);
@@ -97,6 +139,7 @@ export const BOQReviewPage = () => {
     if (res.success) {
       setElements(prev => prev.filter(e => e.id !== elementId));
       setSelected(prev => { const next = new Set(prev); next.delete(elementId); return next; });
+      setTotalUnclassified(prev => (prev == null ? prev : Math.max(prev - 1, 0)));
       showSuccess('تم تصنيف العنصر بنجاح');
     }
   };
@@ -204,15 +247,22 @@ export const BOQReviewPage = () => {
         </div>
 
         {/* Unclassified Count */}
-        <div className="flex items-center gap-4">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl px-5 py-3">
-            <span className="text-2xl font-bold text-orange-400">{elements.length}</span>
-            <span className="text-xs text-slate-400 mr-2">عنصر غير مصنف</span>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl px-5 py-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-orange-400">{formatCount(totalUnclassified ?? elements.length)}</span>
+            <span className="text-xs text-slate-400">عنصر غير مصنف</span>
+            {totalUnclassified != null && totalUnclassified > elements.length && (
+              <span className="text-[10px] text-slate-500">(عرض {formatCount(elements.length)})</span>
+            )}
           </div>
           {elements.length > 0 && (
             <button onClick={toggleSelectAll} className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1.5">
               {selected.size === elements.length ? <Square className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-              {selected.size === elements.length ? 'إلغاء التحديد' : 'تحديد الكل'}
+              {selected.size === elements.length
+                ? 'إلغاء التحديد'
+                : (totalUnclassified != null && totalUnclassified > elements.length
+                    ? `تحديد المعروض (${formatCount(elements.length)})`
+                    : 'تحديد الكل')}
             </button>
           )}
         </div>
@@ -282,6 +332,23 @@ export const BOQReviewPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination: the window is 200 — offer more while the queue remains */}
+        {totalUnclassified != null && totalUnclassified > elements.length && elements.length > 0 && (
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2"
+            >
+              {loadingMore ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جارٍ التحميل...</>
+              ) : (
+                <>عرض المزيد ({formatCount(elements.length)} من {formatCount(totalUnclassified)})</>
+              )}
+            </button>
           </div>
         )}
       </div>

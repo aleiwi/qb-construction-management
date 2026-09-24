@@ -5,11 +5,21 @@ from sqlalchemy import event
 from app.core.config import settings
 
 # Engine configuration
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    future=True,
-)
+# NOTE: pool_size / max_overflow are only valid for a queued pool (PostgreSQL).
+# SQLite uses NullPool/Singleton and rejects those args, so gate them by dialect.
+_is_sqlite = str(settings.DATABASE_URL).startswith("sqlite")
+_engine_kwargs = {"echo": False, "future": True}
+if _is_sqlite:
+    engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
+else:
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        **_engine_kwargs,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+    )
 
 
 @event.listens_for(engine.sync_engine, "connect")

@@ -2,24 +2,33 @@ import json
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, update
 from app.models.boq_element import BOQElement, ClassificationStatus, ElementType
+from app.models.drawing import Drawing
 from app.schemas.boq_element import BOQElementClassify
 from app.services.auto_learner import record_classification
 from app.services.audit_log_service import AuditLogService
 
 # ج9: أسماء الأنواع بالعربية (وبعض المرادفات الشائعة) للبحث من الواجهة العربية
+# Keys MUST be canonical ElementType values (foundation/stairs — NOT the
+# legacy footing/staircase aliases, which match nothing in the DB).
 _ARABIC_TYPE_ALIASES = {
     "جدار": "wall", "حائط": "wall", "جدران": "wall",
     "عمود": "column", "أعمدة": "column", "اعمدة": "column",
     "بلاطة": "slab", "بلاطات": "slab", "سقف": "slab", "أسقف": "slab", "اسقف": "slab",
     "جسر": "beam", "كمرة": "beam", "كمرات": "beam",
-    "قاعدة": "footing", "قواعد": "footing", "أساس": "footing", "اساس": "footing",
+    "قاعدة": "foundation", "قواعد": "foundation", "أساس": "foundation", "اساس": "foundation",
     "باب": "door", "أبواب": "door", "ابواب": "door",
     "نافذة": "window", "نوافذ": "window", "شباك": "window", "شبابيك": "window",
-    "درج": "staircase", "سلم": "staircase", "سلالم": "staircase",
+    "درج": "stairs", "سلم": "stairs", "سلالم": "stairs",
+    "أثاث": "furniture", "اثاث": "furniture", "تجهيز": "furniture", "تجهيزات": "furniture",
+    "مغسلة": "furniture", "مغاسل": "furniture",
     "أخرى": "other", "اخرى": "other",
 }
+
+
+def _is_unclassified(status) -> bool:
+    return status == ClassificationStatus.UNCLASSIFIED or status == "unclassified"
 
 
 class BOQElementService:
@@ -128,6 +137,18 @@ class BOQElementService:
         element.classification_status = classify_data.classification_status
         element.classified_by = user_id
         self.db.add(element)
+        # Keep the parent drawing's stored counters in sync (they were only set
+        # at extraction time, so manual classification left them stale vs live
+        # aggregation). Guarded decrement — never below zero.
+        if _is_unclassified(old_status) and not _is_unclassified(classify_data.classification_status):
+            await self.db.execute(
+                update(Drawing)
+                .where(Drawing.id == element.drawing_id, Drawing.unclassified_count > 0)
+                .values(
+                    classified_count=Drawing.classified_count + 1,
+                    unclassified_count=Drawing.unclassified_count - 1,
+                )
+            )
         await self.db.commit()
         await self.db.refresh(element)
 
@@ -152,6 +173,7 @@ class BOQElementService:
         )
         elements = result.scalars().all()
         count = 0
+        per_drawing: dict = {}
         audit = AuditLogService(self.db)
         for el in elements:
             old_type = el.element_type.value if isinstance(el.element_type, ElementType) else el.element_type
@@ -162,6 +184,8 @@ class BOQElementService:
             el.classified_by = user_id
             self.db.add(el)
             count += 1
+            if _is_unclassified(old_status):
+                per_drawing[el.drawing_id] = per_drawing.get(el.drawing_id, 0) + 1
 
             await audit.log(
                 user_id=user_id,
@@ -173,6 +197,27 @@ class BOQElementService:
             )
 
             await record_classification(self.db, el)
+        # Sync parent drawing counters for newly-classified elements (see above).
+        # Read-then-write per drawing so a stale counter can never go negative.
+        for drawing_id, n in per_drawing.items():
+            cur = (
+                await self.db.execute(
+                    select(Drawing.unclassified_count, Drawing.classified_count).filter(
+                        Drawing.id == drawing_id
+                    )
+                )
+            ).one_or_none()
+            if cur:
+                new_un = max(cur[0] - n, 0)
+                moved = cur[0] - new_un
+                await self.db.execute(
+                    update(Drawing)
+                    .where(Drawing.id == drawing_id)
+                    .values(
+                        classified_count=cur[1] + moved,
+                        unclassified_count=new_un,
+                    )
+                )
         await self.db.commit()
         return count
 

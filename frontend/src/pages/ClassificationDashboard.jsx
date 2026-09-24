@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { boqElementsApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
-import {
-  BarChart3, PieChart, RefreshCw, Layers, CheckCircle2, AlertTriangle,
+import { BarChart3, PieChart, RefreshCw, Layers, CheckCircle2, AlertTriangle,
   BrainCircuit, Target, AlertCircle
 } from 'lucide-react';
+import { formatCount } from '../components/dxf/DrawingViewerWidgets';
+import { elementLabel } from '../config/elementTypes';
 import { BarChart, Bar, PieChart as RePie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const CHART_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#a855f7', '#14b8a6', '#f43f5e', '#06b6d4', '#f97316', '#64748b', '#8b5cf6', '#ec4899', '#84cc16'];
@@ -31,7 +32,7 @@ export const ClassificationDashboard = () => {
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
   const typeData = stats?.by_type
-    ? Object.entries(stats.by_type).map(([key, val]) => ({ name: key, count: val }))
+    ? Object.entries(stats.by_type).map(([key, val]) => ({ name: elementLabel(key), count: val }))
     : [];
   const statusData = [
     { name: 'مصنف تلقائياً', value: stats?.auto_classified || 0, color: '#3b82f6' },
@@ -78,7 +79,7 @@ export const ClassificationDashboard = () => {
                   <Layers className="w-3.5 h-3.5" />
                   <span>إجمالي العناصر</span>
                 </div>
-                <div className="text-xl font-bold text-white">{total}</div>
+                <div className="text-xl font-bold text-white">{formatCount(total)}</div>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
@@ -92,14 +93,14 @@ export const ClassificationDashboard = () => {
                   <BrainCircuit className="w-3.5 h-3.5 text-blue-400" />
                   <span className="text-blue-400">مصنف تلقائياً</span>
                 </div>
-                <div className="text-xl font-bold text-blue-400">{stats.auto_classified}</div>
+                <div className="text-xl font-bold text-blue-400">{formatCount(stats.auto_classified)}</div>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
                   <span className="text-green-400">مصنف يدوياً</span>
                 </div>
-                <div className="text-xl font-bold text-green-400">{stats.manually_classified}</div>
+                <div className="text-xl font-bold text-green-400">{formatCount(stats.manually_classified)}</div>
               </div>
             </div>
 

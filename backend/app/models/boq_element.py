@@ -40,6 +40,7 @@ class ElementType(str, Enum):
     ROOF = "roof"
     PARTITION = "partition"
     OPENING = "opening"
+    FURNITURE = "furniture"
     OTHER = "other"
 
 

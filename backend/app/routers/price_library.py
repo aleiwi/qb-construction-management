@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.schemas.price_library import PriceLibraryCreate, PriceLibraryUpdate, PriceLibraryOut
+from app.schemas.price_library import PriceLibraryCreate, PriceLibraryUpdate, PriceLibraryOut, PriceHistoryOut
 from app.schemas.response import APIResponse
 from app.services.price_library_service import PriceLibraryService
 from app.services.audit_log_service import AuditLogService
@@ -40,6 +40,9 @@ async def create_or_update_price(
         unit_price=price_in.unit_price,
         description=price_in.description,
     )
+    await service.record_history(
+        price, change="update" if existing else "create", changed_by=current_user.id
+    )
 
     audit = AuditLogService(db)
     await audit.log(
@@ -72,6 +75,7 @@ async def update_price(
     service.db.add(price)
     await service.db.commit()
     await service.db.refresh(price)
+    await service.record_history(price, change="update", changed_by=current_user.id)
 
     audit = AuditLogService(db)
     await audit.log(
@@ -97,6 +101,7 @@ async def delete_price(
     if not price:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="السعر غير موجود")
     old_val = {"unit_price": float(price.unit_price), "unit": price.unit, "element_type": price.element_type}
+    await service.record_history(price, change="delete", changed_by=current_user.id)
     deleted = await service.delete(price_id)
 
     if deleted:
@@ -111,3 +116,18 @@ async def delete_price(
         )
 
     return APIResponse.ok(message="تم حذف السعر بنجاح")
+
+
+@router.get("/{price_id}/history", response_model=APIResponse[List[PriceHistoryOut]])
+async def price_history(
+    price_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ACCOUNTANT])),
+):
+    service = PriceLibraryService(db)
+    entries = await service.get_history(price_id, limit=limit)
+    return APIResponse.ok(
+        data=[PriceHistoryOut.model_validate(e) for e in entries],
+        message="تم جلب سجل الأسعار بنجاح",
+    )

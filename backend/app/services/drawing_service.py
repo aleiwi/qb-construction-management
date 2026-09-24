@@ -225,6 +225,13 @@ class DrawingService:
             return False
         if os.path.exists(drawing.file_path):
             os.remove(drawing.file_path)
+        for suffix in (".preview.svg", ".dxf"):
+            try:
+                sidecar = drawing.file_path + suffix
+                if os.path.exists(sidecar):
+                    os.remove(sidecar)
+            except OSError:
+                pass
         await self.db.delete(drawing)
         await self.db.commit()
         return True

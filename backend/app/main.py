@@ -23,6 +23,7 @@ from app.models.drawing import Drawing, DrawingStatus
 from app.models.batch_job import BatchJob, BatchJobStatus
 from app.models.boq_element import BOQElement, ClassificationStatus, ElementType
 from app.models.price_library import PriceLibrary
+from app.models.price_history import PriceHistory
 from app.models.boq_item import BOQItem
 from app.models.payment import Payment, PaymentStatus
 from app.models.retention_release import RetentionRelease, ReleaseStatus

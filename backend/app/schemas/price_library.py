@@ -27,3 +27,16 @@ class PriceLibraryOut(PriceLibraryBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PriceHistoryOut(BaseModel):
+    id: int
+    price_id: Optional[int]
+    element_type: str
+    unit: str
+    unit_price: float
+    change: str
+    changed_by: Optional[int]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
