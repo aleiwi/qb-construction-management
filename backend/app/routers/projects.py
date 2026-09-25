@@ -104,3 +104,71 @@ async def delete_project(
     except ProjectNotFoundException:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="المشروع غير موجود")
     return APIResponse.ok(message="تم حذف المشروع بنجاح")
+
+# ---- Task Endpoints ----
+
+@router.get("/{project_id}/tasks", response_model=APIResponse[list[dict]])
+async def get_project_tasks(
+    project_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    _: None = Depends(require_project_access()),
+):
+    from app.models.task_model import Task
+    tasks = await db.execute(select(Task).where(Task.project_id == project_id))
+    task_list = tasks.scalars().all()
+    return APIResponse.ok(data=[task.to_dict() if hasattr(task, 'to_dict') else {"id": t.id, "task_text": t.task_text, "is_completed": t.is_completed, "created_at": str(t.created_at)} for t in task_list], message="تم جلب المهام بنجاح")
+
+
+@router.post("/{project_id}/tasks", response_model=APIResponse)
+async def add_project_task(
+    project_id: int,
+    task_data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    _: None = Depends(require_project_access()),
+):
+    from app.models.task_model import Task
+    task = Task(project_id=project_id, task_text=task_data.get("task_text", ""), is_completed=False)
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return APIResponse.ok(data={"id": task.id, "task_text": task.task_text, "is_completed": task.is_completed}, message="تم إضافة المهمة بنجاح")
+
+
+@router.put("/{project_id}/tasks/{task_id}", response_model=APIResponse)
+async def update_project_task(
+    project_id: int,
+    task_id: int,
+    updates: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    _: None = Depends(require_project_access()),
+):
+    from app.models.task_model import Task
+    task = await db.get(Task, task_id)
+    if not task or task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="المهمة غير موجودة")
+    if "task_text" in updates:
+        task.task_text = updates["task_text"]
+    if "is_completed" in updates:
+        task.is_completed = updates["is_completed"]
+    await db.commit()
+    return APIResponse.ok(data={"id": task.id, "task_text": task.task_text, "is_completed": task.is_completed}, message="تم تحديث المهمة")
+
+
+@router.delete("/{project_id}/tasks/{task_id}", response_model=APIResponse)
+async def delete_project_task(
+    project_id: int,
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    _: None = Depends(require_project_access()),
+):
+    from app.models.task_model import Task
+    task = await db.get(Task, task_id)
+    if not task or task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="المهمة غير موجودة")
+    await db.delete(task)
+    await db.commit()
+    return APIResponse.ok(message="تم حذف المهمة")

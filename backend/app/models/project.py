@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy import String, DateTime, Integer, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+from app.models.task_model import Task
 
 
 class ProjectStatus(str, Enum):
@@ -32,3 +33,5 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     buildings: Mapped[list["Building"]] = relationship("Building", back_populates="project", lazy="selectin")
+
+    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="project", lazy="selectin")

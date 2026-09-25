@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaLock, FaEye, FaEyeSlash, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
 import { isValidPassword, isEmpty } from '../../utils/qb/validation.js';
 import { getAuthErrorMessage } from '../../utils/qb/authErrors.js';
 
@@ -13,105 +14,80 @@ const ResetPasswordPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const supabase = getSupabaseClient();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   useEffect(() => {
-    // Check if we have a session (user clicked magic link)
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('رابط غير صالح أو منتهي الصلاحية');
-        navigate('/login');
-      }
-    };
-    checkSession();
-  }, [navigate]);
+    if (!token) {
+      toast.error('رابط غير صالح أو منتهي الصلاحية');
+      navigate('/login');
+    }
+  }, [token, navigate]);
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
 
     if (isEmpty(password)) {
-      toast.error('❌ يرجى إدخال كلمة المرور الجديدة');
+      toast.error('يرجى إدخال كلمة المرور الجديدة');
       return;
     }
 
     if (!isValidPassword(password)) {
-      toast.error('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error('❌ كلمتا المرور غير متطابقتين');
+      toast.error('كلمتا المرور غير متطابقتين');
       return;
     }
 
     setLoading(true);
-    const loadingToast = toast.loading('⏳ جاري تحديث كلمة المرور...');
+    const loadingToast = toast.loading('جاري تحديث كلمة المرور...');
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      const response = await api.post('/auth/reset-password', {
+        token: token,
+        new_password: password
       });
 
-      if (error) throw error;
-
+      if (response.data.success) {
+        toast.dismiss(loadingToast);
+        toast.success('تم تحديث كلمة المرور بنجاح!');
+        setTimeout(() => navigate('/login'), 2000);
+      }
+    } catch (err) {
       toast.dismiss(loadingToast);
-      toast.success('🎉 تم تحديث كلمة المرور بنجاح!');
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-
-    } catch (error) {
-      console.error('Error updating password:', error);
-      toast.dismiss(loadingToast);
-      toast.error(`❌ ${getAuthErrorMessage(error)}`);
+      toast.error('فشل تحديث كلمة المرور');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg"
-      >
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <FaLock className="h-8 w-8 text-blue-600" />
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            تحديث كلمة المرور
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            أدخل كلمة المرور الجديدة لحسابك
-          </p>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+      <div className="bg-slate-900 rounded-xl p-8 w-full max-w-md border border-slate-700">
+        <div className="flex items-center justify-center mb-6">
+          <FaLock className="text-blue-400 text-3xl" />
+          <h2 className="text-2xl font-bold text-white mr-3">إعادة تعيين كلمة المرور</h2>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleUpdatePassword}>
+        <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              كلمة المرور الجديدة
-            </label>
+            <label className="text-sm text-slate-400 mb-1 block">كلمة المرور الجديدة</label>
             <div className="relative">
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <FaLock className="h-5 w-5 text-gray-400" />
-              </div>
               <input
-                id="password"
                 type={showPassword ? 'text' : 'password'}
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="******"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                placeholder="6 أحرف على الأقل"
+                required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute left-3 top-3 text-slate-400 hover:text-white"
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -119,48 +95,36 @@ const ResetPasswordPage = () => {
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              تأكيد كلمة المرور
-            </label>
+            <label className="text-sm text-slate-400 mb-1 block">تأكيد كلمة المرور</label>
             <div className="relative">
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <FaLock className="h-5 w-5 text-gray-400" />
-              </div>
               <input
-                id="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
-                required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="******"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                placeholder="أعد إدخال كلمة المرور"
+                required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute left-3 top-3 text-slate-400 hover:text-white"
               >
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white py-3 rounded-lg flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <FaSpinner className="animate-spin h-5 w-5 ml-2" />
-            ) : (
-              <FaCheckCircle className="h-4 w-4 ml-2" />
-            )}
-            {loading ? 'جاري التحديث...' : 'تغيير كلمة المرور'}
-          </motion.button>
+            {loading ? <FaSpinner className="animate-spin" /> : <FaCheckCircle />}
+            {loading ? 'جاري التحديث...' : 'تحديث كلمة المرور'}
+          </button>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };

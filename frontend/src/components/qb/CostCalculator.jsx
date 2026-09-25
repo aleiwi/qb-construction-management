@@ -7,8 +7,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 // import { authAPI } from '../../utils/qb/utils/api'; // Not needed for now
 import Swal from 'sweetalert2';
-import { projectsDB } from '../lib/database';
-import { DatabaseService } from '../lib/database';
+import api from '../../api/axios';
 
 const CostCalculator = () => {
   const navigate = useNavigate();
@@ -62,7 +61,8 @@ const CostCalculator = () => {
     const loadProjectData = async () => {
       if (mode === 'edit' && projectId) {
         try {
-          const project = await projectsDB.getById(projectId);
+          const response = await api.get(`/projects/projectId`);
+      const project = response.data;;
           if (project) {
             setProjectData({
               name: project.name || '',
@@ -378,7 +378,8 @@ const CostCalculator = () => {
       };
       
       console.log('📋 بيانات المشروع للحفظ:', projectToSave);
-      const savedProject = await DatabaseService.createProject(projectToSave);
+      const response = await api.post('/projects', projectToSave);
+      const savedProject = response.data;;
       
       console.log('✅ تم حفظ المشروع بنجاح:', savedProject);
       
