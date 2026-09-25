@@ -13,6 +13,7 @@ import AppLayout from './layouts/AppLayout';
 const HomePage = lazy(() => import('./pages/qb/HomePage').then(m => ({ default: m.HomePage })));
 const SettingsPage = lazy(() => import('./pages/qb/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const QbProjectPage = lazy(() => import('./pages/qb/ProjectPage').then(m => ({ default: m.ProjectPage })));
+const CostCalculatorPage = lazy(() => import('./pages/qb/CostCalculatorPage').then(m => ({ default: m.CostCalculatorPage })));
 const QbRegisterPage = lazy(() => import('./pages/qb/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const QbForgotPasswordPage = lazy(() => import('./pages/qb/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const QbProfilePage = lazy(() => import('./pages/qb/ProfilePage').then(m => ({ default: m.ProfilePage })));
@@ -98,6 +99,7 @@ const AppRoutes = () => {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/register" element={<QbRegisterPage />} />
                     <Route path="/project" element={<ProtectedRoute roles={getRouteRoles('/project')}><QbProjectPage /></ProtectedRoute>} />
+                    <Route path="/cost-calculator" element={<ProtectedRoute roles={getRouteRoles('/cost-calculator')}><CostCalculatorPage /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roles={getRouteRoles('/profile')}><QbProfilePage /></ProtectedRoute>} />
 
                     <Route element={<ProtectedRoute />}>

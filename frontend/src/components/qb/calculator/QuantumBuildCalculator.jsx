@@ -10,17 +10,17 @@ import AdditionalDataSection from "./AdditionalDataSection";
 import CalculatorItemSelector from "./CalculatorItemSelector";
 import CalculatorItemsTable from "./CalculatorItemsTable";
 import CalculatorResults from "./CalculatorResults";
-import AdvancedEngineeringStandards from "./AdvancedEngineeringStandards.js";
+import AdvancedEngineeringStandards from "./AdvancedEngineeringStandards";
 
 
 // Hooks
-import useEngineeringCalculations from "../../hooks/useEngineeringCalculations.js";
-import { usePdfGenerator } from "../../hooks/usePdfGenerator";
+import useEngineeringCalculations from "../hooks/qb/useEngineeringCalculations.js";
+import { usePdfGenerator } from "../hooks/qb/usePdfGenerator.js";
 
 // Services & Utils
-import projectService from "../../services/projectService.js";
+import projectService from "../services/qb/projectService.js";
 
-import { validateProjectData, calculateItem, calculateTotals, getConversionFactor, getSteelRatio, safeDivide, formatNumber } from '../../utils/qb/calculatorLogic";
+import { validateProjectData, calculateItem, calculateTotals, getConversionFactor, getSteelRatio, safeDivide, formatNumber } from '../utils/qb/calculatorLogic';
 
 import {
   FaCalculator,

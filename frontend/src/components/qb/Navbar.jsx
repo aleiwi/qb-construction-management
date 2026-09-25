@@ -31,7 +31,7 @@ const Navbar = () => {
   const navItems = [
     { path: '/', label: 'الرئيسية', icon: FaHome },
     { path: '/dashboard', label: 'لوحة التحكم', icon: FaChartLine },
-    { path: '/calculator', label: 'حاسبة التكاليف', icon: FaCalculator },
+    { path: '/cost-calculator', label: 'حاسبة التكاليف', icon: FaCalculator },
     { path: '/cad-analyzer', label: 'محلل CAD', icon: FaRocket },
     { path: '/materials', label: 'المواد', icon: FaBox },
     { path: '/reports', label: 'التقارير', icon: FaFileAlt },
