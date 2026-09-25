@@ -46,3 +46,5 @@ playwright-report/
 # Playwright MCP artifacts
 .playwright-mcp/
 backend/.env
+QB-main/
+frontend/node_modules/

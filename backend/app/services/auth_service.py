@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import jwt, JWTError
 from app.models.user import User
@@ -33,8 +33,8 @@ class AuthService:
         self.audit_service = AuditLogService(db)
 
     async def _check_lockout(self, user: User) -> None:
-        if user.locked_until and user.locked_until > datetime.utcnow():
-            remaining = (user.locked_until - datetime.utcnow()).total_seconds() / 60
+        if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+            remaining = (user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60
             raise AccountLockedException(
                 f"تم قفل الحساب مؤقتاً بسبب محاولات فاشلة متكررة، حاول بعد {int(remaining) + 1} دقيقة"
             )
@@ -42,7 +42,7 @@ class AuthService:
     async def _register_failed_attempt(self, user: User, ip_address: Optional[str] = None) -> None:
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
         if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
             user.failed_login_attempts = 0
             await self.db.commit()
             await self.audit_service.log(
@@ -114,7 +114,7 @@ class AuthService:
         payload = {
             "sub": str(user_id),
             "type": token_type,
-            "exp": datetime.utcnow() + timedelta(minutes=expires_minutes),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=expires_minutes),
         }
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

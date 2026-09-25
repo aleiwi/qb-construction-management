@@ -337,6 +337,95 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
   );
 };
 
+const FinanceSettingsCard = ({ project, permissions, onRefresh }) => {
+  const toPct = (v) => (v == null ? '' : String(Math.round(v * 10000) / 100));
+  const [form, setForm] = useState({
+    overhead_percent: toPct(project.overhead_percent),
+    profit_percent: toPct(project.profit_percent),
+    contingency_percent: toPct(project.contingency_percent),
+    vat_rate: toPct(project.vat_rate),
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  const canEdit = permissions.isAdmin || permissions.isProjectManager;
+
+  const save = async () => {
+    setMsg('');
+    setErr('');
+    const payload = {};
+    for (const [k, v] of Object.entries(form)) {
+      if (v === '') { payload[k] = null; continue; }
+      const n = parseFloat(v);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        setErr('النسب يجب أن تكون بين 0 و 100 (فارغ = الافتراضي العام)');
+        return;
+      }
+      payload[k] = n / 100;
+    }
+    setSaving(true);
+    try {
+      const res = await projectsApi.update(project.id, payload);
+      if (res.success) {
+        setMsg('تم حفظ النسب المالية — تُطبق على ملخص BOQ فورًا');
+        setTimeout(() => setMsg(''), 3000);
+        onRefresh();
+      }
+    } catch (e) {
+      setErr(e.response?.data?.error?.message || 'فشل الحفظ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fields = [
+    ['overhead_percent', 'المصاريف الإدارية %', '10'],
+    ['profit_percent', 'هامش الربح %', '15'],
+    ['contingency_percent', 'الاحتياطي %', '5'],
+    ['vat_rate', 'الضريبة %', '15'],
+  ];
+
+  return (
+    <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6">
+      <h3 className="font-bold text-white text-base flex items-center gap-2 mb-1">
+        <DollarSign className="w-5 h-5 text-purple-400" />
+        النسب المالية للمشروع
+      </h3>
+      <p className="text-xs text-slate-500 mb-4">فارغ = النسبة الافتراضية العامة. تُطبق على ملخص BOQ والتصدير.</p>
+      {msg && (
+        <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-800/50 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /><span>{msg}</span>
+        </div>
+      )}
+      {err && (
+        <div className="mb-4 p-3 bg-red-950/40 border border-red-800/50 rounded-xl text-red-300 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" /><span>{err}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {fields.map(([k, label, hint]) => (
+          <div key={k}>
+            <label className="block text-xs text-slate-400 mb-1.5">{label}</label>
+            <input
+              type="number" min="0" max="100" step="0.5" value={form[k]}
+              disabled={!canEdit}
+              onChange={e => setForm({ ...form, [k]: e.target.value })}
+              placeholder={hint}
+              className="w-full bg-slate-800/80 border border-slate-700 focus:border-purple-500 disabled:opacity-60 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
+            />
+          </div>
+        ))}
+      </div>
+      {canEdit && (
+        <button onClick={save} disabled={saving}
+          className="mt-4 px-6 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition">
+          {saving ? 'جارٍ الحفظ...' : 'حفظ النسب'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const ProjectDetailPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -472,6 +561,9 @@ export const ProjectDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Financial Settings */}
+        <FinanceSettingsCard project={project} permissions={permissions} onRefresh={fetchData} />
 
         {/* Buildings List */}
         <div>

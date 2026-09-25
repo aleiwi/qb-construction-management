@@ -101,3 +101,34 @@ async def test_delete_project_admin(admin_client):
 async def test_delete_missing_project_404(admin_client):
     r = await admin_client.delete("/api/v1/projects/999999")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_project_rates_and_summary_uses_them(admin_client, seeded):
+    pid = seeded["project_id"]
+    r = await admin_client.put(
+        f"/api/v1/projects/{pid}",
+        json={"profit_percent": 0.0, "vat_rate": 0.0},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["profit_percent"] == 0.0
+
+    s = await admin_client.get(f"/api/v1/boq-summary/project/{pid}")
+    assert s.status_code == 200, s.text
+    summary = s.json()["data"]["summary"]
+    assert summary["rates"]["profit_margin"] == 0.0
+    assert summary["rates"]["vat_rate"] == 0.0
+    assert summary["custom_rates"] is True
+    # profit 0 + vat 0 → total equals pre-vat subtotal math
+    assert summary["total"] == round(
+        (summary["total_base_cost"] + summary["overhead"]
+         + summary["profit"] + summary["contingency"]), 2)
+
+
+@pytest.mark.asyncio
+async def test_update_project_rates_validation(admin_client, seeded):
+    r = await admin_client.put(
+        f"/api/v1/projects/{seeded['project_id']}",
+        json={"profit_percent": 1.5},
+    )
+    assert r.status_code == 422, r.text

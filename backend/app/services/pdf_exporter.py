@@ -63,7 +63,7 @@ def export_boq_to_pdf(boq_data: Dict, project_name: str = "BOQ Report") -> bytes
     elements.append(Spacer(1, 12))
     elements.append(Paragraph(shape_ar(project_name), styles["CoverSub"]))
     elements.append(Spacer(1, 6))
-    elements.append(Paragraph(f"Date: {datetime.utcnow().strftime('%Y-%m-%d')}", styles["CoverSub"]))
+    elements.append(Paragraph(f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}", styles["CoverSub"]))
     elements.append(Spacer(1, 30))
 
     summary = boq_data.get("summary", {})

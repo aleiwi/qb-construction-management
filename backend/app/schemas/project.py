@@ -9,6 +9,10 @@ class ProjectBase(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = Field(None, max_length=500)
     status: ProjectStatus = ProjectStatus.PLANNING
+    overhead_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    profit_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    contingency_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class ProjectCreate(ProjectBase):
@@ -18,8 +22,12 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    location: Optional[str] = Field(None, max_length=500)
+    location: Optional[str] = Field(None, min_length=1, max_length=500)
     status: Optional[ProjectStatus] = None
+    overhead_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    profit_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    contingency_percent: Optional[float] = Field(None, ge=0.0, le=1.0)
+    vat_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class BuildingOut(BaseModel):

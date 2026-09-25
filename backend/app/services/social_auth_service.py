@@ -16,7 +16,7 @@ Both end with the same `social_login()` logic:
 """
 import httpx
 from typing import Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from jose import jwt, JWTError
@@ -126,7 +126,7 @@ def create_state_token(provider: str) -> str:
     payload = {
         "type": "oauth_state",
         "provider": provider,
-        "exp": datetime.utcnow() + timedelta(minutes=settings.OAUTH_STATE_EXPIRE_MINUTES),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.OAUTH_STATE_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

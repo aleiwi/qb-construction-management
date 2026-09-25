@@ -75,6 +75,13 @@ async def _ensure_user_security_columns() -> None:
         if "user_id" not in existing:
             await conn.execute(text("ALTER TABLE contractors ADD COLUMN user_id INTEGER"))
             logger.info("migration: added contractors.user_id column")
+    async with engine.begin() as conn:
+        cols = (await conn.execute(text("PRAGMA table_info(projects)"))).fetchall()
+        existing = {c[1] for c in cols}
+        for col in ("overhead_percent", "profit_percent", "contingency_percent", "vat_rate"):
+            if col not in existing:
+                await conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} FLOAT"))
+                logger.info("migration: added projects.%s column", col)
 
 
 async def init_db_seed():

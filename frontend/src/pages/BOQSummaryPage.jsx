@@ -71,6 +71,8 @@ export const BOQSummaryPage = () => {
   };
 
   const summary = boq?.summary;
+  const rates = summary?.rates || {};
+  const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
   const byType = boq?.by_type ? Object.values(boq.by_type) : [];
   const typeChartData = byType.map(t => ({ name: elementLabel(t.element_type), value: t.base_cost }));
 
@@ -201,14 +203,19 @@ export const BOQSummaryPage = () => {
                 <h3 className="font-bold text-white text-base flex items-center gap-2 mb-5">
                   <BarChart3 className="w-5 h-5 text-emerald-400" />
                   تفصيل التكاليف
+                  {summary?.custom_rates && (
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full">
+                      نسب المشروع المخصصة
+                    </span>
+                  )}
                 </h3>
                 <div className="space-y-3">
                   {[
                     { label: 'التكلفة الأساسية', value: summary?.total_base_cost, color: 'text-slate-300' },
-                    { label: 'المصاريف الإدارية (10%)', value: summary?.overhead, color: 'text-amber-400' },
-                    { label: 'هامش الربح (15%)', value: summary?.profit, color: 'text-emerald-400' },
-                    { label: 'الاحتياطي (5%)', value: summary?.contingency, color: 'text-orange-400' },
-                    { label: 'ضريبة القيمة المضافة (15%)', value: summary?.vat, color: 'text-red-400' },
+                    { label: `المصاريف الإدارية (${pct(rates.overhead_percent)})`, value: summary?.overhead, color: 'text-amber-400' },
+                    { label: `هامش الربح (${pct(rates.profit_margin)})`, value: summary?.profit, color: 'text-emerald-400' },
+                    { label: `الاحتياطي (${pct(rates.contingency_percent)})`, value: summary?.contingency, color: 'text-orange-400' },
+                    { label: `ضريبة القيمة المضافة (${pct(rates.vat_rate)})`, value: summary?.vat, color: 'text-red-400' },
                     { label: 'الإجمالي النهائي', value: summary?.total, color: 'text-blue-400 font-bold', border: true },
                   ].map(row => (
                     <div key={row.label} className={`flex justify-between text-sm ${row.border ? 'pt-3 border-t border-slate-700' : ''}`}>

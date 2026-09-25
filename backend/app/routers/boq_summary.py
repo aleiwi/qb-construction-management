@@ -12,13 +12,31 @@ import json
 router = APIRouter(prefix="/boq-summary", tags=["BOQ Summary"])
 
 
+async def _project_markup(db: AsyncSession, project_id: int) -> Optional[dict]:
+    """Per-project rate overrides (None fields fall back to global defaults)."""
+    from app.services.project_service import ProjectService
+    project = await ProjectService(db).get_by_id(project_id)
+    if not project:
+        return None
+    cfg = {}
+    if project.overhead_percent is not None:
+        cfg["overhead_percent"] = float(project.overhead_percent)
+    if project.profit_percent is not None:
+        cfg["profit_margin"] = float(project.profit_percent)
+    if project.contingency_percent is not None:
+        cfg["contingency_percent"] = float(project.contingency_percent)
+    if project.vat_rate is not None:
+        cfg["vat_rate"] = float(project.vat_rate)
+    return cfg or None
+
+
 @router.get("/project/{project_id}")
 async def get_project_boq(
     project_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER, UserRole.ACCOUNTANT])),
 ):
-    result = await aggregate_project_boq(db, project_id)
+    result = await aggregate_project_boq(db, project_id, await _project_markup(db, project_id))
     if not result or result["elements_count"] == 0:
         return APIResponse.ok(data=result, message="لا توجد عناصر BOQ للمشروع")
     return APIResponse.ok(data=result, message="تم تجميع BOQ المشروع بنجاح")
@@ -33,7 +51,7 @@ async def export_boq_excel(
     from app.services.excel_exporter import export_boq_to_excel
     from app.services.project_service import ProjectService
 
-    result = await aggregate_project_boq(db, project_id)
+    result = await aggregate_project_boq(db, project_id, await _project_markup(db, project_id))
     proj_service = ProjectService(db)
     project = await proj_service.get_by_id(project_id)
     project_name = project.name if project else f"Project #{project_id}"
@@ -57,7 +75,7 @@ async def export_boq_pdf(
     from app.services.pdf_exporter import export_boq_to_pdf
     from app.services.project_service import ProjectService
 
-    result = await aggregate_project_boq(db, project_id)
+    result = await aggregate_project_boq(db, project_id, await _project_markup(db, project_id))
     proj_service = ProjectService(db)
     project = await proj_service.get_by_id(project_id)
     project_name = project.name if project else f"Project #{project_id}"

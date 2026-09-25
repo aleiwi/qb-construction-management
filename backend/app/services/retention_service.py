@@ -45,7 +45,7 @@ class RetentionReleaseService:
     async def release_retention(self, release: RetentionRelease, user_id: int) -> RetentionRelease:
         from datetime import datetime
         release.release_status = ReleaseStatus.RELEASED
-        release.released_at = datetime.utcnow()
+        release.released_at = datetime.now(timezone.utc)
         release.released_by = user_id
         self.db.add(release)
         await self.db.commit()

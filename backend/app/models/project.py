@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, DateTime, Integer, Text
+from typing import Optional
+from sqlalchemy import String, DateTime, Integer, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -21,6 +22,12 @@ class Project(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     location: Mapped[str] = mapped_column(String(500), nullable=True)
     status: Mapped[ProjectStatus] = mapped_column(String(50), default=ProjectStatus.PLANNING, nullable=False)
+    # Per-project financial rates (fractions, e.g. 0.15). NULL = global default
+    # (idea from the legacy SettingsPage: overhead/profit/VAT per project).
+    overhead_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    profit_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    contingency_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    vat_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

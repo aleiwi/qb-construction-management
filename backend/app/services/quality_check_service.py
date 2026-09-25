@@ -53,7 +53,7 @@ class QualityCheckService:
     async def update_status(self, qc: QualityCheck, status: str, notes: Optional[str], user_id: int) -> QualityCheck:
         qc.status = QCStatus(status)
         qc.inspected_by = user_id
-        qc.checked_at = datetime.utcnow()
+        qc.checked_at = datetime.now(timezone.utc)
         if notes is not None:
             qc.notes = notes
         self.db.add(qc)

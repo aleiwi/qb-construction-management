@@ -75,7 +75,7 @@ def export_estimate_pdf(items: List[Dict], totals: Dict, title: str = "تقدي�
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm,
                             leftMargin=2 * cm, rightMargin=2 * cm)
     els = [Paragraph(shape_ar(title), styles["ArTitle"]),
-           Paragraph(shape_ar(f"التاريخ: {datetime.utcnow().strftime('%Y-%m-%d')}"), styles["ArBody"]),
+           Paragraph(shape_ar(f"التاريخ: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"), styles["ArBody"]),
            Spacer(1, 12)]
     data = [[Paragraph(shape_ar(h), styles["ArCell"]) for h in HEADERS]]
     for it in items:

@@ -169,5 +169,5 @@ class ReportsService:
                 "projects_with_reports": projects_with_reports,
                 "latest_by_project": latest_by_project,
             },
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }

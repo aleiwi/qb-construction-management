@@ -117,7 +117,7 @@ class PaymentService:
         from datetime import datetime
         old_status = payment.status
         payment.status = PaymentStatus.PAID
-        payment.paid_at = datetime.utcnow()
+        payment.paid_at = datetime.now(timezone.utc)
         payment.approved_by = user_id
         self.db.add(payment)
         await self.db.commit()
