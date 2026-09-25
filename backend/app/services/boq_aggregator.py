@@ -8,7 +8,7 @@ from app.models.boq_item import BOQItem
 from app.models.price_library import PriceLibrary
 from app.models.building import Building
 from app.models.drawing import Drawing
-from app.services.pricing_engine import calculate_markup
+from app.services.pricing_engine import calculate_markup, DEFAULT_MARKUP
 from app.services.quantity_engine import compute_quantity, estimate_rebar
 
 
@@ -66,7 +66,7 @@ async def aggregate_project_boq(
             "unpriced_count": 0,
             "estimated_count": 0,
             "is_partial": False,
-            "summary": _empty_summary(),
+            "summary": _empty_summary(markup_config),
             "by_type": {},
             "by_drawing": [],
         }
@@ -188,8 +188,16 @@ async def aggregate_project_boq(
             break
         offset += ELEMENT_CHUNK
 
-    # Calculate markup
-    markup = calculate_markup(total_base_cost, **(markup_config or {}))
+    # Calculate markup (project overrides resolved over global defaults;
+    # effective rates are echoed so the UI can label them honestly).
+    rates = {**DEFAULT_MARKUP, **(markup_config or {})}
+    markup = calculate_markup(
+        total_base_cost,
+        profit_margin=rates["profit_margin"],
+        overhead_percent=rates["overhead_percent"],
+        contingency_percent=rates["contingency_percent"],
+        vat_rate=rates["vat_rate"],
+    )
 
     # Compare automatic vs manual pricing (best-match fallback across key namespaces)
     auto_cost = sum(
@@ -232,6 +240,8 @@ async def aggregate_project_boq(
             "estimated_auto_cost": round(auto_cost, 2),
             "total_rebar_kg": round(total_rebar_kg, 2),
             "total_rebar_tons": round(total_rebar_kg / 1000, 3),
+            "rates": rates,
+            "custom_rates": bool(markup_config),
             **markup,
             "elements_per_drawing": round(total_elements / max(len(drawings_list), 1), 1),
         },
@@ -240,13 +250,22 @@ async def aggregate_project_boq(
     }
 
 
-def _empty_summary() -> Dict:
-    markup = calculate_markup(0)
+def _empty_summary(markup_config: Optional[Dict] = None) -> Dict:
+    rates = {**DEFAULT_MARKUP, **(markup_config or {})}
+    markup = calculate_markup(
+        0,
+        profit_margin=rates["profit_margin"],
+        overhead_percent=rates["overhead_percent"],
+        contingency_percent=rates["contingency_percent"],
+        vat_rate=rates["vat_rate"],
+    )
     return {
         "total_base_cost": 0,
         "estimated_auto_cost": 0,
         "total_rebar_kg": 0,
         "total_rebar_tons": 0,
+        "rates": rates,
+        "custom_rates": bool(markup_config),
         **markup,
         "elements_per_drawing": 0,
     }
