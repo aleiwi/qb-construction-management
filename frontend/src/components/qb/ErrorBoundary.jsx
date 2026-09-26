@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePerformanceMonitor } from "../../hooks/qb/usePerformance";
 import { motion } from 'framer-motion';
 import { FaExclamationTriangle, FaSync, FaHome, FaBug } from 'react-icons/fa';
 import { useErrorMonitoring } from '../../utils/qb/errorMonitoring';

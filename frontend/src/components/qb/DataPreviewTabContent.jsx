@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { motion } from 'framer-motion';
 import { 
   PencilIcon,

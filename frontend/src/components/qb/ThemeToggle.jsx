@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePerformanceMonitor } from "../../hooks/qb/usePerformance";
 import { FaSun, FaMoon } from 'react-icons/fa';
 import { useSimpleTheme } from '../hooks/useTheme.js';
 
