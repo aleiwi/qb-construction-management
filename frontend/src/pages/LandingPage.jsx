@@ -1,4 +1,6 @@
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLazyImage } from '../hooks/qb/usePerformance';
 import {
   Ruler, FileText, ShieldCheck, Wallet, BarChart3, Lock, ArrowLeft,
 } from 'lucide-react';
