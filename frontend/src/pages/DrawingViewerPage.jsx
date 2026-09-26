@@ -7,7 +7,8 @@ import DxfCanvas, { computeDxfViewBox, collectDxfLayers } from '../components/dx
 import {
   ArrowRight, Download, ZoomIn, ZoomOut,
   FileText, CheckCircle2, AlertTriangle, Clock, Loader2, Eye, Crosshair,
-  Layers, Grid3X3, PanelRightClose, RefreshCw,   Maximize, Minimize, HelpCircle
+  Layers, Grid3X3, PanelRightClose, RefreshCw, Maximize, Minimize, HelpCircle,
+  Printer, Target, Search, Filter, Info, BarChart3, ZoomInIcon
 } from 'lucide-react';
 import { DRAWING_STATUS as STATUS_CONFIG } from '../config/status';
 import { normalizeElementType } from '../config/elementTypes';
@@ -41,6 +42,7 @@ export const DrawingViewerPage = () => {
   const [layers, setLayers] = useState(null);
   const [layerVisibility, setLayerVisibility] = useState(null);
   const [showLayers, setShowLayers] = useState(false);
+  const [layerSearch, setLayerSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [svgLoading, setSvgLoading] = useState(true);
   const [svgError, setSvgError] = useState(false);
@@ -52,6 +54,7 @@ export const DrawingViewerPage = () => {
   const [touchDist, setTouchDist] = useState(null);
   const [showGrid, setShowGrid] = useState(true);
   const [showElements, setShowElements] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const toggleGroup = (type) => setExpandedGroups(prev => {
     const next = new Set(prev);
@@ -335,6 +338,45 @@ export const DrawingViewerPage = () => {
   const handleZoomIn = useCallback(() => changeZoom(zoomStep), [changeZoom]);
   const handleZoomOut = useCallback(() => changeZoom(-zoomStep), [changeZoom]);
   const handleZoomReset = useCallback(() => fitToViewport(), [fitToViewport]);
+
+const handleZoomToFit = useCallback(() => {
+  if (viewBoxRef.current && containerRef.current) {
+    fitToViewport();
+  } else {
+    // Trigger re-render by resetting zoom
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+}, [fitToViewport]);
+
+const handlePrint = useCallback(() => {
+  if (!svgContent && !dxfText) return;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <title>${drawing?.file_name || 'مخطط'} - طباعة</title>
+      <style>
+        body { margin: 0; padding: 20px; font-family: 'Segoe UI', sans-serif; background: #fff; color: #000; }
+        h2 { text-align: center; margin-bottom: 10px; color: #1e293b; }
+        .print-info { text-align: center; color: #64748b; font-size: 12px; margin-bottom: 20px; }
+        .print-svg { width: 100%; max-width: 1200px; margin: 0 auto; }
+        .print-svg svg { width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+      </style>
+    </head>
+    <body>
+      <h2>${drawing?.file_name || 'مخطط'}</h2>
+      <div class="print-info">${drawing?.building?.name || ''} • ${drawing?.status || ''} • طباعة من QB Construction</div>
+      <div class="print-svg">${svgContent || dxfText || ''}</div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}, [svgContent, dxfText, drawing]);
 
   const setZoomAbsolute = useCallback((val) => {
     const newZoom = Math.max(zoomMin, Math.min(zoomMax, val));
@@ -666,18 +708,28 @@ export const DrawingViewerPage = () => {
                 <HelpCircle className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-0.5 bg-slate-800/80 border border-slate-700/50 rounded-lg px-1.5 py-1 shrink-0">
-                <button onClick={handleZoomOut} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="تصغير (-)">
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[10px] text-slate-400 w-9 text-center font-mono select-none">{Math.round(zoom * 100)}%</span>
-                <button onClick={handleZoomIn} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="تكبير (+)">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <div className="w-px h-4 bg-slate-700/50 mx-0.5" />
-                <button onClick={handleZoomReset} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="ملاءمة (0)">
-                  <Crosshair className="w-3 h-3" />
-                </button>
-              </div>
+                              <button onClick={handleZoomOut} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="تصغير (-)">
+                                <ZoomOut className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-[10px] text-slate-400 w-9 text-center font-mono select-none">{Math.round(zoom * 100)}%</span>
+                              <button onClick={handleZoomIn} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="تكبير (+)">
+                                <ZoomIn className="w-3.5 h-3.5" />
+                              </button>
+                              <div className="w-px h-4 bg-slate-700/50 mx-0.5" />
+                              <button onClick={handleZoomReset} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="ملاءمة (0)">
+                                <Crosshair className="w-3 h-3" />
+                              </button>
+                              <button onClick={handleZoomToFit} className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition" title="ملاءمة للشاشة">
+                                <Target className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={handlePrint}
+                              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition shrink-0"
+                              title="طباعة"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
               <div className="flex items-center gap-1.5 w-20 sm:w-24 shrink-0">
                 <input
                   type="range"
@@ -871,15 +923,27 @@ export const DrawingViewerPage = () => {
 
         {showLayers && layers && layers.length > 0 && (
           <div className="w-64 shrink-0 border-r border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-y-auto transition-all duration-300">
-            <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-300">الطبقات</h3>
-              <button
-                onClick={() => setLayerVisibility(null)}
-                className="text-[9px] px-1.5 py-0.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition"
-              >إظهار الكل</button>
+            <div className="p-3 border-b border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-bold text-slate-300">الطبقات ({layers?.length || 0})</h3>
+                <button
+                  onClick={() => setLayerVisibility(null)}
+                  className="text-[9px] px-1.5 py-0.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition"
+                >إظهار الكل</button>
+              </div>
+              <div className="relative">
+                <Search className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="بحث في الطبقات..."
+                  value={layerSearch || ''}
+                  onChange={e => setLayerSearch(e.target.value)}
+                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-2 py-1.5 text-[10px] text-slate-300 placeholder-slate-500 pr-7 focus:outline-none focus:border-blue-500/50 transition"
+                />
+              </div>
             </div>
             <div className="p-2 space-y-0.5">
-              {layers.map(l => (
+              {layers.filter(l => !layerSearch || l.name.toLowerCase().includes(layerSearch.toLowerCase())).map(l => (
                 <label key={l.name} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-800/40 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1143,6 +1207,74 @@ export const DrawingViewerPage = () => {
           )}
         </div>
       )}
+        {showStats && drawing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                  إحصائيات المخطط
+                </h2>
+                <button onClick={() => setShowStats(false)} className="text-slate-400 hover:text-white p-1">
+                  <Minimize className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">العناصر</p>
+                    <p className="text-xl font-bold text-white">{formatCount(elementsTotal)}</p>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">الطبقات</p>
+                    <p className="text-xl font-bold text-white">{layers?.length || 0}</p>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">الحجم</p>
+                    <p className="text-xl font-bold text-white">{drawing.file_size ? formatFileSize(drawing.file_size) : '-'}</p>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">الوضع</p>
+                    <p className="text-xl font-bold text-white">{drawing.status === 'completed' ? 'مكتمل' : drawing.status === 'processing' ? 'قيد المعالجة' : drawing.status === 'failed' ? 'فشل' : 'في الانتظار'}</p>
+                  </div>
+                </div>
+                {elementsSummary && (
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-2">العناصر حسب النوع</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(elementsSummary.by_type || {}).map(([type, count]) => {
+                        const config = ELEMENT_TYPE_MAP[type] || ELEMENT_TYPE_MAP.other;
+                        return (
+                          <span key={type} className="px-2 py-1 rounded-lg text-[10px] font-medium" style={{ background: config.bg }}>
+                            {config.label}: {count}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {drawing.coordinates && (
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">الإحداثيات</p>
+                    <p className="text-sm text-slate-300 font-mono" dir="ltr">
+                      X: {drawing.coordinates.x?.toFixed(2)} | Y: {drawing.coordinates.y?.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                {drawing.created_at && (
+                  <div className="bg-slate-800 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">تاريخ الإنشاء</p>
+                    <p className="text-sm text-slate-300">{new Date(drawing.created_at).toLocaleString('ar-SA')}</p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowStats(false)}
+                className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20"
+              >إغلاق</button>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
