@@ -282,9 +282,18 @@ export const DrawingViewerPage = () => {
   }, [isProcessing]);
 
   const fitToViewport = useCallback(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
     const el = zoomContainerRef.current;
+    const vb = viewBoxRef.current;
+    if (!el || !vb) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+    const rect = el.getBoundingClientRect();
+    const padding = 40;
+    const scale = Math.min(
+      (rect.width - padding * 2) / Math.max(vb.width, 0.001),
+      (rect.height - padding * 2) / Math.max(vb.height, 0.001)
+    );
+    const clampedScale = Math.max(zoomMin, Math.min(zoomMax, scale));
+    setZoom(clampedScale);
+    setPan({ x: 0, y: 0 });
     if (el) el.style.transition = 'transform 0.15s ease-out';
     setZoomTransition('transform 0.15s ease-out');
     setTimeout(() => {
@@ -294,11 +303,11 @@ export const DrawingViewerPage = () => {
   }, []);
 
   useEffect(() => {
-    if (svgContent && !svgLoading) {
+    if (dxfText && !svgLoading) {
       const timer = setTimeout(fitToViewport, 50);
       return () => clearTimeout(timer);
     }
-  }, [svgContent, svgLoading, fitToViewport]);
+  }, [dxfText, svgLoading, fitToViewport]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -350,7 +359,9 @@ const handleZoomToFit = useCallback(() => {
 }, [fitToViewport]);
 
 const handlePrint = useCallback(() => {
-  if (!svgContent && !dxfText) return;
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+  const dataUrl = canvas.toDataURL('image/png');
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
   printWindow.document.write(`
@@ -370,7 +381,7 @@ const handlePrint = useCallback(() => {
     <body>
       <h2>${drawing?.file_name || 'مخطط'}</h2>
       <div class="print-info">${drawing?.building?.name || ''} • ${drawing?.status || ''} • طباعة من QB Construction</div>
-      <div class="print-svg">${svgContent || dxfText || ''}</div>
+      <div class="print-svg" style="text-align:center;"><img src="${dataUrl}" style="max-width:100%;height:auto;border:1px solid #e2e8f0;border-radius:8px;"/></div>
     </body>
     </html>
   `);
@@ -518,7 +529,7 @@ const handlePrint = useCallback(() => {
   const handleRetry = useCallback(() => { if (drawing) fetchPreview(drawing.id); }, [drawing, fetchPreview]);
 
   const downloadSvg = useCallback(() => {
-    if (!svgContent) return;
+    const canvas = document.querySelector("canvas"); if (!canvas) return;
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
