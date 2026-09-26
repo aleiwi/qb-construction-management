@@ -48,7 +48,10 @@ const CostCalculatorPage = () => {
   const [saving, setSaving] = useState(false);
   const debouncedProjectData = useDebounce(projectData, 500);
   const debouncedItems = useDebounce(items, 500);
-  const { theme: advancedTheme, toggle: toggleAdvancedTheme } = useAdvancedTheme();
+  // Theme context provided by ThemeProvider
+  const themeContext = useTheme();
+  const isDark = themeContext?.isDark ?? false;
+  const toggleTheme = themeContext?.toggle ?? (() => {});
   const [engineerMode, setEngineerMode] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [isArabic, setIsArabic] = useState(false);
