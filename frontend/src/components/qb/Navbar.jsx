@@ -27,6 +27,7 @@ import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const Navbar = () => {
+  <Header title="QB Construction" showAssistant={false} setShowAssistant={() => {}} />
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut, loading } = useAuth();
