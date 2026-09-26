@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLazyImage } from "../hooks/qb/usePerformance";
 import { useNavigate, useParams } from 'react-router-dom';
 import { projectsApi } from '../features/projects/projectsApi';
 import { useAuth } from '../hooks/useAuth';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLazyImage } from "../hooks/qb/usePerformance";
 import { useNavigate } from 'react-router-dom';
 import { drawingsApi, partitionCadFiles } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
