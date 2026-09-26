@@ -8,6 +8,7 @@ import {
   FaBuilding, FaWrench, FaLayerGroup, FaChartBar, FaSearch,
   FaServer, FaSignal
 } from 'react-icons/fa';
+import { FaRobot } from 'react-icons/fa';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -355,4 +356,34 @@ const CostCalculatorPage = () => {
   );
 };
 
-export default CostCalculatorPage;
+// SmartAssistant floating widget
+const SmartAssistantWidget = ({ projectId }) => {
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState([{ text: 'مرحبا! انا المساعد الذكي', sender: 'ai' }]);
+  const [input, setInput] = useState('');
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const userMsg = input;
+    setMessages(prev => [...prev, { text: userMsg, sender: 'user' }]);
+    setInput('');
+    try { const res = await api.post('/ai/chat', { message: userMsg, projectId }); if (res.data.success) setMessages(prev => [...prev, { text: res.data.reply, sender: 'ai' }]); } catch (e) {}
+  };
+  return (
+    <div className="fixed bottom-4 left-4 z-50">
+      {!showChat && <button onClick={() => setShowChat(true)} className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center"><FaRobot className="w-6 h-6" /></button>}
+      {showChat && <div className="w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border overflow-hidden">
+        <div className="bg-blue-600 text-white px-4 py-3 flex justify-between"><span className="font-semibold text-sm">المساعد الذكي</span><button onClick={() => setShowChat(false)}>✕</button></div>
+        <div className="h-64 overflow-y-auto p-3">{messages.map((m, i) => <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}><span className={`px-3 py-2 rounded-lg text-xs max-w-xs ${m.sender === 'user' ? 'bg-blue-100' : 'bg-slate-100'}`}>{m.text}</span></div>)}</div>
+        <div className="flex border-t p-2"><input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} className="flex-1 bg-slate-50 rounded-lg px-3 py-1.5 text-xs" placeholder="اكتب رسالة..." /><button onClick={sendMessage} className="ml-2 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs">إرسال</button></div>
+      </div>}
+    </div>
+  );
+};
+
+const CostCalculatorPageWithWidget = () => {
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId');
+  return <><CostCalculatorPage /><SmartAssistantWidget projectId={projectId} /></>;
+};
+
+export default CostCalculatorPageWithWidget;
