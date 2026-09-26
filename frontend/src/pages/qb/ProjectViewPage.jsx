@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLazyImage } from '../../hooks/qb/usePerformance';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -12,6 +13,8 @@ const ProjectViewPage = () => {
   const [project, setProject] = useState(null);
   const [buildings, setBuildings] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const modelRef = useRef(null);
+  useLazyImage(modelRef);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
