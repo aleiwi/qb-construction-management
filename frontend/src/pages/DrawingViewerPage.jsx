@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useThrottle, useLazyImage } from '../../hooks/qb/usePerformance';
 import { useParams, useNavigate } from 'react-router-dom';
 import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
@@ -39,10 +40,7 @@ export const DrawingViewerPage = () => {
   const PAGE_SIZE = 500;
   const [svgContent, setSvgContent] = useState(null);
   const svgCanvasRef = useRef(null);
-    const throttledResize = useThrottle(() => {
-    if (typeof window !== 'undefined' && fitToViewport) fitToViewport();
-  }, 200);
-    const [dxfText, setDxfText] = useState(null);
+  const [dxfText, setDxfText] = useState(null);
   const [layers, setLayers] = useState(null);
   const [layerVisibility, setLayerVisibility] = useState(null);
   const [showLayers, setShowLayers] = useState(false);
