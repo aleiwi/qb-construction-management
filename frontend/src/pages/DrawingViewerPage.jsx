@@ -17,6 +17,14 @@ import { BackgroundGrid, CoordDisplay, formatFileSize, formatDistance, formatDur
 export const DrawingViewerPage = () => {
   const { drawingId } = useParams();
   const navigate = useNavigate();
+  const { user, token } = useAuth();
+
+  // Ensure token is available for API interceptor
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('access_token', token);
+    }
+  }, [token]);
   const [drawing, setDrawing] = useState(null);
   const [elements, setElements] = useState([]);
   const [elementsSummary, setElementsSummary] = useState(null);
@@ -174,9 +182,8 @@ export const DrawingViewerPage = () => {
   useEffect(() => {
     if (!drawingId) return;
     const id = parseInt(drawingId);
-    if (drawing && (drawing.status === 'completed' || drawing.status === 'failed')) {
-      fetchPreview(id);
-    }
+    if (!drawing) return; // Wait for drawing to load
+    fetchPreview(id);
   }, [drawingId, drawing, fetchPreview]);
 
   useEffect(() => {
