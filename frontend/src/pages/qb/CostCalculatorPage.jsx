@@ -48,6 +48,7 @@ const CostCalculatorPage = () => {
   const [saving, setSaving] = useState(false);
   const [engineerMode, setEngineerMode] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
+  const [isArabic, setIsArabic] = useState(false);
 
   // Load draft
   useEffect(() => {
@@ -63,6 +64,21 @@ const CostCalculatorPage = () => {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectData, items })); } catch (e) {}
   }, [projectData, items]);
+
+  // Load BOQ summary from backend
+  const loadBoqSummary = useCallback(async (pid) => {
+    try {
+      const res = await api.get('/boq-summary/project/' + pid);
+      if (res.data.success && res.data.data) {
+        const data = res.data.data;
+        if (data.items) setItems(data.items);
+        if (data.summary) {
+          setProjectData(prev => ({ ...prev, name: data.name || prev.name, area: data.area || prev.area }));
+        }
+        toast.success('تم تحميل بيانات BOQ');
+      }
+    } catch (e) {}
+  }, []);
 
   // Load project
   useEffect(() => {
@@ -249,6 +265,7 @@ const CostCalculatorPage = () => {
         <div className="flex items-center gap-2">
           <button onClick={checkConnection} className="p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 transition"><FaServer className={`w-4 h-4 ${isConnected ? 'text-green-500' : 'text-red-500'}`} /></button>
           <span className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">{breakpoint}</span>
+            <button onClick={() => setIsArabic(!isArabic)} className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg text-[10px] font-semibold transition">{isArabic ? "EN" : "عربي"}</button>
         </div>
       </motion.div>
 
