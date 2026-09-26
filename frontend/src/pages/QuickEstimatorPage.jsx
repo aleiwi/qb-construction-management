@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useLazyImage } from '../hooks/qb/usePerformance';
 import { PageHeader } from '../components/ui/PageHeader';
 import { priceLibraryApi } from '../features/boq/boqApi';
 import api from '../api/axios';
