@@ -146,6 +146,16 @@ export const DrawingViewerPage = () => {
     setSvgLoading(true);
     setSvgError(false);
     try {
+      const res = await drawingsApi.getPreview(id);
+      if (res.success && res.data?.svg) {
+        const svg = res.data.svg;
+        setSvgContent(svg);
+        const vb = computeDxfViewBox(svg);
+        if (!vb) throw new Error('تعذر قراءة هندسة الملف');
+        viewBoxRef.current = vb;
+        return true;
+      }
+      // Fallback: try raw DXF parsing if no SVG available
       const raw = await drawingsApi.getView(id);
       if (raw && raw.length > 0) {
         const vb = computeDxfViewBox(raw);
@@ -156,18 +166,23 @@ export const DrawingViewerPage = () => {
         viewBoxRef.current = vb;
         return true;
       }
-      setDxfText(null);
       setSvgError(true);
       return false;
     } catch (e) {
-      setDxfText(null);
-      const raw = e.response?.data;
-      const data = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
-      setSvgError(
-        data?.error?.message
-        || data?.detail
-        || true
-      );
+      setSvgError('فشل تحميل المعاينة');
+      // Try raw DXF as fallback
+      try {
+        const raw = await drawingsApi.getView(id);
+        if (raw && raw.length > 0) {
+          const vb = computeDxfViewBox(raw);
+          if (!vb) throw new Error('تعذر قراءة هندسة الملف');
+          setDxfText(raw);
+          setLayers(collectDxfLayers(raw));
+          setLayerVisibility(null);
+          viewBoxRef.current = vb;
+          return true;
+        }
+      } catch (_) {}
       return false;
     } finally {
       setSvgLoading(false);
@@ -297,11 +312,11 @@ export const DrawingViewerPage = () => {
   }, []);
 
   useEffect(() => {
-    if (dxfText && !svgLoading) {
+    if ((dxfText || svgContent) && !svgLoading) {
       const timer = setTimeout(fitToViewport, 50);
       return () => clearTimeout(timer);
     }
-  }, [dxfText, svgLoading, fitToViewport]);
+  }, [dxfText, svgContent, svgLoading, fitToViewport]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -353,9 +368,7 @@ const handleZoomToFit = useCallback(() => {
 }, [fitToViewport]);
 
 const handlePrint = useCallback(() => {
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  const dataUrl = canvas.toDataURL('image/png');
+  if (!svgContent) return;
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
   printWindow.document.write(`
@@ -375,7 +388,7 @@ const handlePrint = useCallback(() => {
     <body>
       <h2>${drawing?.file_name || 'مخطط'}</h2>
       <div class="print-info">${drawing?.building?.name || ''} • ${drawing?.status || ''} • طباعة من QB Construction</div>
-      <div class="print-svg" style="text-align:center;"><img src="${dataUrl}" style="max-width:100%;height:auto;border:1px solid #e2e8f0;border-radius:8px;"/></div>
+      <div class="print-svg">${svgContent}</div>
     </body>
     </html>
   `);
