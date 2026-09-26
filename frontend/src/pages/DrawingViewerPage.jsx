@@ -591,7 +591,7 @@ export const DrawingViewerPage = () => {
           <p className="text-sm text-slate-400 mb-6">{error}</p>
           <div className="flex items-center justify-center gap-3">
             <button onClick={() => navigate('/drawings')} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition">العودة للمخططات</button>
-            <button onClick={async () => { const d = await fetchDrawing(parseInt(drawingId)); if (d && (d.status === 'completed' || d.status === 'failed')) fetchPreview(d.id); }} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20">إعادة المحاولة</button>
+            <button onClick={async () => { const d = await fetchDrawing(parseInt(drawingId)); if (d) fetchPreview(d.id); }} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20">إعادة المحاولة</button>
           </div>
         </div>
       </div>
