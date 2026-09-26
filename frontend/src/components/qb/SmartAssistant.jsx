@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLazyImage } from '../../hooks/qb/usePerformance';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaRobot,
@@ -30,6 +31,9 @@ import {
 } from 'react-icons/fa';
 
 const SmartAssistant = ({ projects, onAssistantAction }) => {
+  const chatRef = useRef(null);
+  const avatarRef = useRef(null);
+  useLazyImage(avatarRef);
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isListening, setIsListening] = useState(false);

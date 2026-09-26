@@ -1,8 +1,11 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { FaSearch, FaBell, FaRobot } from 'react-icons/fa';
+import { useLazyImage } from '../../hooks/qb/usePerformance';
 
 const Header = ({ title, showAssistant, setShowAssistant }) => {
+  const logoRef = useRef(null);
+  useLazyImage(logoRef);
   return (
     <header className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10">
       <div>

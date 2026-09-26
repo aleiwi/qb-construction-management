@@ -30,6 +30,14 @@ import toast from 'react-hot-toast';
 
 const Navbar = () => {
   <Header title="QB Construction" showAssistant={false} setShowAssistant={() => {}} />
+  const logoRef = useRef(null);
+  useLazyImage(logoRef);
+  const throttledScroll = useThrottle(() => {
+    const scrollY = window.scrollY;
+    const navbar = document.querySelector('nav');
+    if (navbar) navbar.classList.toggle('shadow-lg', scrollY > 50);
+  }, 100);
+  useAnimationFrame(() => {});
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut, loading } = useAuth();
