@@ -1,258 +1,290 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
-import { FaCalculator, FaSave, FaFilePdf, FaFileExcel, FaPlus, FaTrash, FaCopy, FaDownload, FaClock } from 'react-icons/fa';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FaCalculator, FaSave, FaFilePdf, FaFileExcel, FaPlus, FaTrash,
+  FaCopy, FaDownload, FaClock, FaSync, FaCloud, FaCheckCircle,
+  FaBuilding, FaWrench, FaLayerGroup, FaChartBar, FaSearch,
+  FaServer, FaSignal
+} from 'react-icons/fa';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts';
 import { usePdfGenerator } from '../../hooks/qb/usePdfGenerator';
-import { isEmpty } from '../../utils/qb/validation';
+import { useEngineeringCalculations } from '../../hooks/qb/useEngineeringCalculations';
+import { calculateConcrete, calculateSteel, formatCurrency } from '../../utils/qb/calculations';
+import { getSteelRatio, getConversionFactor, getPreArea, formatNumber } from '../../utils/qb/calculatorLogic';
+import { concreteStandards, steelStandards } from '../../constants/qb/engineeringStandards';
+import { ExcelExporter } from '../../utils/qb/advancedReports';
 import api from '../../api/axios';
 
-const CURRENCY = 'ريال';
-
+const CURRENCY = 'ر.س';
 const itemNames = { foundation: 'بند أساسات', slab: 'بند سقف', column: 'بند عمود', wall: 'بند جدار', tank: 'بند خزان' };
 const itemColors = { foundation: '#3B82F6', slab: '#10B981', column: '#F59E0B', wall: '#EF4444', tank: '#8B5CF6' };
 const STORAGE_KEY = 'qb_cost_calculator_draft';
+const ENGINEERING_KEY = 'qb_cost_calculator_engineering';
 
 const CostCalculatorPage = () => {
   const navigate = useNavigate();
-  const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get('mode') || 'new';
-  const projectId = urlParams.get('projectId');
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode') || 'new';
+  const projectId = searchParams.get('projectId');
+
   const { generatePdf } = usePdfGenerator();
+  const { calculations, steelAnalysis } = useEngineeringCalculations();
+
+  const gridClass = "grid-cols-1 lg:grid-cols-4";
 
   const [projectData, setProjectData] = useState({
-    name: '', description: '', location: '', startDate: '', endDate: '',
-    projectType: '', area: '', floors: '',
+    name: '', location: '', area: '', floors: '',
     concretePrice: '', steelPrice: '', blockPrice: '', plasterPrice: '',
     laborRate: '', equipmentRate: '', profitRate: ''
   });
+  const [items, setItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState('foundation');
+  const [activeTab, setActiveTab] = useState('calculator');
+  const [saving, setSaving] = useState(false);
+  const [engineerMode, setEngineerMode] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
 
-  const [items, setItems] = useState([{ id: 1, type: 'foundation', name: '', length: '', width: '', thickness: '', concreteQty: 0, steelQty: 0, blockQty: 0, totalCost: 0 }]);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(null);
-
+  // Load draft
   useEffect(() => {
-    try { const draft = localStorage.getItem(STORAGE_KEY); if (draft) { const parsed = JSON.parse(draft); if (parsed.projectData) setProjectData(parsed.projectData); if (parsed.items) setItems(parsed.items); if (parsed.results) setResults(parsed.results); } } catch (e) {}
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { const parsed = JSON.parse(saved); setProjectData(prev => ({ ...prev, ...parsed.projectData })); setItems(parsed.items || []); }
+      const engSaved = localStorage.getItem(ENGINEERING_KEY);
+      if (engSaved) setEngineerMode(JSON.parse(engSaved));
+    } catch (e) {}
   }, []);
 
+  // Save draft
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectData, items, results })); } catch (e) {}
-  }, [projectData, items, results]);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectData, items })); } catch (e) {}
+  }, [projectData, items]);
 
-  useEffect(() => { if (mode === 'edit' && projectId) loadProjectData(); }, [mode, projectId]);
+  // Load project
+  useEffect(() => {
+    if (mode === 'edit' && projectId) {
+      (async () => { try { const res = await api.get(`/projects/${projectId}`); if (res.data.success) setProjectData(res.data.data); } catch (e) {} })();
+    }
+  }, [mode, projectId]);
 
-  const loadProjectData = async () => {
-    try { setLoading(true); const response = await api.get(`/projects/${projectId}`); const project = response.data; setProjectData({ name: project.name || '', description: project.description || '', location: project.location || '', projectType: project.project_type || '', area: project.area?.toString() || '', floors: project.floors?.toString() || '', concretePrice: project.concrete_price?.toString() || '', steelPrice: project.steel_price?.toString() || '', blockPrice: project.block_price?.toString() || '', plasterPrice: project.plaster_price?.toString() || '', laborRate: project.labor_rate?.toString() || '', equipmentRate: project.equipment_rate?.toString() || '', profitRate: project.profit_rate?.toString() || '' }); } catch (err) { toast.error('فشل تحميل بيانات المشروع'); } finally { setLoading(false); }
+  // Item management
+  const addItem = useCallback(() => {
+    const newItem = { id: Date.now(), type: selectedItem, name: itemNames[selectedItem], quantity: 1, unit: 'م3', price: parseFloat(projectData[`${selectedItem}Price`] || 0), steelRatio: getSteelRatio(selectedItem), concreteVolume: 0, steelWeight: 0, color: itemColors[selectedItem] };
+    setItems(prev => [...prev, newItem]);
+    toast.success(`تم إضافة ${itemNames[selectedItem]}`);
+  }, [selectedItem, projectData]);
+
+  const removeItem = useCallback((id) => { setItems(prev => prev.filter(item => item.id !== id)); toast('تم حذف البند', { icon: '🗑️' }); }, []);
+  const updateItem = useCallback((id, field, value) => { setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item)); }, []);
+
+  // Recalculate
+  const recalculate = useCallback(() => {
+    setItems(prev => prev.map(item => {
+      const sr = getSteelRatio(item.type);
+      const cf = getConversionFactor(item.type);
+      const cv = calculateConcrete(item.length || 1, item.width || 1, item.height || 1);
+      const sw = calculateSteel(item.length || 1, item.width || 1, sr);
+      return { ...item, steelRatio: sr, concreteVolume: cv.volume, steelWeight: sw.weight, totalPrice: (item.quantity || 1) * (item.price || 0) * (item.concreteVolume || 1) * cf };
+    }));
+  }, []);
+
+  useEffect(() => { recalculate(); }, [items]);
+
+  // Summary
+  const summary = useMemo(() => {
+    const totalPrice = items.reduce((s, i) => s + (i.totalPrice || 0), 0);
+    const totalSteel = items.reduce((s, i) => s + (i.steelWeight || 0), 0);
+    const totalConcrete = items.reduce((s, i) => s + (i.concreteVolume || 0), 0);
+    const profitRate = parseFloat(projectData.profitRate) || 0.15;
+    const profit = totalPrice * profitRate;
+    const byType = {};
+    items.forEach(item => { if (!byType[item.type]) byType[item.type] = { qty: 0, price: 0, color: itemColors[item.type] }; byType[item.type].qty += item.quantity || 0; byType[item.type].price += item.totalPrice || 0; });
+    return { totalPrice, totalSteel, totalConcrete, profit, grandTotal: totalPrice + profit, byType, profitRate, totalQuantity: items.length };
+  }, [items, projectData.profitRate]);
+
+  // Actions
+  const handleGeneratePdf = useCallback(async () => { try { await generatePdf({ projectData, items, summary }); toast.success('تم إنشاء PDF'); } catch (e) { toast.error('فشل إنشاء PDF'); } }, [generatePdf, projectData, items, summary]);
+  const handleExportExcel = useCallback(() => { try { const data = items.map(item => ({ 'البند': item.name, 'الكمية': item.quantity, 'السعر': item.price, 'الإجمالي': item.totalPrice })); ExcelExporter.exportToExcel(data, `cost_estimate_${projectData.name || 'project'}`); toast.success('تم تصدير Excel'); } catch (e) { toast.error('فشل تصدير Excel'); } }, [items, projectData.name]);
+  const handleCopySummary = useCallback(async () => { const text = `تقرير التكاليف - ${projectData.name || 'المشروع'}\nالإجمالي: ${formatCurrency(summary.grandTotal)} ${CURRENCY}\nالربح: ${formatCurrency(summary.profit)} ${CURRENCY}\nالحديد: ${summary.totalSteel.toFixed(2)} طن\nالخرسانة: ${summary.totalConcrete.toFixed(2)} م3`; try { await navigator.clipboard.writeText(text); toast.success('تم النسخ'); } catch (e) { toast.error('فشل النسخ'); } }, [projectData.name, summary]);
+  const handleSave = useCallback(async () => { setSaving(true); try { const res = await api.post('/projects', { ...projectData, items, summary, engineerMode }); if (res.data.success) { toast.success('تم الحفظ'); localStorage.removeItem(STORAGE_KEY); } } catch (e) { toast.error('فشل الحفظ'); } finally { setSaving(false); } }, [projectData, items, summary, engineerMode]);
+
+  useEffect(() => {  }, [items.length]);
+
+  // Tabs
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'calculator': return (
+        <div className={`${gridClass} gap-4`}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2"><FaBuilding className="text-blue-500" /> معلومات المشروع</h3>
+            {[
+              { key: 'name', label: 'اسم المشروع' }, { key: 'location', label: 'الموقع' },
+              { key: 'area', label: 'المساحة (م2)' }, { key: 'floors', label: 'الطوابق' }
+            ].map(field => (
+              <div key={field.key} className="mb-2"><label className="text-[10px] text-slate-500 mb-1 block">{field.label}</label>
+                <input type="text" value={projectData[field.key] || ''} onChange={e => setProjectData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                  className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500" />
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2"><FaWrench className="text-green-500" /> أسعار المواد</h3>
+            {[
+              { key: 'concretePrice', label: 'سعر الخرسانة' }, { key: 'steelPrice', label: 'سعر الحديد' },
+              { key: 'blockPrice', label: 'سعر الكتل' }, { key: 'profitRate', label: 'نسبة الربح %' }
+            ].map(field => (
+              <div key={field.key} className="mb-2"><label className="text-[10px] text-slate-500 mb-1 block">{field.label}</label>
+                <input type="number" value={projectData[field.key] || ''} onChange={e => setProjectData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                  className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500" />
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2"><FaLayers className="text-purple-500" /> إضافة بند</h3>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {Object.entries(itemNames).map(([key, name]) => (
+                <button key={key} onClick={() => setSelectedItem(key)}
+                  className={`px-2 py-2 rounded-lg text-[10px] font-medium transition ${selectedItem === key ? 'ring-2 ring-offset-1 ring-blue-500' : ''}`}
+                  style={{ background: selectedItem === key ? `${itemColors[key]}20` : '#f8fafc', color: itemColors[key], border: `1px solid ${itemColors[key]}40` }}>
+                  <div className="w-2 h-2 rounded-full mx-auto mb-1" style={{ background: itemColors[key] }} />{name}
+                </button>
+              ))}
+            </div>
+            <button onClick={addItem}
+              className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+              <FaPlus /> إضافة {itemNames[selectedItem]}
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2"><FaChartBar className="text-amber-500" /> البنود ({items.length})</h3>
+            {items.length === 0 ? <p className="text-xs text-slate-400 text-center py-4">لا توجد بنود بعد</p> : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {items.map(item => (
+                  <div key={item.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded" style={{ background: item.color }} /><span className="text-xs text-slate-700 dark:text-slate-200">{item.name}</span></div>
+                    <div className="flex items-center gap-2">
+                      <input type="number" value={item.quantity || 1} onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)} className="w-16 bg-transparent border-b border-slate-300 text-xs text-center py-0.5" />
+                      <span className="text-[10px] text-slate-500">{item.unit}</span>
+                      <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-600"><FaTrash className="w-3 h-3" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      case 'engineering': return (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2"><FaWrench className="text-blue-500" /> الحسابات الهندسية المتقدمة</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3"><p className="text-[10px] text-blue-600 dark:text-blue-400">إجمالي الحديد</p><p className="text-xl font-bold text-blue-700 dark:text-blue-300">{summary.totalSteel.toFixed(2)} طن</p></div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3"><p className="text-[10px] text-green-600 dark:text-green-400">إجمالي الخرسانة</p><p className="text-xl font-bold text-green-700 dark:text-green-300">{summary.totalConcrete.toFixed(2)} م3</p></div>
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3"><p className="text-[10px] text-purple-600 dark:text-purple-400">عدد البنود</p><p className="text-xl font-bold text-purple-700 dark:text-purple-300">{summary.totalQuantity}</p></div>
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"><p className="text-[10px] text-amber-600 dark:text-amber-400">نسبة الربح</p><p className="text-xl font-bold text-amber-700 dark:text-amber-300">{(summary.profitRate * 100).toFixed(1)}%</p></div>
+            </div>
+            {engineerMode && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4"><h4 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">معايير الخرسانة</h4>
+                  <div className="space-y-1">{Object.entries(concreteStandards.mixDesign || {}).slice(0, 4).map(([grade, mix]) => (<div key={grade} className="flex justify-between text-[10px]"><span className="text-slate-600 dark:text-slate-400">{grade}</span><span className="text-slate-500">{mix.ratio}</span></div>))}</div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4"><h4 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">أقطاب الحديد</h4>
+                  <div className="space-y-1">{Object.entries(steelStandards.diameters || {}).slice(0, 4).map(([dia, data]) => (<div key={dia} className="flex justify-between text-[10px]"><span className="text-slate-600 dark:text-slate-400">{dia}mm</span><span className="text-slate-500">{data.area?.toFixed(3) || '-'} سم2</span></div>))}</div>
+                </div>
+              </div>
+            )}
+            <button onClick={() => { setEngineerMode(!engineerMode); localStorage.setItem(ENGINEERING_KEY, !engineerMode); }}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${engineerMode ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+              {engineerMode ? '🔓 وضع المهندس مفعل' : '🔒 تفعيل وضع المهندس'}
+            </button>
+          </div>
+
+          {items.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+              <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4">توزيع التكاليف</h4>
+              <div className="h-64"><ResponsiveContainer width="100%" height="100%">
+                <PieChart><Pie data={Object.entries(summary.byType).map(([type, data]) => ({ name: itemNames[type] || type, value: data.price, color: data.color }))} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  {Object.entries(summary.byType).map(([type, data], i) => (<Cell key={i} fill={data.color} />))}
+                </Pie><Tooltip /></PieChart>
+              </ResponsiveContainer></div>
+            </div>
+          )}
+        </div>
+      );
+
+      case 'preview': return (
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">معاينة التقرير</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'إجمالي الكميات', value: summary.totalQuantity, color: 'text-slate-700' },
+              { label: 'إجمالي التكاليف', value: formatCurrency(summary.totalPrice), color: 'text-blue-600' },
+              { label: 'الربح المتوقع', value: formatCurrency(summary.profit), color: 'text-green-600' },
+              { label: 'الإجمالي النهائي', value: formatCurrency(summary.grandTotal), color: 'text-purple-600' }
+            ].map((stat, i) => (<div key={i} className="bg-slate-50 dark:bg-slate-700 rounded-xl p-4"><p className="text-[10px] text-slate-500 mb-1">{stat.label}</p><p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p></div>))}
+          </div>
+        </div>
+      );
+
+      default: return null;
+    }
   };
-
-  const handleInputChange = (field, value) => {
-    if (['area','floors','concretePrice','steelPrice','blockPrice','plasterPrice','laborRate','equipmentRate','profitRate'].includes(field) && value !== '' && isNaN(Number(value))) return;
-    setProjectData(prev => ({ ...prev, [field]: value }));
-    setSaved(false);
-  };
-
-  const calculateItem = useCallback((item) => {
-    const length = parseFloat(item.length) || 0;
-    const width = parseFloat(item.width) || 0;
-    const thickness = parseFloat(item.thickness) || 0;
-    const concretePrice = parseFloat(projectData.concretePrice) || 0;
-    const steelPrice = parseFloat(projectData.steelPrice) || 0;
-    const blockPrice = parseFloat(projectData.blockPrice) || 0;
-    const area = length * width;
-    const volume = area * thickness;
-    let concreteQty = 0, steelQty = 0, blockQty = 0;
-    switch (item.type) { case 'foundation': concreteQty = volume; steelQty = volume * 100; break; case 'slab': concreteQty = volume; steelQty = volume * 80; break; case 'column': concreteQty = volume; steelQty = volume * 150; break; case 'wall': blockQty = area * 12.5; concreteQty = area * 0.05; break; case 'tank': concreteQty = volume; steelQty = volume * 120; break; default: concreteQty = volume; steelQty = volume * 100; }
-    const totalCost = concreteQty * concretePrice + steelQty * steelPrice + blockQty * blockPrice;
-    return { ...item, concreteQty: concreteQty.toFixed(2), steelQty: steelQty.toFixed(2), blockQty: blockQty.toFixed(2), totalCost: totalCost.toFixed(2) };
-  }, [projectData]);
-
-  const calculateAll = () => {
-    const updatedItems = items.map(item => calculateItem(item));
-    setItems(updatedItems);
-    const totals = updatedItems.reduce((acc, item) => { acc.concreteQty += parseFloat(item.concreteQty) || 0; acc.steelQty += parseFloat(item.steelQty) || 0; acc.blockQty += parseFloat(item.blockQty) || 0; acc.totalCost += parseFloat(item.totalCost) || 0; return acc; }, { concreteQty: 0, steelQty: 0, blockQty: 0, totalCost: 0 });
-    const contractorCost = totals.totalCost * 0.3;
-    const overhead = totals.totalCost * 0.15;
-    const concreteInsulation = totals.concreteQty * 50;
-    const areaInsulation = (totals.concreteQty / 0.3) * 25;
-    const profit = totals.totalCost * (parseFloat(projectData.profitRate) / 100);
-    const finalPrice = (totals.totalCost + contractorCost + overhead + concreteInsulation + areaInsulation + profit).toFixed(2);
-    setResults({ ...totals, contractorCost: contractorCost.toFixed(2), overhead: overhead.toFixed(2), concreteInsulation: concreteInsulation.toFixed(2), areaInsulation: areaInsulation.toFixed(2), profit: profit.toFixed(2), finalPrice });
-    setSaved(false);
-    toast.success('تم حساب التكاليف بنجاح');
-  };
-
-  const addItem = (type) => { setItems([...items, { id: Date.now(), type, name: '', length: '', width: '', thickness: '', concreteQty: 0, steelQty: 0, blockQty: 0, totalCost: 0 }]); };
-  const requestDelete = (id) => { setShowConfirmDelete(id); };
-  const confirmDelete = (id) => { if (items.length > 1) setItems(items.filter(item => item.id !== id)); setShowConfirmDelete(null); };
-  const cancelDelete = () => { setShowConfirmDelete(null); };
-
-  const updateItem = (id, field, value) => { setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item)); };
-
-  const saveProject = async () => {
-    try { setLoading(true); const payload = { name: projectData.name, description: projectData.description, location: projectData.location, project_type: projectData.projectType, area: parseFloat(projectData.area) || 0, floors: parseInt(projectData.floors) || 0, concrete_price: parseFloat(projectData.concretePrice) || 0, steel_price: parseFloat(projectData.steelPrice) || 0, block_price: parseFloat(projectData.blockPrice) || 0, plaster_price: parseFloat(projectData.plasterPrice) || 0, labor_rate: parseFloat(projectData.laborRate) || 0, equipment_rate: parseFloat(projectData.equipmentRate) || 0, profit_rate: parseFloat(projectData.profitRate) || 15 }; if (mode === 'edit' && projectId) { await api.put(`/projects/${projectId}`, payload); toast.success('تم تحديث المشروع'); } else { await api.post('/projects', payload); toast.success('تم إنشاء المشروع'); } setSaved(true); navigate('/projects'); } catch (err) { toast.error('فشل حفظ المشروع'); } finally { setLoading(false); }
-  };
-
-  const handleExportPdf = () => {
-    if (!results) { toast.error('يرجى حساب التكاليف أولاً'); return; }
-    try { generatePdf(projectData, { projectLocation: projectData.location, projectType: projectData.projectType, startDate: projectData.startDate, status: 'planning' }, items, results); toast.success('تم تصدير تقرير PDF بنجاح'); } catch (err) { toast.error('فشل تصدير PDF'); }
-  };
-
-  const copyResults = () => {
-    if (!results) return;
-    const text = `تقرير تكاليف المشروع: ${projectData.name}\nالإجمالي: ${results.finalPrice} ${CURRENCY}\nالمواد: ${results.totalCost}\nالمقاول: ${results.contractorCost}\nالمصاريف: ${results.overhead}\nالربح: ${results.profit}\nالخرسانة: ${results.concreteQty} م³\nالحديد: ${results.steelQty} كجم\nالبلوك: ${results.blockQty} قطعة`;
-    navigator.clipboard.writeText(text);
-    toast.success('تم نسخ النتائج');
-  };
-
-  const clearAll = () => { setItems([{ id: 1, type: 'foundation', name: '', length: '', width: '', thickness: '', concreteQty: 0, steelQty: 0, blockQty: 0, totalCost: 0 }]); setResults(null); setProjectData({ name: '', description: '', location: '', startDate: '', endDate: '', projectType: '', area: '', floors: '', concretePrice: '', steelPrice: '', blockPrice: '', plasterPrice: '', laborRate: '', equipmentRate: '', profitRate: '' }); localStorage.removeItem(STORAGE_KEY); toast.info('تم مسح الحساب'); };
-
-  const chartData = results ? [{ name: 'الخرسانة', cost: parseFloat(results.concreteQty) * parseFloat(projectData.concretePrice || 0) }, { name: 'الحديد', cost: parseFloat(results.steelQty) * parseFloat(projectData.steelPrice || 0) }, { name: 'البلوك', cost: parseFloat(results.blockQty) * parseFloat(projectData.blockPrice || 0) }, { name: 'المقاول', cost: parseFloat(results.contractorCost) }, { name: 'المصاريف', cost: parseFloat(results.overhead) }].filter(d => d.cost > 0) : [];
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center"><FaCalculator className="ml-3 text-blue-600" /> حاسبة التكاليف</h1>
-          <p className="text-lg text-orange-600 text-center">{projectData.name || 'مشروع جديد'}</p>
-        </motion.div>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">إعدادات المشروع</h3>
-              <div className="space-y-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">اسم المشروع</label><input type="text" value={projectData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="اسم المشروع" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">الموقع</label><input type="text" value={projectData.location} onChange={(e) => handleInputChange('location', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="الموقع" /></div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="block text-sm text-gray-600 mb-1">المساحة (م²)</label><input type="number" value={projectData.area} onChange={(e) => handleInputChange('area', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm text-gray-600 mb-1">الأدوار</label><input type="number" value={projectData.floors} onChange={(e) => handleInputChange('floors', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-                </div>
-                <hr className="my-3" />
-                <h4 className="font-medium text-gray-700 text-sm">أسعار المواد</h4>
-                {[{ key: 'concretePrice', label: 'سعر الخرسانة (ريال/م³)' }, { key: 'steelPrice', label: 'سعر الحديد (ريال/كجم)' }, { key: 'blockPrice', label: 'سعر البلوك (ريال/قطعة)' }].map(f => (<div key={f.key}><label className="block text-sm text-gray-600 mb-1">{f.label}</label><input type="number" value={projectData[f.key]} onChange={(e) => handleInputChange(f.key, e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>))}
-                <hr className="my-3" />
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">هامش الربح (%)</label><input type="number" value={projectData.profitRate} onChange={(e) => handleInputChange('profitRate', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-              </div>
-              <div className="mt-6"><button onClick={clearAll} className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-center gap-2"><FaTrash className="text-xs" /> مسح الحساب</button></div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-3 space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 className="text-xl font-semibold text-gray-800">بنود المشروع</h3>
-                <div className="flex gap-2 flex-wrap">
-                  {['foundation', 'slab', 'column', 'wall', 'tank'].map(type => (<button key={type} onClick={() => addItem(type)} className="text-white px-3 py-1 rounded-md text-sm hover:opacity-90 transition-opacity flex items-center gap-1 shadow-sm" style={{ backgroundColor: itemColors[type] }}><FaPlus className="text-xs" /> {itemNames[type]}</button>))}
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                  <thead><tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">النوع</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">الطول (م)</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">العرض (م)</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">السُمك (م)</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">الخرسانة</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">الحديد</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">البلوك</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">التكلفة</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">إجراء</th>
-                  </tr></thead>
-                  <tbody>
-                    {items.map(item => (
-                      <motion.tr key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium" style={{ color: itemColors[item.type] }}>{itemNames[item.type]}</td>
-                        <td className="px-4 py-3"><input type="number" step="0.01" value={item.length} onChange={(e) => updateItem(item.id, 'length', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" /></td>
-                        <td className="px-4 py-3"><input type="number" step="0.01" value={item.width} onChange={(e) => updateItem(item.id, 'width', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" /></td>
-                        <td className="px-4 py-3"><input type="number" step="0.01" value={item.thickness} onChange={(e) => updateItem(item.id, 'thickness', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" /></td>
-                        <td className="px-4 py-3 text-sm text-gray-900 font-mono">{item.concreteQty || 0} م³</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 font-mono">{item.steelQty || 0} كجم</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 font-mono">{item.blockQty || 0} قطعة</td>
-                        <td className="px-4 py-3 text-sm font-bold text-gray-900">{item.totalCost} {CURRENCY}</td>
-                        <td className="px-4 py-3">
-                          {showConfirmDelete === item.id ? (
-                            <div className="flex gap-1"><button onClick={() => confirmDelete(item.id)} className="text-green-600 hover:text-green-700 text-xs px-1">تأكيد</button><button onClick={cancelDelete} className="text-gray-400 hover:text-gray-600 text-xs px-1">إلغاء</button></div>
-                          ) : <button onClick={() => requestDelete(item.id)} className="text-red-500 hover:text-red-700 transition-colors"><FaTrash /></button>}
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-6">
-                <button onClick={calculateAll} disabled={loading} className="flex items-center px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm text-sm font-medium"><FaCalculator className="mr-2" /> {loading ? 'جاري...' : 'حساب التكاليف'}</button>
-                <button onClick={saveProject} disabled={loading} className="flex items-center px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all shadow-sm text-sm font-medium"><FaSave className="mr-2" /> حفظ المشروع</button>
-                {saved && <span className="text-green-600 text-sm flex items-center gap-1 self-center"><FaClock className="text-xs" /> تم الحفظ</span>}
-              </div>
-            </div>
-
-            {chartData.length > 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">توزيع التكاليف</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="name" tick={{ fontSize: 12 }} /><YAxis tick={{ fontSize: 12 }} /><Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }} /><Legend /><Bar dataKey="cost" fill="#3B82F6" name={CURRENCY} radius={[4, 4, 0, 0]} /></BarChart>
-                </ResponsiveContainer>
-              </motion.div>
-            )}
-
-            {results && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {[
-                    { label: 'الخرسانة', value: `${results.concreteQty} م³`, color: 'blue' },
-                    { label: 'الحديد', value: `${results.steelQty} كجم`, color: 'green' },
-                    { label: 'البلوك', value: `${results.blockQty} قطعة`, color: 'yellow' },
-                    { label: 'المجموع', value: results.totalCost, color: 'purple' },
-                    { label: 'الإجمالي', value: results.finalPrice, color: 'red' },
-                  ].map((item, i) => (
-                    <div key={i} className={`bg-${item.color}-50 p-4 rounded-lg text-center shadow-sm`}><p className="text-xs text-gray-600 mb-1">{item.label}</p><p className={`text-xl font-bold text-${item.color}-900`}>{item.value}</p></div>
-                  ))}
-                </div>
-
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">التكاليف التفصيلية</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><h4 className="font-medium text-gray-700 mb-3 pb-2 border-b border-gray-200">تكاليف مباشرة</h4>
-                      <div className="space-y-2">
-                        {[
-                          { label: 'تكلفة المواد', value: `${results.totalCost} ${CURRENCY}` },
-                          { label: 'مقاول المصنعيات', value: `${results.contractorCost} ${CURRENCY}` },
-                          { label: 'المصاريف الإدارية', value: `${results.overhead} ${CURRENCY}` },
-                        ].map((item, i) => (<div key={i} className="flex justify-between py-1"><span className="text-gray-600 text-sm">{item.label}</span><span className="font-medium text-sm">{item.value}</span></div>))}
-                      </div>
-                    </div>
-                    <div><h4 className="font-medium text-gray-700 mb-3 pb-2 border-b border-gray-200">تكاليف إضافية</h4>
-                      <div className="space-y-2">
-                        {[
-                          { label: 'عزل الخرسانة', value: `${results.concreteInsulation} ${CURRENCY}` },
-                          { label: 'عزل المساحات', value: `${results.areaInsulation} ${CURRENCY}` },
-                          { label: 'الربح', value: `${results.profit} ${CURRENCY}` },
-                        ].map((item, i) => (<div key={i} className="flex justify-between py-1"><span className="text-gray-600 text-sm">{item.label}</span><span className="font-medium text-sm">{item.value}</span></div>))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 text-white rounded-lg p-6 shadow-lg">
-                  <div className="flex justify-between items-center flex-wrap gap-4">
-                    <div><h3 className="text-xl font-bold">السعر النهائي للمشروع</h3><p className="text-blue-100 text-sm">شامل جميع التكاليف والربح</p></div>
-                    <div className="text-right"><p className="text-4xl font-bold">{results.finalPrice} {CURRENCY}</p><p className="text-blue-100 text-sm">شامل ضريبة القيمة المضافة</p></div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button onClick={handleExportPdf} className="flex items-center px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-sm text-sm font-medium"><FaFilePdf className="mr-2" /> تصدير PDF</button>
-                  <button onClick={() => toast.success('جاري إنشاء تقرير Excel...')} className="flex items-center px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm text-sm font-medium"><FaFileExcel className="mr-2" /> تصدير Excel</button>
-                  <button onClick={copyResults} className="flex items-center px-5 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-all shadow-sm text-sm font-medium"><FaCopy className="mr-2" /> نسخ النتائج</button>
-                  <button onClick={() => toast.info('جارٍ التصدير...')} className="flex items-center px-5 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-all shadow-sm text-sm font-medium"><FaDownload className="mr-2" /> تحميل</button>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
+    <div className={`min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200 ${containerClass}`}>
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><FaCalculator className="text-blue-500" /> حاسبة التكاليف</h1>
+          <p className="text-xs text-slate-500 mt-1">{projectData.name || 'مشروع جديد'} • {items.length} بند • خادم: {isConnected ? 'متصل' : 'غير متصل'}</p>
         </div>
+        <div className="flex items-center gap-2">
+          <button onClick={checkConnection} className="p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 transition"><FaServer className={`w-4 h-4 ${isConnected ? 'text-green-500' : 'text-red-500'}`} /></button>
+          <span className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">{breakpoint}</span>
+        </div>
+      </motion.div>
+
+      <div className="flex gap-2 mb-6 overflow-x-auto">
+        {[
+          { key: 'calculator', label: 'الحاسبة', icon: <FaCalculator /> },
+          { key: 'engineering', label: 'هندسي', icon: <FaWrench /> },
+          { key: 'preview', label: 'المعاينة', icon: <FaChartBar /> }
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeTab === tab.key ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+            {tab.icon} {tab.label}
+          </button>
+        ))}
       </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+          {renderContent()}
+        </motion.div>
+      </AnimatePresence>
+
+      <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 shadow-lg">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-4">
+            <div className="text-sm"><span className="text-slate-500">الإجمالي:</span><span className="text-lg font-bold text-blue-600 ml-2">{formatCurrency(summary.grandTotal)}</span></div>
+            <div className="text-sm"><span className="text-slate-500">الربح:</span><span className="text-lg font-bold text-green-600 ml-2">{formatCurrency(summary.profit)}</span></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleCopySummary} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs hover:bg-slate-200 transition flex items-center gap-1"><FaCopy /> نسخ</button>
+            <button onClick={handleExportExcel} className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1"><FaFileExcel /> Excel</button>
+            <button onClick={handleGeneratePdf} className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1"><FaFilePdf /> PDF</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1"><FaSave /> {saving ? 'جارِ...' : 'حفظ'}</button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

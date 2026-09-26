@@ -1,6 +1,6 @@
 // Hook لفحص اتصال الخادم
 import { useState, useEffect } from 'react';
-import { checkServerConnection } from '../services';
+import { checkServerConnection }   from '../../services/qb';
 
 /**
  * Hook لفحص حالة اتصال الخادم

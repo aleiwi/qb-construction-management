@@ -9,7 +9,7 @@ import {
   steelStandards,
   designStandards,
   saudiStandards,
-} from '../constants/qb/engineeringStandards';
+}  from '../../constants/qb/engineeringStandards';
 
 export const useEngineeringCalculations = (projectData, items) => {
   
