@@ -3,7 +3,8 @@
  * مكون إعدادات الحسابات والأسعار
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { motion } from 'framer-motion';
 import { 
   AdjustmentsHorizontalIcon,
