@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLazyImage } from '../../hooks/qb/usePerformance';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCheck, FaTrash, FaPlus, FaSpinner, FaTasks, FaEdit } from 'react-icons/fa';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 
 const TaskManager = ({ projectId }) => {
+  const taskRef = useRef(null);
+  useLazyImage(taskRef);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState('');
