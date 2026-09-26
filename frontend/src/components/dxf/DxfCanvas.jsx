@@ -148,9 +148,21 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
   boxRef.current = viewBox;
 
   useEffect(() => {
+
+
     if (!canvasRef.current || !dxfText) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    // Draw placeholder when viewBox is not yet available
+    if (!viewBox) {
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('جارٍ تحميل المعاينة...', canvas.width / 2, canvas.height / 2);
+      return;
+    }
     let parsed;
     try {
       parsed = new DxfParser().parseSync(dxfText);
