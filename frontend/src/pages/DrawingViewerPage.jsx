@@ -410,9 +410,9 @@ const handlePrint = useCallback(() => {
     const relY = clientY - rect.top;
     const p = panRef.current;
     const z = zoomRef.current;
-    // undo zoom/pan (transform is translate(pan) scale(zoom) around center)
-    const cx = (relX - rect.width / 2 - p.x) / z;
-    const cy = (relY - rect.height / 2 - p.y) / z;
+    // undo pan (zoom is applied by canvas, not CSS transform)
+    const cx = (relX - rect.width / 2 - p.x);
+    const cy = (relY - rect.height / 2 - p.y);
     const px = cx + rect.width / 2;
     const py = cy + rect.height / 2;
     // fit: aspect-preserving scale + centering (same as DxfCanvas)
@@ -853,7 +853,7 @@ const handlePrint = useCallback(() => {
               ref={zoomContainerRef}
               className="absolute inset-0 flex items-center justify-center overflow-hidden"
               style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transform: `translate(${pan.x}px, ${pan.y}px)`,
                 transformOrigin: 'center center',
                 transition: zoomTransition,
                 willChange: 'transform',
@@ -868,6 +868,7 @@ const handlePrint = useCallback(() => {
                 <div className="absolute inset-0" style={{ overflow: 'hidden' }}>
                   <DxfCanvas
                     dxfText={dxfText}
+                    zoom={zoom}
                     viewBox={viewBoxRef.current}
                     layerVisibility={layerVisibility}
                   />

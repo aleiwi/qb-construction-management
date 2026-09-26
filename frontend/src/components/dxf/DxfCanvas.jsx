@@ -142,7 +142,7 @@ export function collectDxfLayers(dxfText) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null }) {
+export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zoom = 1 }) {
   const canvasRef = useRef(null);
   const boxRef = useRef(viewBox);
   boxRef.current = viewBox;
@@ -306,7 +306,7 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null }) 
       const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
       const ox = (rect.width - vb.width * scale) / 2;
       const oy = (rect.height - vb.height * scale) / 2;
-      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
+      ctx.setTransform(dpr * scale * zoom, 0, 0, dpr * scale * zoom, dpr * ox, dpr * oy);
       ctx.fillStyle = '#020617';
       ctx.fillRect(
         -ox / scale, -oy / scale,
@@ -318,7 +318,7 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null }) 
     const ro = new ResizeObserver(fitToSize);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [dxfText, layerVisibility]);
+  }, [dxfText, layerVisibility, zoom]);
 
   return (
     <canvas
