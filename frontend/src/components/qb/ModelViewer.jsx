@@ -1,9 +1,13 @@
 import React, { useRef, useState, useMemo } from 'react';
+import { useLazyImage, useAnimationFrame } from '../../hooks/qb/usePerformance';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, PerspectiveCamera, useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 const ModelViewer = ({ modelPath, autoRotate, zoomLevel }) => {
+  const modelRef = useRef(null);
+  useLazyImage(modelRef);
+  useAnimationFrame(() => {});
   const group = useRef();
   const [hovered, setHovered] = useState(null);
   const [clicked, setClicked] = useState(null);
