@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { priceLibraryApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';

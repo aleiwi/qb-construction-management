@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../features/projects/useProjects';
 import { usePermissions } from '../hooks/usePermissions';

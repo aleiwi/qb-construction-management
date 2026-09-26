@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
