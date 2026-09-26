@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { usePdfGenerator } from '../../hooks/qb/usePdfGenerator';
 import { useEngineeringCalculations } from "../../hooks/qb/useEngineeringCalculations";
-import { useDebounce, useMemoAsync } from "../../hooks/qb/usePerformance";
+import { useDebounce, useMemoAsync, useThrottle, useLazyImage, useAnimationFrame } from "../../hooks/qb/usePerformance";
 import { useServerConnection } from "../../hooks/qb/useServerConnection";
 import { calculateConcrete, calculateSteel, formatCurrency } from '../../utils/qb/calculations';
 import { getSteelRatio, getConversionFactor, getPreArea, formatNumber } from '../../utils/qb/calculatorLogic';
@@ -51,6 +51,13 @@ const CostCalculatorPage = () => {
   const [saving, setSaving] = useState(false);
   const debouncedProjectData = useDebounce(projectData, 500);
   const debouncedItems = useDebounce(items, 500);
+  const throttledScroll = useThrottle(() => {
+    const scrollY = window.scrollY;
+    const navbar = document.querySelector('nav');
+    if (navbar) {
+      navbar.classList.toggle('shadow-lg', scrollY > 100);
+    }
+  }, 100);
   // Theme context provided by ThemeProvider
   const themeContext = useTheme();
   const isDark = themeContext?.isDark ?? false;
