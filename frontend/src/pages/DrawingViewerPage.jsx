@@ -283,16 +283,10 @@ export const DrawingViewerPage = () => {
 
   const fitToViewport = useCallback(() => {
     const el = zoomContainerRef.current;
-    const vb = viewBoxRef.current;
-    if (!el || !vb) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
-    const rect = el.getBoundingClientRect();
-    const padding = 40;
-    const scale = Math.min(
-      (rect.width - padding * 2) / Math.max(vb.width, 0.001),
-      (rect.height - padding * 2) / Math.max(vb.height, 0.001)
-    );
-    const clampedScale = Math.max(zoomMin, Math.min(zoomMax, scale));
-    setZoom(clampedScale);
+    if (!el) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+    // DxfCanvas handles fit-to-container internally via ctx.scale
+    // zoom state is for additional zoom beyond the base fit
+    setZoom(1);
     setPan({ x: 0, y: 0 });
     if (el) el.style.transition = 'transform 0.15s ease-out';
     setZoomTransition('transform 0.15s ease-out');
@@ -426,6 +420,13 @@ const handlePrint = useCallback(() => {
   }, []);
 
   const handleMouseDown = useCallback((e) => {
+    // Middle mouse button (wheel) = pan
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
+      return;
+    }
     if (measuring) {
       if (e.button !== 0) return;
       const coord = screenToSvg(e.clientX, e.clientY);
@@ -468,9 +469,8 @@ const handlePrint = useCallback(() => {
 
   const handleDoubleClick = useCallback((e) => {
     if (measuring) return;
-    const delta = e.shiftKey ? -zoomStep * 2 : zoomStep;
-    changeZoom(delta, e.clientX, e.clientY, true);
-  }, [changeZoom, measuring]);
+    fitToViewport();
+  }, [fitToViewport]);
 
   const handleTouchStart = useCallback((e) => {
     if (measuring && e.touches.length === 1) {
@@ -573,11 +573,17 @@ const handlePrint = useCallback(() => {
     if (!el) return;
     const handleWheel = (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
-      changeZoom(delta, e.clientX, e.clientY, true);
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(zoomMin, Math.min(zoomMax, zoomRef.current * factor));
+      const delta = newZoom / zoomRef.current - 1;
+      changeZoom(delta * zoomRef.current, e.clientX, e.clientY, true);
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('contextmenu', (e) => e.preventDefault());
+    };
   }, [changeZoom]);
 
   useEffect(() => {
