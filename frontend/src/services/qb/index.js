@@ -1,5 +1,5 @@
 // تصدير جميع الخدمات
-export { default as api, get, post, put, del, upload, healthCheck, checkConnection } from './api';
+export { default as api } from "./api";
 export { default as calculationService } from './calculationService';
 export { default as projectService } from './projectService';
 export { default as reportService } from './reportService';

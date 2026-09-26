@@ -1,5 +1,5 @@
 // خدمة الحسابات - ربط مع Backend APIs
-import { get, post } from '../../utils/qb/utils/api';
+import api from '../../api/axios';
 import Swal from 'sweetalert2'; // Import SweetAlert2
 
 /**
@@ -11,7 +11,7 @@ class CalculationService {
    */
   async calculateSingleItem(itemData) {
     try {
-      const response = await post('/api/calculations/item', {
+      const response = await api.post('/api/calculations/item', {
         itemType: itemData.name,
         area: parseFloat(itemData.length) * parseFloat(itemData.width),
         length: parseFloat(itemData.length),
@@ -58,7 +58,7 @@ class CalculationService {
         },
       };
 
-      const response = await post('/api/calculations/project', payload);
+      const response = await api.post('/api/calculations/project', payload);
       
       // تحويل الاستجابة إلى الشكل المتوقع في Frontend
       return this.transformBackendResponse(response.data, projectData.items);
@@ -74,8 +74,8 @@ class CalculationService {
       });
       
       // استراد دوال الحسابات المحلية
-      const { calculateAllItems } = await import('../utils/calculationHelpers');
-      return calculateAllItems(
+      const { calculateCosts } = await import('../../utils/qb/calculations');
+      return calculateCosts(
         projectData.items,
         projectData.projectData,
         projectData.backfillData,
@@ -89,7 +89,7 @@ class CalculationService {
    */
   async quickCalculation(itemData) {
     try {
-      const response = await post('/api/calculations/quick', {
+      const response = await api.post('/api/calculations/quick', {
         itemType: itemData.name,
         area: parseFloat(itemData.length) * parseFloat(itemData.width),
         thickness: parseFloat(itemData.thickness),
@@ -115,7 +115,7 @@ class CalculationService {
    */
   async compareOptions(options) {
     try {
-      const response = await post('/api/calculations/compare', {
+      const response = await api.post('/api/calculations/compare', {
         options: options.map(option => ({
           name: option.name,
           items: option.items,
@@ -140,7 +140,7 @@ class CalculationService {
    */
   async saveCalculation(projectData, results) {
     try {
-      const response = await post('/api/calculations/save', {
+      const response = await api.post('/api/calculations/save', {
         project: {
           name: projectData.name,
           description: projectData.description,
@@ -174,7 +174,7 @@ class CalculationService {
    */
   async getItemTypes() {
     try {
-      const response = await get('/api/calculations/item-types');
+      const response = await api.get('/api/calculations/item-types');
       return response.data;
     } catch (error) {
       console.error('خطأ في جلب أنواع البنود:', error);
@@ -185,7 +185,7 @@ class CalculationService {
       });
       
       // ارجاع البيانات المحلية كبديل
-      const { itemDefinitions } = await import('../utils/calculationConstants');
+      const { getStandardItem } = await import('../../utils/qb/calculationConstants');
       return itemDefinitions;
     }
   }
@@ -195,7 +195,7 @@ class CalculationService {
    */
   async calculateAdvancedProject(projectData) {
     try {
-      const response = await post('/api/calculations/advanced-project', projectData);
+      const response = await api.post('/api/calculations/advanced-project', projectData);
       return response.data;
     } catch (error) {
       console.error('خطأ في الحساب المتقدم:', error);

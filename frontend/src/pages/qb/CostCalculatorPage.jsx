@@ -13,7 +13,9 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import { usePdfGenerator } from '../../hooks/qb/usePdfGenerator';
-import { useEngineeringCalculations } from '../../hooks/qb/useEngineeringCalculations';
+import { useEngineeringCalculations } from "../../hooks/qb/useEngineeringCalculations";
+import { useDebounce, useMemoAsync } from "../../hooks/qb/usePerformance";
+import { useServerConnection } from "../../hooks/qb/useServerConnection";
 import { calculateConcrete, calculateSteel, formatCurrency } from '../../utils/qb/calculations';
 import { getSteelRatio, getConversionFactor, getPreArea, formatNumber } from '../../utils/qb/calculatorLogic';
 import { concreteStandards, steelStandards } from '../../constants/qb/engineeringStandards';
@@ -52,6 +54,7 @@ const CostCalculatorPage = () => {
   const themeContext = useTheme();
   const isDark = themeContext?.isDark ?? false;
   const toggleTheme = themeContext?.toggle ?? (() => {});
+  const { isConnected, checkConnection } = useServerConnection();
   const [engineerMode, setEngineerMode] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [isArabic, setIsArabic] = useState(false);

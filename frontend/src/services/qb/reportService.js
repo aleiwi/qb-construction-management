@@ -1,5 +1,5 @@
 // خدمة التقارير والتصدير
-import { get, post } from './api';
+import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 
 /**
@@ -11,7 +11,7 @@ class ReportService {
    */
   async generatePDFReport(projectData, results) {
     try {
-      const response = await post('/reports/pdf', {
+      const response = await api.post('/reports/pdf', {
         project: {
           name: projectData.name || 'مشروع غير مسمى',
           description: projectData.description || '',
@@ -63,7 +63,7 @@ class ReportService {
    */
   async generateExcelReport(projectData, results) {
     try {
-      const response = await post('/reports/excel', {
+      const response = await api.post('/reports/excel', {
         project: {
           name: projectData.name || 'مشروع غير مسمى',
           description: projectData.description || '',
@@ -117,7 +117,7 @@ class ReportService {
    */
   async generateSummaryReport(projectData, results) {
     try {
-      const response = await post('/reports/summary', {
+      const response = await api.post('/reports/summary', {
         project: projectData,
         results: results,
         format: 'detailed'
@@ -135,7 +135,7 @@ class ReportService {
    */
   async getSavedReports(page = 1, limit = 10) {
     try {
-      const response = await get(`/reports?page=${page}&limit=${limit}`);
+      const response = await api.get(`/reports?page=${page}&limit=${limit}`);
       return response.data;
     } catch (error) {
       console.error('خطأ في جلب التقارير:', error);
@@ -163,7 +163,7 @@ class ReportService {
    */
   async shareReport(id, shareSettings) {
     try {
-      const response = await post(`/reports/${id}/share`, shareSettings);
+      const response = await api.post(`/reports/${id}/share`, shareSettings);
       toast.success('تم إنشاء رابط مشاركة التقرير!');
       return response.data;
     } catch (error) {
@@ -178,7 +178,7 @@ class ReportService {
    */
   async getReportsStats() {
     try {
-      const response = await get('/reports/stats');
+      const response = await api.get('/reports/stats');
       return response.data;
     } catch (error) {
       console.error('خطأ في جلب إحصائيات التقارير:', error);
@@ -191,7 +191,7 @@ class ReportService {
    */
   async generateComparisonReport(projects) {
     try {
-      const response = await post('/reports/comparison', {
+      const response = await api.post('/reports/comparison', {
         projects: projects,
         format: 'detailed',
         includeCharts: true
