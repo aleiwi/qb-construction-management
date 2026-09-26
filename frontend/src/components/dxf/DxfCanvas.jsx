@@ -154,10 +154,24 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
     let parsed;
     try {
       parsed = new DxfParser().parseSync(dxfText);
+      console.log('[DxfCanvas] Parsed DXF:', { entities: parsed.entities?.length, types: parsed.entities?.slice(0,3).map(e => e.type) });
     } catch (e) {
+      console.error('[DxfCanvas] Parse error:', e);
+      // Draw fallback: show error text on canvas
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('خطأ في قراءة ملف DXF', canvas.width / 2, canvas.height / 2);
       return;
     }
-    if (!parsed || !parsed.entities) return;
+    if (!parsed || !parsed.entities || parsed.entities.length === 0) {
+      console.warn('[DxfCanvas] No entities found');
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('لا توجد كيانات في الملف', canvas.width / 2, canvas.height / 2);
+      return;
+    }
 
     const layerColorMap = {};
     if (parsed.tables?.layer?.layers) {
@@ -165,6 +179,7 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
         layerColorMap[name] = l.colorIndex ?? 7;
       }
     }
+    console.log('[DxfCanvas] Layers:', Object.keys(layerColorMap).length);
     const blocks = parsed.blocks || {};
 
     const drawPolyline = (pts, color, close = false, widthPx = 1) => {

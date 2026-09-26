@@ -854,6 +854,32 @@ const handlePrint = useCallback(() => {
                 <p className="text-xs text-slate-500">جارٍ إنشاء المعاينة...</p>
               </div>
             </div>
+          ) : !svgLoading && !dxfText && !processing ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm">
+              <div className="text-center p-8 max-w-md">
+                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-10 h-10 text-slate-500" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">لم يتم العثور على المخطط</h2>
+                <p className="text-sm text-slate-400 mb-6">
+                  لا يوجد مخطط بهذا المعرف أو الملف غير متاح. تأكد من أن المخطط قد تم رفعه ومعالجته بنجاح.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => navigate('/drawings')}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20"
+                  >
+                    جميع المخططات
+                  </button>
+                  <button
+                    onClick={() => { fetchDrawing(parseInt(drawingId)); fetchPreview(parseInt(drawingId)); }}
+                    className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-semibold transition"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : svgContent || dxfText ? (
             <div
               ref={zoomContainerRef}
