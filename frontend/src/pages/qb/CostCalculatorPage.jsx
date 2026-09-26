@@ -48,6 +48,7 @@ const CostCalculatorPage = () => {
   const [saving, setSaving] = useState(false);
   const debouncedProjectData = useDebounce(projectData, 500);
   const debouncedItems = useDebounce(items, 500);
+  const { theme: advancedTheme, toggle: toggleAdvancedTheme } = useAdvancedTheme();
   const [engineerMode, setEngineerMode] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [isArabic, setIsArabic] = useState(false);
@@ -133,7 +134,20 @@ const CostCalculatorPage = () => {
   const handleGeneratePdf = useCallback(async () => { try { await generatePdf({ projectData, items, summary }); toast.success('تم إنشاء PDF'); } catch (e) { toast.error('فشل إنشاء PDF'); } }, [generatePdf, projectData, items, summary]);
   const handleExportExcel = useCallback(() => { try { const data = items.map(item => ({ 'البند': item.name, 'الكمية': item.quantity, 'السعر': item.price, 'الإجمالي': item.totalPrice })); ExcelExporter.exportToExcel(data, `cost_estimate_${projectData.name || 'project'}`); toast.success('تم تصدير Excel'); } catch (e) { toast.error('فشل تصدير Excel'); } }, [items, projectData.name]);
   const handleCopySummary = useCallback(async () => { const text = `تقرير التكاليف - ${projectData.name || 'المشروع'}\nالإجمالي: ${formatCurrency(summary.grandTotal)} ${CURRENCY}\nالربح: ${formatCurrency(summary.profit)} ${CURRENCY}\nالحديد: ${summary.totalSteel.toFixed(2)} طن\nالخرسانة: ${summary.totalConcrete.toFixed(2)} م3`; try { await navigator.clipboard.writeText(text); toast.success('تم النسخ'); } catch (e) { toast.error('فشل النسخ'); } }, [projectData.name, summary]);
-  const handleServerCalculate = () => {}; // Server calc placeholder
+  const handleServerCalculate = async () => {
+    try {
+      const res = await api.post('/estimate/calculate', { projectData, items });
+      if (res.data.success) {
+        toast.success('تم الحساب على الخادم');
+        // Update summary with server response
+        if (res.data.data.summary) {
+          setProjectData(prev => ({ ...prev, ...res.data.data.summary }));
+        }
+      }
+    } catch (e) {
+      toast.error('فشل الحساب على الخادم');
+    }
+  };
   const handleSave = useCallback(async () => { setSaving(true); try { const res = await api.post('/projects', { ...projectData, items, summary, engineerMode }); if (res.data.success) { toast.success('تم الحفظ'); localStorage.removeItem(STORAGE_KEY); } } catch (e) { toast.error('فشل الحفظ'); } finally { setSaving(false); } }, [projectData, items, summary, engineerMode]);
 
   useEffect(() => {  }, [items.length]);
