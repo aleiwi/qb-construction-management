@@ -33,7 +33,8 @@ import {
 const SmartAssistant = ({ projects, onAssistantAction }) => {
   const chatRef = useRef(null);
   const avatarRef = useRef(null);
-    const [messages, setMessages] = useState([]);
+  useLazyImage(avatarRef);
+  const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);

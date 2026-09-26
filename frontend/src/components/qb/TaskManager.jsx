@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 
 const TaskManager = ({ projectId }) => {
   const taskRef = useRef(null);
-    const [tasks, setTasks] = useState([]);
+  useLazyImage(taskRef);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState('');
   const [editingId, setEditingId] = useState(null);
