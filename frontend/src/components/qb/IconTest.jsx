@@ -2,6 +2,7 @@
 // للتأكد من أنها تعمل بشكل صحيح بدون أخطاء
 
 import React from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import {
   // الأيقونات من AdvancedCostMonitor
   FaMoneyBillWave,

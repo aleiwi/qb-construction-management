@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CloudArrowUpIcon, 

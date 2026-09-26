@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 

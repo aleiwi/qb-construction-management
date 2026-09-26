@@ -2,6 +2,7 @@
 // هذا الملف يساعد في التأكد من أن جميع الأيقونات تعمل
 
 import React from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import {
   // الأيقونات المُصححة
   FaArrowUp,      // تم الإصلاح من FaTrendingUp
