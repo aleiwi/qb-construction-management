@@ -1,5 +1,35 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useThrottle, useLazyImage } from '../../hooks/qb/usePerformance';
+
+// Inline useThrottle hook
+const useThrottle = (callback, limit) => {
+  const [throttle, setThrottle] = useState(false);
+  useEffect(() => {
+    if (!throttle) {
+      callback();
+      setThrottle(true);
+      const timer = setTimeout(() => setThrottle(false), limit);
+      return () => clearTimeout(timer);
+    }
+  }, [callback, limit, throttle]);
+};
+
+// Inline useLazyImage hook
+const useLazyImage = (imageRef) => {
+  useEffect(() => {
+    if (!imageRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          observer.unobserve(img);
+        }
+      });
+    });
+    observer.observe(imageRef.current);
+    return () => observer.disconnect();
+  }, [imageRef]);
+};
 import { useParams, useNavigate } from 'react-router-dom';
 import { drawingsApi, boqElementsApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';
