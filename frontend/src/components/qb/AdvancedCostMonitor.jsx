@@ -13,7 +13,7 @@ import {
   FaCoins,
   FaBalanceScale
 } from 'react-icons/fa';
-import { formatNumber, safeDivide } from '../../utils/qb/utils/calculatorLogic';
+import { formatNumber, safeDivide } from '../../utils/qb/calculatorLogic';
 
 const AdvancedCostMonitor = ({ 
   projectData, 

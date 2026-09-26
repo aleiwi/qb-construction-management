@@ -39,6 +39,10 @@ const QuickEstimatorPage = lazy(() => import('./pages/QuickEstimatorPage').then(
 const ClassificationDashboard = lazy(() => import('./pages/ClassificationDashboard').then(m => ({ default: m.ClassificationDashboard })));
 const BatchUploadPage = lazy(() => import('./pages/BatchUploadPage').then(m => ({ default: m.BatchUploadPage })));
 const DrawingViewerPage = lazy(() => import('./pages/DrawingViewerPage').then(m => ({ default: m.DrawingViewerPage })));
+const AIPredictiveCenter = lazy(() => import('./components/qb/AIPredictiveCenter').then(m => ({ default: m.AIPredictiveCenter })));
+const AdvancedCostMonitor = lazy(() => import('./components/qb/AdvancedCostMonitor').then(m => ({ default: m.AdvancedCostMonitor })));
+const MaterialsManager = lazy(() => import('./components/qb/MaterialsManager').then(m => ({ default: m.MaterialsManager })));
+const QbErrorBoundary = lazy(() => import('./components/qb/ErrorBoundary').then(m => ({ default: m.ErrorBoundary })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));

@@ -106,7 +106,7 @@ import { get, projectsAPI } from '../../utils/qb/api';
 import projectService from '../../services/qb/projectService';
 import { Button, Card, Modal } from './ui';
 import { AsyncErrorBoundary } from './ErrorBoundaries';
-import { createErrorLogger } from '../../utils/qb/utils/errorMonitoring';
+import { createErrorLogger } from '../../utils/qb/errorMonitoring';
 import Swal from 'sweetalert2';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';

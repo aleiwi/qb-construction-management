@@ -29,6 +29,9 @@ export const PAGE_ROLES = {
   '/drawings/:drawingId': ['admin', 'project_manager', 'engineer'],
   '/users': ['admin'],
   '/profile': ['admin', 'project_manager', 'engineer', 'accountant', 'contractor'],
+  '/ai-center': ['admin', 'project_manager', 'engineer'],
+  '/cost-monitor': ['admin', 'project_manager', 'engineer', 'accountant'],
+  '/materials': ['admin', 'project_manager', 'engineer', 'accountant'],
 };
 
 export function canAccessPage(role, path) {
