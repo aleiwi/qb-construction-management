@@ -32,6 +32,8 @@ export const PAGE_ROLES = {
   '/ai-center': ['admin', 'project_manager', 'engineer'],
   '/cost-monitor': ['admin', 'project_manager', 'engineer', 'accountant'],
   '/materials': ['admin', 'project_manager', 'engineer', 'accountant'],
+  '/assistant': ['admin', 'project_manager', 'engineer', 'accountant'],
+  '/progress': ['admin', 'project_manager', 'engineer', 'accountant'],
 };
 
 export function canAccessPage(role, path) {

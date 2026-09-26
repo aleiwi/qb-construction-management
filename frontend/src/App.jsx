@@ -42,6 +42,8 @@ const DrawingViewerPage = lazy(() => import('./pages/DrawingViewerPage').then(m 
 const AIPredictiveCenter = lazy(() => import('./components/qb/AIPredictiveCenter').then(m => ({ default: m.AIPredictiveCenter })));
 const AdvancedCostMonitor = lazy(() => import('./components/qb/AdvancedCostMonitor').then(m => ({ default: m.AdvancedCostMonitor })));
 const MaterialsManager = lazy(() => import('./components/qb/MaterialsManager').then(m => ({ default: m.MaterialsManager })));
+const SmartAssistant = lazy(() => import('./components/qb/SmartAssistant').then(m => ({ default: m.SmartAssistant })));
+const ProgressTracker = lazy(() => import('./components/qb/ProgressTracker').then(m => ({ default: m.ProgressTracker })));
 const QbErrorBoundary = lazy(() => import('./components/qb/ErrorBoundary').then(m => ({ default: m.ErrorBoundary })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
@@ -106,6 +108,11 @@ const AppRoutes = () => {
                     <Route path="/project" element={<ProtectedRoute roles={getRouteRoles('/project')}><QbProjectPage /></ProtectedRoute>} />
                     <Route path="/cost-calculator" element={<ProtectedRoute roles={getRouteRoles('/cost-calculator')}><CostCalculatorPage /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roles={getRouteRoles('/profile')}><QbProfilePage /></ProtectedRoute>} />
+                    <Route path="/ai-center" element={<ProtectedRoute roles={getRouteRoles('/ai-center')}><SmartAssistant /></ProtectedRoute>} />
+                    <Route path="/cost-monitor" element={<ProtectedRoute roles={getRouteRoles('/cost-monitor')}><AdvancedCostMonitor /></ProtectedRoute>} />
+                    <Route path="/materials" element={<ProtectedRoute roles={getRouteRoles('/materials')}><MaterialsManager /></ProtectedRoute>} />
+                    <Route path="/assistant" element={<ProtectedRoute roles={getRouteRoles('/assistant')}><SmartAssistant /></ProtectedRoute>} />
+                    <Route path="/progress" element={<ProtectedRoute roles={getRouteRoles('/progress')}><ProgressTracker /></ProtectedRoute>} />
 
                     <Route element={<ProtectedRoute />}>
             <Route path="/drawings/:drawingId" element={

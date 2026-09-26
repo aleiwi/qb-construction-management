@@ -38,8 +38,9 @@ const Navbar = () => {
     { path: '/ai-center', label: 'المركز الذكي', icon: FaBrain },
     { path: '/cost-monitor', label: 'مراقبة التكاليف', icon: FaDollarSign },
     { path: '/materials', label: 'إدارة المواد', icon: FaCube },
+    { path: '/assistant', label: 'المساعد الذكي', icon: FaRobot },
+    { path: '/progress', label: 'المتابعة', icon: FaChartLine },
     { path: '/cad-analyzer', label: 'محلل CAD', icon: FaRocket },
-    { path: '/materials', label: 'المواد', icon: FaBox },
     { path: '/reports', label: 'التقارير', icon: FaFileAlt },
   ];
 
