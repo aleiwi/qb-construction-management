@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useLazyImage } from "../hooks/qb/usePerformance";
 import { boqElementsApi } from '../features/boq/boqApi';
 import { useAuth } from '../hooks/useAuth';

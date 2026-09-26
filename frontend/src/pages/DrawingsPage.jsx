@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useLazyImage } from "../hooks/qb/usePerformance";
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
