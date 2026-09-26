@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePerformanceMonitor } from "../../hooks/qb/usePerformance";
 import { FaUser, FaLock, FaBell, FaPalette, FaDatabase, FaSave } from 'react-icons/fa';
 
 const SettingsPage = () => {

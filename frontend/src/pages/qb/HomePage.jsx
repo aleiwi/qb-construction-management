@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePerformanceMonitor } from "../../hooks/qb/usePerformance";
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
