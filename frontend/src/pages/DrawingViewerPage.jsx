@@ -150,6 +150,7 @@ export const DrawingViewerPage = () => {
       if (res.success && res.data?.svg) {
         const svg = res.data.svg;
         setSvgContent(svg);
+        setDxfText(null);
         const vb = computeDxfViewBox(svg);
         if (!vb) throw new Error('تعذر قراءة هندسة الملف');
         viewBoxRef.current = vb;
