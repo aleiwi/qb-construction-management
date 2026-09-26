@@ -10,6 +10,8 @@ import {
   FaFileAlt,
   FaBrain,
   FaDollarSign,
+  FaTags,
+  FaClipboardCheck,
   FaCube,
   FaCog,
   FaUserPlus,
@@ -41,6 +43,8 @@ const Navbar = () => {
     { path: '/materials', label: 'إدارة المواد', icon: FaCube },
     { path: '/assistant', label: 'المساعد الذكي', icon: FaRobot },
     { path: '/progress', label: 'المتابعة', icon: FaChartLine },
+    { path: '/price-library', label: 'مكتبة الأسعار', icon: FaTags },
+    { path: '/quality-checks', label: 'الفحوصات', icon: FaClipboardCheck },
     { path: '/cad-analyzer', label: 'محلل CAD', icon: FaRocket },
     { path: '/reports', label: 'التقارير', icon: FaFileAlt },
   ];

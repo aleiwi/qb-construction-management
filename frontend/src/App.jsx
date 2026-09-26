@@ -112,7 +112,9 @@ const AppRoutes = () => {
                     <Route path="/cost-monitor" element={<ProtectedRoute roles={getRouteRoles('/cost-monitor')}><AdvancedCostMonitor /></ProtectedRoute>} />
                     <Route path="/materials" element={<ProtectedRoute roles={getRouteRoles('/materials')}><MaterialsManager /></ProtectedRoute>} />
                     <Route path="/assistant" element={<ProtectedRoute roles={getRouteRoles('/assistant')}><SmartAssistant /></ProtectedRoute>} />
-                    <Route path="/progress" element={<ProtectedRoute roles={getRouteRoles('/progress')}><ProgressTracker /></ProtectedRoute>} />
+                    <Route path="/progress" element={<ProtectedRoute roles={getRouteRoles("/progress")}><ProgressTracker /></ProtectedRoute>} />
+                    <Route path="/price-library" element={<ProtectedRoute roles={getRouteRoles("/price-library")}><MaterialsManager /></ProtectedRoute>} />
+                    <Route path="/quality-checks" element={<ProtectedRoute roles={getRouteRoles("/quality-checks")}><ProgressTracker /></ProtectedRoute>} />
 
                     <Route element={<ProtectedRoute />}>
             <Route path="/drawings/:drawingId" element={

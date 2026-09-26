@@ -281,8 +281,9 @@ const CostCalculatorPage = () => {
       );
 
       case 'elements': return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">تصنيف عناصر المشروع</h3>
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">تصنيف عناصر المشروع</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button onClick={async () => { try { const res = await api.post('/boq-elements/classify', { projectId }); if (res.data.success) toast.success('تم التصنيف تلقائياً'); } catch (e) { toast.error('فشل التصنيف'); } }}
               className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 text-left hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
@@ -298,6 +299,8 @@ const CostCalculatorPage = () => {
           <button onClick={() => loadBoqSummary(projectId)} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition">
             <FaSync className="inline mr-1" /> تحديث البيانات
           </button>
+        </div>
+          <TaskManager projectId={projectId} />
         </div>
       );
 
