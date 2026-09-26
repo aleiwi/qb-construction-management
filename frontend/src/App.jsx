@@ -22,6 +22,7 @@ const QbLoginPage = lazy(() => import('./pages/qb/LoginPage').then(m => ({ defau
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
+const ProjectViewPage = lazy(() => import('./pages/qb/ProjectViewPage').then(m => ({ default: m.ProjectViewPage })));
 const ContractorsPage = lazy(() => import('./pages/ContractorsPage').then(m => ({ default: m.ContractorsPage })));
 const ContractsPage = lazy(() => import('./pages/ContractsPage').then(m => ({ default: m.ContractsPage })));
 const DrawingsPage = lazy(() => import('./pages/DrawingsPage').then(m => ({ default: m.DrawingsPage })));
@@ -121,6 +122,9 @@ const AppRoutes = () => {
               } />
               <Route path="/projects/:projectId" element={
                 <ProtectedRoute roles={getRouteRoles('/projects/:projectId')}><ProjectDetailPage /></ProtectedRoute>
+              } />
+              <Route path="/project/:projectId" element={
+                <ProtectedRoute roles={getRouteRoles('/project/:projectId')}><ProjectViewPage /></ProtectedRoute>
               } />
               <Route path="/contractors" element={
                 <ProtectedRoute roles={getRouteRoles('/contractors')}><ContractorsPage /></ProtectedRoute>

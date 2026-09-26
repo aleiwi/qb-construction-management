@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { FaBuilding, FaLayerGroup, FaCube, FaFileDiagram, FaImage, FaChartBar, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
-import ProjectModelViewer from '../components/qb/ModelViewer';
-import api from '../api/axios';
+import { FaBuilding, FaLayerGroup, FaCube, FaFileAlt, FaImage, FaChartBar, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import ProjectModelViewer from '../../components/qb/ModelViewer';
+import api from '../../api/axios';
 
 const ProjectViewPage = () => {
   const { projectId } = useParams();
@@ -33,7 +33,7 @@ const ProjectViewPage = () => {
   const tabs = [
     { id: 'overview', label: 'نظرة عامة', icon: FaChartBar },
     { id: 'buildings', label: 'المباني', icon: FaBuilding },
-    { id: 'drawings', label: 'المخططات', icon: FaFileDiagram },
+    { id: 'drawings', label: 'المخططات', icon: FaFileAlt },
     { id: '3d', label: 'النموذج ثلاثي الأبعاد', icon: FaCube },
     { id: 'boq', label: 'جهاز تسعير الكميات', icon: FaLayerGroup },
   ];
@@ -136,7 +136,7 @@ const ProjectViewPage = () => {
               <h2 className="text-xl font-bold mb-4">المخططات والرسومات</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-800 rounded-lg p-6 text-center">
-                  <FaFileDiagram className="text-blue-400 text-3xl mx-auto mb-3" />
+                  <FaFileAlt className="text-blue-400 text-3xl mx-auto mb-3" />
                   <h3 className="font-bold mb-2">مخطط الهيكل</h3>
                   <p className="text-gray-400 text-sm">مخطط هيكل المبنى مع جميع الأبعاد</p>
                   <button onClick={() => navigate(`/drawings/${projectId}`)} className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
@@ -144,7 +144,7 @@ const ProjectViewPage = () => {
                   </button>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-6 text-center">
-                  <FaFileDiagram className="text-green-400 text-3xl mx-auto mb-3" />
+                  <FaFileAlt className="text-green-400 text-3xl mx-auto mb-3" />
                   <h3 className="font-bold mb-2">مخطط التشطيب</h3>
                   <p className="text-gray-400 text-sm">مخطط التشطيب الداخلي والخارجي</p>
                   <button onClick={() => navigate(`/drawings?project=${projectId}`)} className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
@@ -152,7 +152,7 @@ const ProjectViewPage = () => {
                   </button>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-6 text-center">
-                  <FaFileDiagram className="text-purple-400 text-3xl mx-auto mb-3" />
+                  <FaFileAlt className="text-purple-400 text-3xl mx-auto mb-3" />
                   <h3 className="font-bold mb-2">مخطط الأنظمة</h3>
                   <p className="text-gray-400 text-sm">مخطط الأنظمة الكهربائية والسباكة</p>
                   <button className="mt-3 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
@@ -160,7 +160,7 @@ const ProjectViewPage = () => {
                   </button>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-6 text-center">
-                  <FaFileDiagram className="text-orange-400 text-3xl mx-auto mb-3" />
+                  <FaFileAlt className="text-orange-400 text-3xl mx-auto mb-3" />
                   <h3 className="font-bold mb-2">مخطط الموقع</h3>
                   <p className="text-gray-400 text-sm">مخطط الموقع الخارجي والتخطيط العام</p>
                   <button className="mt-3 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
