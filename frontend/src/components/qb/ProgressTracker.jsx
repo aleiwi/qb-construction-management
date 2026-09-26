@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { toast } from 'react-hot-toast';
 import {
   FaChartLine,
