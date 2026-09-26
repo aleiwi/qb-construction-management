@@ -3,7 +3,7 @@
  * Performance Optimization Hooks
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState } from 'react';
 
 /**
  * Hook لتجنب re-rendering غير الضروري
@@ -24,9 +24,9 @@ export const useStableCallback = (callback, dependencies = []) => {
  * Debounces a value after a delay
  */
 export const useDebounce = (value, delay = 500) => {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
@@ -89,11 +89,11 @@ export const useLazyImage = (imageRef) => {
  * Memoizes expensive calculations
  */
 export const useMemoAsync = (asyncFn, dependencies = []) => {
-  const [state, setState] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
+  const [state, setState] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
 
     const executeAsync = async () => {
@@ -198,13 +198,3 @@ export const useMemoryMonitor = () => {
   }, []);
 };
 
-export default {
-  useStableCallback,
-  useDebounce,
-  useThrottle,
-  useLazyImage,
-  useMemoAsync,
-  useAnimationFrame,
-  usePerformanceMonitor,
-  useMemoryMonitor,
-};

@@ -38,7 +38,11 @@ export const DrawingViewerPage = () => {
   const [filteredTotal, setFilteredTotal] = useState(0);
   const PAGE_SIZE = 500;
   const [svgContent, setSvgContent] = useState(null);
-  const [dxfText, setDxfText] = useState(null);
+  const svgCanvasRef = useRef(null);
+    const throttledResize = useThrottle(() => {
+    if (typeof window !== 'undefined' && fitToViewport) fitToViewport();
+  }, 200);
+    const [dxfText, setDxfText] = useState(null);
   const [layers, setLayers] = useState(null);
   const [layerVisibility, setLayerVisibility] = useState(null);
   const [showLayers, setShowLayers] = useState(false);
