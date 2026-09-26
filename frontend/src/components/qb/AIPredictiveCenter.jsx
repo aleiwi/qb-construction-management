@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLazyImage } from "../../hooks/qb/usePerformance";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaBrain,
