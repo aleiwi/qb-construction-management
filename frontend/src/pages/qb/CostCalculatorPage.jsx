@@ -46,6 +46,8 @@ const CostCalculatorPage = () => {
   const [selectedItem, setSelectedItem] = useState('foundation');
   const [activeTab, setActiveTab] = useState('calculator');
   const [saving, setSaving] = useState(false);
+  const debouncedProjectData = useDebounce(projectData, 500);
+  const debouncedItems = useDebounce(items, 500);
   const [engineerMode, setEngineerMode] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [isArabic, setIsArabic] = useState(false);
@@ -60,10 +62,15 @@ const CostCalculatorPage = () => {
     } catch (e) {}
   }, []);
 
-  // Save draft
+  // Auto-save draft (debounced)
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectData, items })); } catch (e) {}
-  }, [projectData, items]);
+    try {
+      const timer = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectData, items }));
+      }, 1000);
+      return () => clearTimeout(timer);
+    } catch (e) {}
+  }, [debouncedProjectData, debouncedItems]);
 
   // Load BOQ summary from backend
   const loadBoqSummary = useCallback(async (pid) => {
@@ -126,6 +133,7 @@ const CostCalculatorPage = () => {
   const handleGeneratePdf = useCallback(async () => { try { await generatePdf({ projectData, items, summary }); toast.success('تم إنشاء PDF'); } catch (e) { toast.error('فشل إنشاء PDF'); } }, [generatePdf, projectData, items, summary]);
   const handleExportExcel = useCallback(() => { try { const data = items.map(item => ({ 'البند': item.name, 'الكمية': item.quantity, 'السعر': item.price, 'الإجمالي': item.totalPrice })); ExcelExporter.exportToExcel(data, `cost_estimate_${projectData.name || 'project'}`); toast.success('تم تصدير Excel'); } catch (e) { toast.error('فشل تصدير Excel'); } }, [items, projectData.name]);
   const handleCopySummary = useCallback(async () => { const text = `تقرير التكاليف - ${projectData.name || 'المشروع'}\nالإجمالي: ${formatCurrency(summary.grandTotal)} ${CURRENCY}\nالربح: ${formatCurrency(summary.profit)} ${CURRENCY}\nالحديد: ${summary.totalSteel.toFixed(2)} طن\nالخرسانة: ${summary.totalConcrete.toFixed(2)} م3`; try { await navigator.clipboard.writeText(text); toast.success('تم النسخ'); } catch (e) { toast.error('فشل النسخ'); } }, [projectData.name, summary]);
+  const handleServerCalculate = () => {}; // Server calc placeholder
   const handleSave = useCallback(async () => { setSaving(true); try { const res = await api.post('/projects', { ...projectData, items, summary, engineerMode }); if (res.data.success) { toast.success('تم الحفظ'); localStorage.removeItem(STORAGE_KEY); } } catch (e) { toast.error('فشل الحفظ'); } finally { setSaving(false); } }, [projectData, items, summary, engineerMode]);
 
   useEffect(() => {  }, [items.length]);
@@ -248,6 +256,27 @@ const CostCalculatorPage = () => {
               { label: 'الإجمالي النهائي', value: formatCurrency(summary.grandTotal), color: 'text-purple-600' }
             ].map((stat, i) => (<div key={i} className="bg-slate-50 dark:bg-slate-700 rounded-xl p-4"><p className="text-[10px] text-slate-500 mb-1">{stat.label}</p><p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p></div>))}
           </div>
+        </div>
+      );
+
+      case 'elements': return (
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">تصنيف عناصر المشروع</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button onClick={async () => { try { const res = await api.post('/boq-elements/classify', { projectId }); if (res.data.success) toast.success('تم التصنيف تلقائياً'); } catch (e) { toast.error('فشل التصنيف'); } }}
+              className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 text-left hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+              <FaWrench className="text-blue-500 text-xl mb-2" /><h4 className="font-bold text-sm text-slate-700 dark:text-slate-200">تصنيف تلقائي</h4>
+              <p className="text-xs text-slate-500 mt-1">تصنيف عناصر المشروع تلقائياً بناءً على الرسومات</p>
+            </button>
+            <button onClick={async () => { try { const res = await api.get('/boq-elements/stats?project_id=' + projectId); if (res.data.success) toast.success('إجمالي العناصر: ' + res.data.data.total); } catch (e) {} }}
+              className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 text-left hover:bg-green-100 dark:hover:bg-green-900/40 transition">
+              <FaChartBar className="text-green-500 text-xl mb-2" /><h4 className="font-bold text-sm text-slate-700 dark:text-slate-200">إحصائيات</h4>
+              <p className="text-xs text-slate-500 mt-1">عرض إحصائيات عناصر المشروع</p>
+            </button>
+          </div>
+          <button onClick={() => loadBoqSummary(projectId)} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition">
+            <FaSync className="inline mr-1" /> تحديث البيانات
+          </button>
         </div>
       );
 
