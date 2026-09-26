@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { usePerformanceMonitor } from './hooks/qb/usePerformance';
 import { PAGE_ROLES, ROLE_LANDING } from './config/roleAccess';
 import AppLayout from './layouts/AppLayout';
 
@@ -89,6 +90,7 @@ function getRouteRoles(path) {
 }
 
 const AppRoutes = () => {
+  usePerformanceMonitor('AppRoutes');
   return (
     <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
