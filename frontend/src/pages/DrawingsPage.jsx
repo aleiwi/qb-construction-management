@@ -1,20 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
-import { useLazyImage } from "../hooks/qb/usePerformance";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { usePerformanceMonitor, useLazyImage, useThrottle, useDebounce } from '../hooks/qb/usePerformance';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { confirmDialog } from '../utils/alerts';
+import { toast } from 'react-hot-toast';
 import { drawingsApi, boqElementsApi, partitionCadFiles } from '../features/boq/boqApi';
 import { buildingsApi } from '../features/projects/projectsApi';
 import {
   FileText, Upload, RefreshCw, X, AlertCircle,
   CheckCircle2, Clock, AlertTriangle, Trash2, Eye, Layers,
-  UploadCloud, Loader2, FileWarning
+  UploadCloud, Loader2, FileWarning, Search, Filter, SortAsc,
+  ChevronDown, ChevronUp, Package, CheckSquare, Square,
+  Download, BarChart3, ZoomIn, ZoomOut, Grid3X3, List,
+  ArrowUpDown, FileImage, ImageIcon
 } from 'lucide-react';
 import { DRAWING_STATUS as STATUS_CONFIG } from '../config/status';
 import { formatDuration, formatCount } from '../components/dxf/DrawingViewerWidgets';
+
+const STATUS_FILTERS = [
+  { key: 'all', label: 'الكل', color: 'text-slate-400' },
+  { key: 'completed', label: 'مكتمل', color: 'text-emerald-400' },
+  { key: 'processing', label: 'قيد المعالجة', color: 'text-amber-400' },
+  { key: 'pending', label: 'في الانتظار', color: 'text-orange-400' },
+  { key: 'failed', label: 'فشل', color: 'text-red-400' },
+];
+
+const SORT_OPTIONS = [
+  { key: 'name_asc', label: 'الاسم ↑' },
+  { key: 'name_desc', label: 'الاسم ↓' },
+  { key: 'date_asc', label: 'الأقدم أولاً' },
+  { key: 'date_desc', label: 'الأحدث أولاً' },
+  { key: 'elements_desc', label: 'العناصر ↓' },
+  { key: 'status', label: 'حسب الحالة' },
+];
+
+const ITEMS_PER_PAGE = 10;
 
 const UploadModal = ({ buildings, onUpload, onClose }) => {
   const [selectedBuilding, setSelectedBuilding] = useState(buildings[0]?.id || '');
@@ -22,6 +44,7 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [error, setError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -29,15 +52,28 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
     if (files.length === 0) return;
     const { valid, rejected } = partitionCadFiles(files);
     if (rejected.length > 0) {
-      setError(rejected.length === 1 ? rejected[0].error : `تم رفض ${rejected.length} ملف: ${rejected[0].error}`);
+      setError(rejected.length === 1 ? rejected[0].error : `${rejected.length} ملف مرفوض`);
+      toast.error(`تم رفض ${rejected.length} ملف`);
     }
-    if (valid.length === 0) {
-      if (rejected.length === 0) setError('يُرجى اختيار ملفات .dxf أو .dwg فقط');
-      return;
+    if (valid.length > 0) {
+      setError('');
+      setSelectedFiles(prev => [...prev, ...valid]);
+      toast.success(`تم إضافة ${valid.length} ملف`);
     }
-    setError('');
-    setSelectedFiles(prev => [...prev, ...valid]);
     e.target.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+    const { valid, rejected } = partitionCadFiles(files);
+    if (rejected.length > 0) toast.error(`${rejected.length} ملف مرفوض`);
+    if (valid.length > 0) {
+      setSelectedFiles(prev => [...prev, ...valid]);
+      toast.success(`تم إضافة ${valid.length} ملف`);
+    }
   };
 
   const removeFile = (index) => {
@@ -51,18 +87,33 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
     setError('');
     setUploading(true);
 
-    if (selectedFiles.length === 1) {
-      const res = await onUpload(selectedBuilding, selectedFiles[0]);
+    try {
+      if (selectedFiles.length === 1) {
+        const res = await onUpload(selectedBuilding, selectedFiles[0]);
+        setUploading(false);
+        if (!res.success) {
+          setError(res.error?.message || 'فشل الرفع');
+          toast.error('فشل الرفع');
+        } else {
+          toast.success('تم رفع المخطط بنجاح');
+          onClose();
+        }
+      } else {
+        const onProgress = (completed, total) => setProgress({ completed, total });
+        const results = await drawingsApi.uploadBatch(selectedBuilding, selectedFiles, onProgress);
+        setUploading(false);
+        const ok = results.filter(r => r.success).length;
+        if (ok === results.length) {
+          toast.success(`تم رفع ${ok} ملف بنجاح`);
+          onClose();
+        } else {
+          toast.error(`تم رفع ${ok} من ${results.length} ملف`);
+        }
+      }
+    } catch (err) {
       setUploading(false);
-      if (!res.success) setError(res.error?.message || 'فشل الرفع');
-      else onClose();
-    } else {
-      const onProgress = (completed, total) => setProgress({ completed, total });
-      const results = await drawingsApi.uploadBatch(selectedBuilding, selectedFiles, onProgress);
-      setUploading(false);
-      const allOk = results.every(r => r.success);
-      if (allOk) onClose();
-      else setError(`تم رفع ${results.filter(r => r.success).length} من ${results.length} ملف`);
+      setError('حدث خطأ أثناء الرفع');
+      toast.error('خطأ في الرفع');
     }
   };
 
@@ -100,8 +151,15 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">ملفات CAD (.dxf / .dwg)</label>
-            <div className="border-2 border-dashed border-slate-700 hover:border-blue-500/50 rounded-xl p-6 text-center transition cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}>
+            <div
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
+                dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 hover:border-blue-500/50'
+              }`}
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
               <p className="text-xs text-slate-400">اسحب وأفلت الملفات هنا أو اضغط للاختيار</p>
               <p className="text-[10px] text-slate-600 mt-1">يدعم .dxf و .dwg — عدة ملفات — الحد 50MB للملف</p>
@@ -117,7 +175,7 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
           </div>
 
           {selectedFiles.length > 0 && (
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {selectedFiles.map((f, i) => (
                 <div key={i} className="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2 text-xs">
                   <div className="flex items-center gap-2 min-w-0">
@@ -162,16 +220,89 @@ const UploadModal = ({ buildings, onUpload, onClose }) => {
   );
 };
 
+const DrawingCard = React.memo(({ drawing, statusCfg, onView, onReview, onDelete, canManage, canAdmin }) => {
+  const iconRef = useRef(null);
+  useLazyImage(iconRef);
+
+  return (
+    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 hover:border-slate-700/80 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          <div ref={iconRef} className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+              <h3 className="font-bold text-white text-base">{drawing.file_name}</h3>
+              <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full border flex items-center gap-1 ${statusCfg.color}`}>
+                <statusCfg.icon className="w-3 h-3" />
+                {statusCfg.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+              <span>مبنى #{drawing.building_id}</span>
+              {drawing.elements_count > 0 && (
+                <>
+                  <span className="text-blue-400">{formatCount(drawing.elements_count)} عنصر</span>
+                  <span className="text-emerald-400">{formatCount(drawing.classified_count)} مصنف</span>
+                  {drawing.unclassified_count > 0 && (
+                    <span className="text-orange-400">{formatCount(drawing.unclassified_count)} غير مصنف</span>
+                  )}
+                </>
+              )}
+              {drawing.processing_time > 0 && (
+                <span className="text-slate-500">{formatDuration(drawing.processing_time)}</span>
+              )}
+            </div>
+            {drawing.error_message && (
+              <p className="text-xs text-red-400 mt-2">{drawing.error_message}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => onView(drawing.id)} className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition border border-transparent hover:border-blue-500/20" title="عرض المخطط">
+            <Eye className="w-4 h-4" />
+          </button>
+          {drawing.status === 'completed' && drawing.unclassified_count > 0 && (
+            <button onClick={() => onReview(drawing.id)} className="p-2 text-slate-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-xl transition border border-transparent hover:border-orange-500/20" title="مراجعة غير المصنفة">
+              <Layers className="w-4 h-4" />
+            </button>
+          )}
+          {canManage && (
+            <button onClick={() => onDelete(drawing.id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition border border-transparent hover:border-red-500/20" title="حذف">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export const DrawingsPage = () => {
   const navigate = useNavigate();
   const permissions = usePermissions();
+  const { user } = useAuth();
   const [drawings, setDrawings] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
-  const fetchData = async () => {
+  // Search, filter, sort, pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [buildingFilter, setBuildingFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date_desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Performance monitoring
+  usePerformanceMonitor('DrawingsPage');
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [drawingsRes, buildingsRes] = await Promise.all([
@@ -182,10 +313,11 @@ export const DrawingsPage = () => {
       if (buildingsRes.success) setBuildings(buildingsRes.data);
     } catch (err) {
       console.error(err);
+      toast.error('فشل تحميل المخططات');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -197,8 +329,7 @@ export const DrawingsPage = () => {
   const handleUpload = async (buildingId, file) => {
     const res = await drawingsApi.upload(buildingId, file);
     if (res.success) {
-      const fileLabel = file.name || '';
-      showSuccess(`تم رفع ${fileLabel} وبدء استخراج العناصر`);
+      toast.success(`تم رفع المخطط بنجاح`);
       fetchData();
     }
     return res;
@@ -208,7 +339,7 @@ export const DrawingsPage = () => {
     const onProgress = (completed, total) => {};
     const results = await drawingsApi.uploadBatch(buildingId, files, onProgress);
     const ok = results.filter(r => r.success).length;
-    showSuccess(`تم رفع ${ok} من ${results.length} ملف بنجاح`);
+    toast.success(`تم رفع ${ok} من ${results.length} ملف`);
     fetchData();
     return { success: ok > 0 };
   };
@@ -216,34 +347,100 @@ export const DrawingsPage = () => {
   const handleDelete = async (id) => {
     if (!(await confirmDialog('حذف المخطط', 'هل أنت متأكد من حذف هذا المخطط؟'))) return;
     const res = await drawingsApi.delete(id);
-    if (res.success) { showSuccess('تم حذف المخطط'); fetchData(); }
+    if (res.success) { toast.success('تم حذف المخطط'); fetchData(); }
   };
+
+  const handleBatchDelete = async () => {
+    if (!(await confirmDialog('حذف مخططات', `هل أنت متأكد من حذف ${selectedIds.length} مخطط؟`))) return;
+    const results = await Promise.all(selectedIds.map(id => drawingsApi.delete(id)));
+    const ok = results.filter(r => r.success).length;
+    toast.success(`تم حذف ${ok} مخطط`);
+    setSelectedIds([]);
+    fetchData();
+  };
+
+  // Filter and sort
+  const filteredDrawings = useMemo(() => {
+    let result = [...drawings];
+
+    // Search
+    if (debouncedSearch) {
+      result = result.filter(d =>
+        d.file_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        String(d.building_id).includes(debouncedSearch)
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(d => d.status === statusFilter);
+    }
+
+    // Building filter
+    if (buildingFilter !== 'all') {
+      result = result.filter(d => String(d.building_id) === buildingFilter);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc': return (a.file_name || '').localeCompare(b.file_name || '');
+        case 'name_desc': return (b.file_name || '').localeCompare(a.file_name || '');
+        case 'date_asc': return new Date(a.created_at) - new Date(b.created_at);
+        case 'date_desc': return new Date(b.created_at) - new Date(a.created_at);
+        case 'elements_desc': return (b.elements_count || 0) - (a.elements_count || 0);
+        case 'status': return (a.status || '').localeCompare(b.status || '');
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [drawings, debouncedSearch, statusFilter, buildingFilter, sortBy]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredDrawings.length / ITEMS_PER_PAGE);
+  const paginatedDrawings = filteredDrawings.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.length === paginatedDrawings.length) return [];
+      return paginatedDrawings.map(d => d.id);
+    });
+  }, [paginatedDrawings]);
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }, []);
 
   const formatTime = formatDuration;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="حصر الكميات (BOQ)"
-        subtitle="رفع المخططات CAD واستخراج العناصر"
+        title="إدارة المخططات"
+        subtitle="رفع وعرض وإدارة مخططات CAD واستخراج العناصر"
         actions={
           <>
-            <button onClick={fetchData} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold" title="تحديث">
+            <button onClick={fetchData} disabled={loading} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold disabled:opacity-50" title="تحديث">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
             {permissions.canManageProjects && (
-              <button
-                onClick={() => setShowUpload(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-lg shadow-blue-600/20"
-              >
+              <button onClick={() => setShowUpload(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-lg shadow-blue-600/20">
                 <UploadCloud className="w-4 h-4" />
                 <span>رفع مخططات</span>
               </button>
             )}
-            <button
-              onClick={() => navigate('/boq-review')}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold"
-            >
+            <button onClick={() => navigate('/boq-review')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold">
               <Layers className="w-4 h-4" />
               <span>مراجعة غير المصنفة</span>
             </button>
@@ -261,119 +458,207 @@ export const DrawingsPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'إجمالي المخططات', value: drawings.length, color: 'text-indigo-400' },
-            { label: 'تم بنجاح', value: drawings.filter(d => d.status === 'completed').length, color: 'text-emerald-400' },
-            { label: 'قيد المعالجة', value: drawings.filter(d => d.status === 'processing').length, color: 'text-amber-400' },
-            { label: 'بانتظار المراجعة', value: drawings.filter(d => d.status === 'completed' && d.unclassified_count > 0).length, color: 'text-orange-400' },
-          ].map(s => (
-            <div key={s.label} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-              <div className="text-xs text-slate-400 mt-1">{s.label}</div>
-            </div>
-          ))}
+            { label: 'إجمالي المخططات', value: drawings.length, color: 'text-indigo-400', icon: FileText },
+            { label: 'تم بنجاح', value: drawings.filter(d => d.status === 'completed').length, color: 'text-emerald-400', icon: CheckCircle2 },
+            { label: 'قيد المعالجة', value: drawings.filter(d => d.status === 'processing').length, color: 'text-amber-400', icon: Clock },
+            { label: 'بانتظار المراجعة', value: drawings.filter(d => d.status === 'completed' && d.unclassified_count > 0).length, color: 'text-orange-400', icon: AlertTriangle },
+          ].map(s => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+                    <div className="text-xs text-slate-400 mt-1">{s.label}</div>
+                  </div>
+                  <Icon className={`w-6 h-6 ${s.color} opacity-50`} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Info Banner */}
-        <div className="bg-indigo-950/30 border border-indigo-800/40 rounded-2xl p-4 text-xs text-indigo-300 flex items-start gap-3">
-          <FileText className="w-4 h-4 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold mb-1">محرك حصر الكميات — الإصدار المطوّر</p>
-            <p>يدعم الآن: LINE, LWPOLYLINE, POLYLINE, SPLINE, ELLIPSE, CIRCLE, ARC, DIMENSION, HATCH, INSERT/BLOCK. يتم تحويل DWG تلقائياً. يمكن رفع عدة ملفات دفعة واحدة.</p>
+        {/* Search and Filter Bar */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="بحث بالاسم أو رقم المبنى..."
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="w-full bg-slate-800/80 border border-slate-700 focus:border-blue-500 rounded-xl pl-4 pr-10 py-2.5 text-sm text-slate-100 outline-none transition"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-3 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 border ${
+                showFilters ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>فلترة</span>
+              {showFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            <select
+              value={sortBy}
+              onChange={e => { setSortBy(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 outline-none transition"
+            >
+              {SORT_OPTIONS.map(s => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
           </div>
+
+          {showFilters && (
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800">
+              <span className="text-xs text-slate-400">الحالة:</span>
+              {STATUS_FILTERS.map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => { setStatusFilter(f.key); setCurrentPage(1); }}
+                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition border ${
+                    statusFilter === f.key
+                      ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <span className="text-xs text-slate-400 mr-2">المبنى:</span>
+              <select
+                value={buildingFilter}
+                onChange={e => { setBuildingFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 outline-none"
+              >
+                <option value="all">الكل</option>
+                {buildings.map(b => (
+                  <option key={b.id} value={String(b.id)}>#{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+
+        {/* Batch Actions */}
+        {selectedIds.length > 0 && (
+          <div className="bg-blue-950/30 border border-blue-800/40 rounded-2xl p-4 flex items-center justify-between animate-fade-in">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-blue-300">{selectedIds.length} مخطط محدد</span>
+              <button onClick={toggleSelectAll} className="text-xs text-blue-400 hover:text-blue-300 underline">
+                {selectedIds.length === paginatedDrawings.length ? 'إلغاء الكل' : 'حدد الكل'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedIds.length > 0 && (
+                <button onClick={handleBatchDelete} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                  <Trash2 className="w-3 h-3" />
+                  حذف الكل
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Drawings List */}
         {loading && drawings.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-xs text-slate-400">جارٍ تحميل المخططات...</p>
             </div>
           </div>
-        ) : drawings.length === 0 ? (
+        ) : filteredDrawings.length === 0 ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-16 text-center">
             <FileText className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-300 mb-2">لا توجد مخططات</h3>
-            <p className="text-sm text-slate-500 mb-6">ارفع أول مخطط CAD للمباشرة بحصر الكميات</p>
-            {(permissions.isAdmin || permissions.isProjectManager) && (
-              <button onClick={() => setShowUpload(true)}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition inline-flex items-center gap-2">
+            <h3 className="text-lg font-bold text-slate-300 mb-2">
+              {debouncedSearch || statusFilter !== 'all' ? 'لا توجد نتائج' : 'لا توجد مخططات'}
+            </h3>
+            <p className="text-sm text-slate-500 mb-6">
+              {debouncedSearch || statusFilter !== 'all'
+                ? 'جرّب تغيير الفلتر أو بحث كلمة مختلفة'
+                : 'ارفع أول مخطط CAD للمباشرة بحصر الكميات'}
+            </p>
+            {(permissions.isAdmin || permissions.isProjectManager) && !debouncedSearch && statusFilter === 'all' && (
+              <button onClick={() => setShowUpload(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition inline-flex items-center gap-2">
                 <Upload className="w-4 h-4" />رفع مخططات
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {drawings.map(d => {
-              const statusCfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
-              const StatusIcon = statusCfg.icon;
-              return (
-                <div key={d.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 hover:border-slate-700/80 transition">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1 min-w-0">
-                      <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                          <h3 className="font-bold text-white text-base">{d.file_name}</h3>
-                          <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full border flex items-center gap-1 ${statusCfg.color}`}>
-                            <StatusIcon className="w-3 h-3" />
-                            {statusCfg.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
-                          <span>مبنى #{d.building_id}</span>
-                          {d.elements_count > 0 && (
-                            <>
-                              <span className="text-blue-400">{formatCount(d.elements_count)} عنصر</span>
-                              <span className="text-emerald-400">{formatCount(d.classified_count)} مصنف</span>
-                              {d.unclassified_count > 0 && (
-                                <span className="text-orange-400">{formatCount(d.unclassified_count)} غير مصنف</span>
-                              )}
-                            </>
-                          )}
-                          {d.processing_time > 0 && (
-                            <span className="text-slate-500">{formatTime(d.processing_time)}</span>
-                          )}
-                        </div>
-                        {d.error_message && (
-                          <p className="text-xs text-red-400 mt-2">{d.error_message}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => navigate(`/drawings/${d.id}`)}
-                        className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition border border-transparent hover:border-blue-500/20"
-                        title="عرض المخطط"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {d.status === 'completed' && d.unclassified_count > 0 && (
-                        <button
-                          onClick={() => navigate('/boq-review')}
-                          className="p-2 text-slate-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-xl transition border border-transparent hover:border-orange-500/20"
-                          title="مراجعة غير المصنفة"
-                        >
-                          <Layers className="w-4 h-4" />
-                        </button>
-                      )}
-                      {permissions.isAdmin && (
-                        <button
-                          onClick={() => handleDelete(d.id)}
-                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition border border-transparent hover:border-red-500/20"
-                          title="حذف"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-slate-400">
+                عرض {filteredDrawings.length} مخطط
+                {debouncedSearch && ` — نتائج البحث عن "${debouncedSearch}"`}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>ترتيب: {SORT_OPTIONS.find(s => s.key === sortBy)?.label}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {/* Select all checkbox */}
+              <div className="flex items-center gap-2 px-2">
+                <button onClick={toggleSelectAll} className="p-1 text-slate-500 hover:text-blue-400 transition">
+                  {selectedIds.length === paginatedDrawings.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {paginatedDrawings.map(d => {
+                const statusCfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
+                return (
+                  <div key={d.id} className={selectedIds.includes(d.id) ? 'ring-2 ring-blue-500/50 rounded-2xl' : ''}>
+                    <DrawingCard
+                      drawing={d}
+                      statusCfg={statusCfg}
+                      onView={(id) => navigate(`/drawings/${id}`)}
+                      onReview={(id) => navigate(`/drawings/${id}`)}
+                      onDelete={handleDelete}
+                      canManage={permissions.canManageProjects}
+                      canAdmin={permissions.isAdmin}
+                    />
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  السابق
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  التالي
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
