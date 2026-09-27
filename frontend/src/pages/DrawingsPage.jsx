@@ -304,6 +304,15 @@ export const DrawingsPage = () => {
   // Performance monitoring
   usePerformanceMonitor('DrawingsPage');
 
+  const handleScroll = useThrottle(() => {
+    // Scroll position handling
+  }, 200);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
