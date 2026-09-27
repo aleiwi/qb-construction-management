@@ -668,6 +668,58 @@ export const DrawingsPage = () => {
         )}
       </div>
 
+      {showPreview && previewDrawing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
+          <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Eye className="w-5 h-5 text-blue-400" />
+                معاينة {previewDrawing.file_name}
+              </h2>
+              <button onClick={() => setShowPreview(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-center">
+                <FileImage className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
+                <p className="text-sm text-slate-300 mb-2">{previewDrawing.file_name}</p>
+                <p className="text-xs text-slate-500 mb-4">مبنى #{previewDrawing.building_id} | {previewDrawing.elements_count || 0} عنصر</p>
+                {previewDrawing.svg_content ? (
+                  <div className="aspect-video bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center">
+                    <img src={'data:image/svg+xml;base64,' + btoa(previewDrawing.svg_content)} alt="Preview" className="max-w-full max-h-full" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-slate-950 rounded-xl flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs text-slate-400">جارٍ تحميل المعاينة...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                {[
+                  { label: 'العناصر', value: previewDrawing.elements_count || 0 },
+                  { label: 'المصنفة', value: previewDrawing.classified_count || 0 },
+                  { label: 'غير المصنفة', value: previewDrawing.unclassified_count || 0 },
+                  { label: 'الحالة', value: previewDrawing.status || 'N/A' },
+                ].map(s => (
+                  <div key={s.label} className="bg-slate-800/60 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-white">{s.value}</div>
+                    <div className="text-[10px] text-slate-400">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-slate-800">
+              <button onClick={() => setShowPreview(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition">إغلاق</button>
+              <button onClick={() => { setShowPreview(false); navigate('/drawings/' + previewDrawing.id); }} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition">عرض كامل</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showUpload && (
         <UploadModal
           buildings={buildings}
