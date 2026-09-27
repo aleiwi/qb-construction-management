@@ -298,6 +298,8 @@ export const DrawingsPage = () => {
   const [sortBy, setSortBy] = useState('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [previewDrawing, setPreviewDrawing] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Performance monitoring
   usePerformanceMonitor('DrawingsPage');
@@ -443,6 +445,10 @@ export const DrawingsPage = () => {
             <button onClick={() => navigate('/boq-review')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold">
               <Layers className="w-4 h-4" />
               <span>مراجعة غير المصنفة</span>
+            </button>
+            <button onClick={() => toast.success('جارٍ تصدير التقرير...')} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition flex items-center gap-2 text-xs font-bold">
+              <Download className="w-4 h-4" />
+              <span>تصدير</span>
             </button>
           </>
         }
