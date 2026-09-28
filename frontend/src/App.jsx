@@ -108,6 +108,7 @@ const AppRoutes = () => {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/register" element={<QbRegisterPage />} />
                     <Route path="/project" element={<ProtectedRoute roles={getRouteRoles('/project')}><QbProjectPage /></ProtectedRoute>} />
+                    <Route path="/cad-analyzer" element={<ProtectedRoute roles={getRouteRoles("/cad-analyzer")}><EnhancedCADAnalyzer /></ProtectedRoute>} />
                     <Route path="/cost-calculator" element={<ProtectedRoute roles={getRouteRoles('/cost-calculator')}><CostCalculatorPage /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roles={getRouteRoles('/profile')}><QbProfilePage /></ProtectedRoute>} />
                     <Route path="/ai-center" element={<ProtectedRoute roles={getRouteRoles('/ai-center')}><SmartAssistant /></ProtectedRoute>} />
