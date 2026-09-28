@@ -8,6 +8,7 @@ export const ROLE_LANDING = {
 
 export const PAGE_ROLES = {
   'cost-calculator': ['engineer', 'accountant', 'admin'],
+  '/cad-analyzer': ['engineer', 'admin'],
   '/dashboard': ['admin', 'project_manager', 'engineer', 'accountant', 'contractor'],
   '/projects': ['admin', 'project_manager', 'engineer'],
   '/projects/:projectId': ['admin', 'project_manager', 'engineer'],
