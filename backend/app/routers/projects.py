@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.models.project import ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectListOut, ProjectDetailOut
 from app.schemas.response import APIResponse
 from app.services.project_service import ProjectService, ProjectNotFoundException
@@ -17,23 +18,24 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 async def list_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
+    search: str = Query("", max_length=100),
+    status: Optional[ProjectStatus] = Query(None),
+    sort: Literal["newest", "oldest", "name"] = Query("newest"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.ENGINEER])),
 ):
     skip = (page - 1) * page_size
     project_service = ProjectService(db)
     ids = await allowed_project_ids(current_user, db)
-    if ids:
-        results = await project_service.get_all_with_counts(skip=skip, limit=page_size, project_ids=ids)
-        total = len(results)
-    else:
-        results = await project_service.get_all_with_counts(skip=skip, limit=page_size)
-        total = await project_service.count_total()
+    q = search.strip() or None
+    results = await project_service.get_all_with_counts(
+        skip=skip, limit=page_size, project_ids=ids or None, search=q, status=status, sort=sort,
+    )
+    total = await project_service.count_total(search=q, status=status, project_ids=ids or None)
+    counts = await project_service.status_counts(project_ids=ids or None)
 
     items = []
-    for row in results:
-        project = row[0]
-        count = row[1]
+    for project, b_count, s_count, progress in results:
         items.append(ProjectListOut(
             id=project.id,
             name=project.name,
@@ -42,12 +44,15 @@ async def list_projects(
             status=project.status,
             created_at=project.created_at,
             updated_at=project.updated_at,
-            buildings_count=count,
+            buildings_count=b_count,
+            stages_count=s_count,
+            progress_percent=progress,
         ))
 
     return APIResponse.ok(
         data=items,
-        message="تم جلب قائمة المشاريع بنجاح"
+        message="تم جلب قائمة المشاريع بنجاح",
+        meta={"total": total, "page": page, "page_size": page_size, "status_counts": counts},
     )
 
 

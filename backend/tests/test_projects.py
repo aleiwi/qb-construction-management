@@ -132,3 +132,90 @@ async def test_update_project_rates_validation(admin_client, seeded):
         json={"profit_percent": 1.5},
     )
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.asyncio
+async def test_list_projects_meta_total_and_counts(admin_client, seeded):
+    r = await admin_client.get("/api/v1/projects")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["meta"]["total"] >= 1
+    assert body["meta"]["page"] == 1
+    assert body["meta"]["page_size"] == 20
+    assert sum(body["meta"]["status_counts"].values()) == body["meta"]["total"]
+
+
+@pytest.mark.asyncio
+async def test_list_projects_search_filters_by_name_location(admin_client, seeded):
+    r = await admin_client.get("/api/v1/projects", params={"search": seeded["project_name"][:6]})
+    assert r.status_code == 200, r.text
+    names = [p["name"] for p in r.json()["data"]]
+    assert seeded["project_name"] in names
+    r = await admin_client.get("/api/v1/projects", params={"search": "zzz-no-such-project-zzz"})
+    assert r.status_code == 200, r.text
+    assert r.json()["data"] == []
+    assert r.json()["meta"]["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_list_projects_status_filter_and_pagination(admin_client, seeded):
+    r = await admin_client.get("/api/v1/projects", params={"status": "completed"})
+    assert r.status_code == 200, r.text
+    assert all(p["status"] == "completed" for p in r.json()["data"])
+    r = await admin_client.get("/api/v1/projects", params={"page": 2, "page_size": 1})
+    assert r.status_code == 200, r.text
+    assert r.json()["meta"]["page"] == 2
+    assert len(r.json()["data"]) <= 1
+    r = await admin_client.get("/api/v1/projects", params={"status": "not-a-status"})
+    assert r.status_code == 422, r.text
+
+
+@pytest.mark.asyncio
+async def test_create_project_persists_finance_rates(admin_client):
+    r = await admin_client.post("/api/v1/projects", json={
+        "name": "مشروع نسب مالية", "overhead_percent": 0.1, "profit_percent": 0.15,
+    })
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["overhead_percent"] == 0.1
+    assert data["profit_percent"] == 0.15
+    assert data["vat_rate"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_projects_includes_progress_and_stages(admin_client, seeded):
+    r = await admin_client.get("/api/v1/projects")
+    assert r.status_code == 200, r.text
+    items = {p["name"]: p for p in r.json()["data"]}
+    row = items[seeded["project_name"]]
+    # البذرة: مبنى واحد + 5 مراحل بأوزان 15/35/20/20/10 وتقدم صفري
+    assert row["buildings_count"] == 1
+    assert row["stages_count"] == 5
+    assert row["progress_percent"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_list_projects_progress_reflects_stage_updates(admin_client, seeded):
+    stages = (await admin_client.get(
+        "/api/v1/stages", params={"building_id": seeded["building_id"]})).json()["data"]
+    first = next(s for s in stages if s["weight_percent"] == 15)
+    r = await admin_client.patch(
+        f"/api/v1/stages/{first['id']}/progress", json={"progress_percent": 50})
+    assert r.status_code == 200, r.text
+    try:
+        r = await admin_client.get("/api/v1/projects")
+        row = next(p for p in r.json()["data"] if p["name"] == seeded["project_name"])
+        assert row["progress_percent"] == 7.5  # 15 × 50 / 100
+    finally:
+        await admin_client.patch(
+            f"/api/v1/stages/{first['id']}/progress", json={"progress_percent": 0})
+
+
+@pytest.mark.asyncio
+async def test_list_projects_sort(admin_client):
+    r = await admin_client.get("/api/v1/projects", params={"sort": "name"})
+    assert r.status_code == 200, r.text
+    names = [p["name"] for p in r.json()["data"]]
+    assert names == sorted(names)
+    r = await admin_client.get("/api/v1/projects", params={"sort": "bogus"})
+    assert r.status_code == 422, r.text

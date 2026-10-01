@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
-import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
-import { confirmDialog, promptInput, showAlert } from '../utils/alerts';
+import { confirmDialog, showAlert } from '../utils/alerts';
 import { projectsApi, buildingsApi, stagesApi } from '../features/projects/projectsApi';
 import api from '../api/axios';
 import {
@@ -13,6 +11,18 @@ import {
   FileText, BarChart3, DollarSign, BrainCircuit, MapPin
 } from 'lucide-react';
 import { PROJECT_STATUS as STATUS_CONFIG } from '../config/status';
+
+// نسبة إنجاز مرجحة بالأوزان (EVM مبسط): Σ(وزن × إنجاز) / 100.
+// القسمة على 100 لا على مجموع الأوزان — النطاق الناقص يُحسب كغير منجز بصدق.
+const weightedProgress = (stages) => {
+  if (!stages || stages.length === 0) return 0;
+  const v = stages.reduce((sum, s) =>
+    sum + (parseFloat(s.weight_percent) || 0) * (parseFloat(s.progress_percent) || 0), 0) / 100;
+  return Math.min(100, Math.max(0, v));
+};
+
+const totalWeight = (stages) =>
+  (stages || []).reduce((sum, s) => sum + (parseFloat(s.weight_percent) || 0), 0);
 
 const BuildingModal = ({ building, projectId, onSave, onClose, isEditing }) => {
   const [form, setForm] = useState({ name: building?.name || '', floors_count: building?.floors_count || 1 });
@@ -138,56 +148,98 @@ const StageModal = ({ stage, buildingId, onSave, onClose, isEditing }) => {
   );
 };
 
-const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
+const StageRow = ({ stage, canProgress, canEdit, canDelete, onProgress, onEdit, onDelete }) => {
+  const synced = parseFloat(stage.progress_percent) || 0;
+  const [draft, setDraft] = useState(null);
+  const shown = draft ?? synced;
+  // القراءة من الحدث لا من الحالة — تجنب closure قديم عند الإفلات السريع
+  const commitFromEvent = (e) => {
+    const v = parseFloat(e.target.value);
+    setDraft(null);
+    if (Number.isFinite(v) && v !== synced) onProgress(stage.id, v);
+  };
+  return (
+    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex-1 min-w-0">
+          <h5 className="text-xs font-bold text-slate-200">{stage.name}</h5>
+          {stage.description && <p className="text-[10px] text-slate-500 mt-0.5">{stage.description}</p>}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="text-left min-w-14">
+            <div className="text-xs font-bold text-blue-400">{shown.toFixed(0)}%</div>
+            <div className="text-[10px] text-slate-500">وزن {parseFloat(stage.weight_percent) || 0}%</div>
+          </div>
+          {canEdit && (
+            <button onClick={() => onEdit(stage)} className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition" title="تعديل المرحلة">
+              <Edit2 className="w-3 h-3" />
+            </button>
+          )}
+          {canDelete && (
+            <button onClick={() => onDelete(stage)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition" title="حذف">
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+      {canProgress ? (
+        <input
+          type="range" min="0" max="100" step="1" value={shown}
+          onChange={e => setDraft(parseFloat(e.target.value))}
+          onMouseUp={commitFromEvent}
+          onTouchEnd={commitFromEvent}
+          onKeyUp={e => (e.key.startsWith('Arrow') || e.key === 'Enter') && commitFromEvent(e)}
+          title="اسحب لتحديث نسبة الإنجاز"
+          className="w-full h-1.5 accent-blue-500 cursor-pointer"
+        />
+      ) : (
+        <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${synced >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+            style={{ width: `${synced}%` }} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const BuildingCard = ({ building, stages, onStagesChanged, projectId, onRefresh, permissions }) => {
   const [expanded, setExpanded] = useState(false);
-  const [stages, setStages] = useState([]);
-  const [loadingStages, setLoadingStages] = useState(false);
   const [showStageModal, setShowStageModal] = useState(false);
   const [editingStage, setEditingStage] = useState(null);
   const [editingBuilding, setEditingBuilding] = useState(false);
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
 
+  const canManage = permissions.isAdmin || permissions.isProjectManager;
+  const canProgress = canManage || permissions.isEngineer;
+
   const showSuccess = (msg) => {
     setActionMsg(msg);
     setTimeout(() => setActionMsg(''), 3000);
   };
 
-  const loadStages = useCallback(async () => {
-    setLoadingStages(true);
-    try {
-      const res = await stagesApi.list(building.id);
-      if (res.success) setStages(res.data);
-    } finally {
-      setLoadingStages(false);
-    }
-  }, [building.id]);
-
-  useEffect(() => {
-    if (expanded) loadStages();
-  }, [expanded, loadStages]);
-
   const handleSaveStage = async (form) => {
     if (editingStage) {
       const res = await stagesApi.update(editingStage.id, form);
-      if (res.success) { showSuccess('تم تحديث المرحلة'); await loadStages(); }
+      if (res.success) { showSuccess('تم تحديث المرحلة'); await onStagesChanged(); }
       return res;
     } else {
       const res = await stagesApi.create(form);
-      if (res.success) { showSuccess('تم إضافة المرحلة'); await loadStages(); }
+      if (res.success) { showSuccess('تم إضافة المرحلة'); await onStagesChanged(); }
       return res;
     }
   };
 
   const handleProgressUpdate = async (stageId, progress) => {
     const res = await stagesApi.updateProgress(stageId, progress);
-    if (res.success) { showSuccess('تم تحديث نسبة الإنجاز'); await loadStages(); }
+    if (res.success) { showSuccess('تم تحديث نسبة الإنجاز'); await onStagesChanged(); }
     return res;
   };
 
-  const handleDeleteStage = async (stageId) => {
-    const res = await stagesApi.delete(stageId);
-    if (res.success) { showSuccess('تم حذف المرحلة'); await loadStages(); }
+  const handleDeleteStage = async (stage) => {
+    if (!(await confirmDialog('حذف المرحلة', `هل أنت متأكد من حذف مرحلة "${stage.name}"؟`))) return;
+    const res = await stagesApi.delete(stage.id);
+    if (res.success) { showSuccess('تم حذف المرحلة'); await onStagesChanged(); }
   };
 
   const handleDeleteBuilding = async () => {
@@ -196,10 +248,8 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
     if (res.success) onRefresh();
   };
 
-  const totalWeight = stages.reduce((sum, s) => sum + parseFloat(s.weight_percent || 0), 0);
-  const overallProgress = totalWeight > 0
-    ? stages.reduce((sum, s) => sum + (parseFloat(s.weight_percent) * parseFloat(s.progress_percent)) / 100, 0) / totalWeight * 100
-    : 0;
+  const progress = weightedProgress(stages);
+  const weight = totalWeight(stages);
 
   return (
     <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
@@ -217,17 +267,15 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-bold text-white text-sm">{building.name}</h4>
-            <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
               <span>{building.floors_count} طوابق</span>
               <span>{stages.length} مراحل</span>
-              {expanded && (
-                <div className="flex items-center gap-1">
-                  <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
-                  </div>
-                  <span className="text-blue-400 font-semibold">{overallProgress.toFixed(1)}%</span>
+              <div className="flex items-center gap-1.5 min-w-32 flex-1 max-w-52">
+                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${progress}%` }} />
                 </div>
-              )}
+                <span className="text-blue-400 font-semibold">{progress.toFixed(0)}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -257,53 +305,29 @@ const BuildingCard = ({ building, projectId, onRefresh, permissions }) => {
 
       {/* Stages List */}
       {expanded && (
-        <div className="border-t border-slate-800 px-4 pb-4 pt-2 space-y-2">
-          {loadingStages ? (
-            <div className="flex items-center justify-center py-6">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="border-t border-slate-800 px-4 pb-4 pt-3 space-y-2">
+          {stages.length > 0 && weight !== 100 && (
+            <div className="p-2.5 bg-amber-950/40 border border-amber-800/50 rounded-xl text-amber-300 text-[11px] flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>مجموع الأوزان {weight}% — يجب أن يساوي 100% ليعكس شريط الإنجاز الصورة الكاملة</span>
             </div>
-          ) : stages.length === 0 ? (
+          )}
+          {stages.length === 0 ? (
             <div className="text-center py-6 text-slate-500 text-xs">
               لا توجد مراحل. أضف أول مرحلة للمتابعة.
             </div>
           ) : (
             stages.map((stage) => (
-              <div key={stage.id} className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex-1">
-                    <h5 className="text-xs font-bold text-slate-200">{stage.name}</h5>
-                    {stage.description && <p className="text-[10px] text-slate-500 mt-0.5">{stage.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-blue-400">{parseFloat(stage.progress_percent).toFixed(1)}%</div>
-                      <div className="text-[10px] text-slate-500">من {parseFloat(stage.weight_percent)}%</div>
-                    </div>
-                    {(permissions.isAdmin || permissions.isProjectManager || permissions.isEngineer) && (
-                      <button onClick={async () => {
-                        const newVal = await promptInput('تحديث نسبة الإنجاز', 'نسبة الإنجاز الجديدة (0-100)', stage.progress_percent);
-                        if (newVal !== null) {
-                          const val = parseFloat(newVal);
-                          if (!isNaN(val) && val >= 0 && val <= 100) {
-                            handleProgressUpdate(stage.id, val);
-                          }
-                        }
-                      }} className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition" title="تحديث الإنجاز">
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                    )}
-                    {permissions.isAdmin && (
-                      <button onClick={() => handleDeleteStage(stage.id)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition" title="حذف">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${parseFloat(stage.progress_percent) >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                    style={{ width: `${stage.progress_percent}%` }} />
-                </div>
-              </div>
+              <StageRow
+                key={stage.id}
+                stage={stage}
+                canProgress={canProgress}
+                canEdit={permissions.isAdmin || permissions.isProjectManager}
+                canDelete={permissions.isAdmin}
+                onProgress={handleProgressUpdate}
+                onEdit={(s) => { setEditingStage(s); setShowStageModal(true); }}
+                onDelete={handleDeleteStage}
+              />
             ))
           )}
         </div>
@@ -433,11 +457,32 @@ export const ProjectDetailPage = () => {
   const permissions = usePermissions();
   const [project, setProject] = useState(null);
   const [buildings, setBuildings] = useState([]);
+  const [stagesMap, setStagesMap] = useState({});
+  const [loadingStages, setLoadingStages] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [editingBuilding, setEditingBuilding] = useState(null);
   const [actionMsg, setActionMsg] = useState('');
+
+  // جلب مسبق واحد لكل المراحل (توسيع البطاقة يعرض فورًا بلا انتظار)
+  const fetchStages = useCallback(async (list) => {
+    if (!list || list.length === 0) { setStagesMap({}); return; }
+    setLoadingStages(true);
+    try {
+      const entries = await Promise.all(list.map(async (b) => {
+        try {
+          const r = await stagesApi.list(b.id);
+          return [b.id, r.success ? r.data : []];
+        } catch {
+          return [b.id, []];
+        }
+      }));
+      setStagesMap(Object.fromEntries(entries));
+    } finally {
+      setLoadingStages(false);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -448,15 +493,19 @@ export const ProjectDetailPage = () => {
         buildingsApi.list(projectId),
       ]);
       if (projRes.success) setProject(projRes.data);
-      if (buildRes.success) setBuildings(buildRes.data);
+      const list = buildRes.success ? buildRes.data : [];
+      setBuildings(list);
+      await fetchStages(list);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'فشل تحميل البيانات');
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, fetchStages]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const refreshStages = useCallback(() => fetchStages(buildings), [fetchStages, buildings]);
 
   const showSuccess = (msg) => {
     setActionMsg(msg);
@@ -501,6 +550,10 @@ export const ProjectDetailPage = () => {
   }
 
   const statusCfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.planning;
+
+  // تقدم المشروع الكلي: تجميع كل المراحل المجلوبة مسبقًا بنفس المعادلة المرجحة
+  const allStages = Object.values(stagesMap).flat();
+  const projectProgress = weightedProgress(allStages);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -549,14 +602,23 @@ export const ProjectDetailPage = () => {
               )}
             </div>
             <div className="flex items-center gap-6">
+              <div className="text-center min-w-24">
+                <div className={`text-2xl font-bold ${projectProgress >= 100 ? 'text-emerald-400' : 'text-blue-400'}`}>
+                  {projectProgress.toFixed(0)}%
+                </div>
+                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1.5">
+                  <div className={`h-full rounded-full transition-all ${projectProgress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${projectProgress}%` }} />
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  الإنجاز الكلي{loadingStages ? ' (جارٍ التحديث...)' : ''}
+                </div>
+              </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-400">{buildings.length}</div>
                 <div className="text-[11px] text-slate-500">المباني</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-400">
-                  {buildings.reduce((sum, b) => sum + (b.stages_count || 0), 0)}
-                </div>
+                <div className="text-2xl font-bold text-emerald-400">{allStages.length}</div>
                 <div className="text-[11px] text-slate-500">المراحل</div>
               </div>
             </div>
@@ -584,6 +646,8 @@ export const ProjectDetailPage = () => {
                 <BuildingCard
                   key={building.id}
                   building={building}
+                  stages={stagesMap[building.id] || []}
+                  onStagesChanged={refreshStages}
                   projectId={projectId}
                   onRefresh={fetchData}
                   permissions={permissions}

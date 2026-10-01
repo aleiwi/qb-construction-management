@@ -59,6 +59,8 @@ class ProjectListOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     buildings_count: Optional[int] = 0
+    stages_count: Optional[int] = 0
+    progress_percent: Optional[float] = 0.0
 
     model_config = ConfigDict(from_attributes=True)
 

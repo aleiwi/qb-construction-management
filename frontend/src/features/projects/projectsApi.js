@@ -1,8 +1,12 @@
 import api from '../../api/axios';
 
 export const projectsApi = {
-  list: async (page = 1, pageSize = 20) => {
-    const res = await api.get('/projects', { params: { page, page_size: pageSize } });
+  list: async (page = 1, pageSize = 20, filters = {}) => {
+    const params = { page, page_size: pageSize };
+    if (filters.search) params.search = filters.search;
+    if (filters.status && filters.status !== 'all') params.status = filters.status;
+    if (filters.sort && filters.sort !== 'newest') params.sort = filters.sort;
+    const res = await api.get('/projects', { params });
     return res.data;
   },
 

@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { usePerformanceMonitor } from "../hooks/qb/usePerformance";
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../features/projects/useProjects';
 import { usePermissions } from '../hooks/usePermissions';
-import { useAuth } from '../hooks/useAuth';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
-  Building2, Plus, RefreshCw, Edit2, Trash2,
+  Building2, Plus, RefreshCw, Edit2, Trash2, Search, CalendarDays,
   MapPin, Layers, X, CheckCircle2, AlertCircle, ChevronRight
 } from 'lucide-react';
 import { PROJECT_STATUS as STATUS_CONFIG } from '../config/status';
+
+// نسبة كسرية (0-1) من الخلفي ↔ نسبة مئوية (0-100) في الواجهة — نفس اتفاقية ProjectDetailPage
+const toPct = (v) => (v == null ? '' : String(Math.round(v * 10000) / 100));
+const FINANCE_FIELDS = [
+  ['overhead_percent', 'المصاريف الإدارية %'],
+  ['profit_percent', 'هامش الربح %'],
+  ['contingency_percent', 'الاحتياطي %'],
+  ['vat_rate', 'الضريبة %'],
+];
 
 const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
   const [form, setForm] = useState({
@@ -17,6 +24,10 @@ const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
     description: project?.description || '',
     location: project?.location || '',
     status: project?.status || 'planning',
+    overhead_percent: toPct(project?.overhead_percent),
+    profit_percent: toPct(project?.profit_percent),
+    contingency_percent: toPct(project?.contingency_percent),
+    vat_rate: toPct(project?.vat_rate),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -25,8 +36,26 @@ const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
     e.preventDefault();
     setError('');
     if (!form.name.trim()) { setError('اسم المشروع مطلوب'); return; }
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      location: form.location.trim() || null,
+      status: form.status,
+    };
+    for (const [k] of FINANCE_FIELDS) {
+      const raw = (form[k] ?? '').toString().trim();
+      // في التعديل: القائمة لا تحمل النسب (تُدار في صفحة التفاصيل) —
+      // فالفارغ هنا يعني "لا تمس"، لا "امسح". في الإنشاء: فارغ = الافتراضي العام.
+      if (raw === '') { if (!isEditing) payload[k] = null; continue; }
+      const n = parseFloat(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        setError('النسب المالية يجب أن تكون بين 0 و 100 (فارغ = الافتراضي العام)');
+        return;
+      }
+      payload[k] = n / 100;
+    }
     setSaving(true);
-    const result = await onSave(form);
+    const result = await onSave(payload);
     setSaving(false);
     if (!result.success) setError(result.error?.message || 'فشل الحفظ');
     else onClose();
@@ -92,6 +121,25 @@ const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              النسب المالية % <span className="font-normal text-slate-500">(اختياري — فارغ = الافتراضي العام{isEditing ? '، وتُدار القيم الحالية من صفحة التفاصيل' : ''})</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {FINANCE_FIELDS.map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-[11px] text-slate-500 mb-1">{label}</label>
+                  <input
+                    type="number" min="0" max="100" step="0.01"
+                    value={form[key]}
+                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder="افتراضي"
+                    className="w-full bg-slate-800/80 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 outline-none transition"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition">
               إلغاء
@@ -109,17 +157,37 @@ const ProjectModal = ({ project, onSave, onClose, isEditing }) => {
 
 export const ProjectsPage = () => {
   const navigate = useNavigate();
-  const { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject } = useProjects();
+  const { projects, total, statusCounts, page, loading, error, fetchProjects, createProject, updateProject, deleteProject } = useProjects();
   const permissions = usePermissions();
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionMsg, setActionMsg] = useState('');
   const [actionType, setActionType] = useState('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sort, setSort] = useState('newest');
+  const [listPage, setListPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // بحث مرتد (debounce) — طلب خادمي واحد بعد توقف الكتابة
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setListPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const query = { page: listPage, pageSize: PAGE_SIZE, search: debouncedSearch, status: statusFilter, sort };
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchProjects(query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchProjects, listPage, debouncedSearch, statusFilter, sort]);
+
+  const refresh = () => fetchProjects(query);
 
   const showSuccess = (msg) => {
     setActionMsg(msg);
@@ -128,15 +196,18 @@ export const ProjectsPage = () => {
   };
 
   const handleSave = async (form) => {
+    let res;
     if (editingProject) {
-      const res = await updateProject(editingProject.id, form);
+      res = await updateProject(editingProject.id, form);
       if (res.success) showSuccess('تم تحديث المشروع بنجاح');
-      return res;
     } else {
-      const res = await createProject(form);
-      if (res.success) showSuccess('تم إنشاء المشروع بنجاح');
-      return res;
+      res = await createProject(form);
+      if (res.success) {
+        showSuccess('تم إنشاء المشروع بنجاح');
+        refresh();
+      }
     }
+    return res;
   };
 
   const handleDelete = async (id) => {
@@ -144,8 +215,30 @@ export const ProjectsPage = () => {
     if (res.success) {
       showSuccess('تم حذف المشروع بنجاح');
       setDeleteConfirm(null);
+      // إن فرغت الصفحة الحالية (عدا الأولى) عُد صفحة للخلف
+      if (projects.length <= 1 && listPage > 1) setListPage(p => p - 1);
+      else refresh();
     }
   };
+
+  const hasFilter = debouncedSearch !== '' || statusFilter !== 'all';
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  };
+
+  // إحصائيات شاملة من الخادم (لا تتأثر بالصفحة الحالية)
+  const stats = [
+    { label: 'إجمالي المشاريع', value: total, color: 'text-blue-400' },
+    { label: 'قيد التنفيذ', value: statusCounts.in_progress || 0, color: 'text-amber-400' },
+    { label: 'مكتملة', value: statusCounts.completed || 0, color: 'text-emerald-400' },
+    { label: 'موقوفة', value: statusCounts.on_hold || 0, color: 'text-orange-400' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -155,7 +248,7 @@ export const ProjectsPage = () => {
         subtitle="إدارة المشاريع الإنشائية ومراحل التنفيذ"
         actions={
           <>
-            <button onClick={() => fetchProjects()} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
+            <button onClick={refresh} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
             {(permissions.isAdmin || permissions.isProjectManager) && (
@@ -182,14 +275,39 @@ export const ProjectsPage = () => {
           </div>
         )}
 
+        {/* Search + status filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="بحث بالاسم أو الموقع أو الوصف..."
+              className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl py-2.5 pr-10 pl-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            />
+          </div>
+          <select
+            value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setListPage(1); }}
+            className="bg-slate-900/80 border border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-2.5 text-sm text-slate-200 outline-none transition"
+          >
+            <option value="all">كل الحالات</option>
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+              <option key={key} value={key}>{cfg.label}</option>
+            ))}
+          </select>
+          <select
+            value={sort} onChange={e => { setSort(e.target.value); setListPage(1); }}
+            title="ترتيب"
+            className="bg-slate-900/80 border border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-2.5 text-sm text-slate-200 outline-none transition"
+          >
+            <option value="newest">الأحدث أولاً</option>
+            <option value="oldest">الأقدم أولاً</option>
+            <option value="name">الاسم أبجديًا</option>
+          </select>
+        </div>
+
         {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'إجمالي المشاريع', value: projects.length, color: 'text-blue-400' },
-            { label: 'قيد التنفيذ', value: projects.filter(p => p.status === 'in_progress').length, color: 'text-amber-400' },
-            { label: 'مكتملة', value: projects.filter(p => p.status === 'completed').length, color: 'text-emerald-400' },
-            { label: 'على HOLD', value: projects.filter(p => p.status === 'on_hold').length, color: 'text-orange-400' },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <div key={stat.label} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
               <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-xs text-slate-400 mt-1">{stat.label}</div>
@@ -210,7 +328,7 @@ export const ProjectsPage = () => {
             <AlertCircle className="w-6 h-6 mx-auto mb-2" />
             {error}
           </div>
-        ) : projects.length === 0 ? (
+        ) : projects.length === 0 && !hasFilter ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-16 text-center">
             <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-300 mb-2">لا توجد مشاريع</h3>
@@ -225,10 +343,26 @@ export const ProjectsPage = () => {
               </button>
             )}
           </div>
+        ) : projects.length === 0 ? (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-16 text-center">
+            <Search className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-300 mb-2">لا نتائج مطابقة</h3>
+            <p className="text-sm text-slate-500 mb-6">جرّب كلمة بحث مختلفة أو غيّر فلتر الحالة</p>
+            <button
+              onClick={() => { setSearch(''); setStatusFilter('all'); }}
+              className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-bold transition"
+            >
+              مسح البحث والفلتر
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
+            {hasFilter && (
+              <p className="text-xs text-slate-500">نتائج البحث: {total} مشروع مطابق</p>
+            )}
             {projects.map((project) => {
               const statusCfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.planning;
+              const pct = Math.min(100, Math.max(0, Number(project.progress_percent) || 0));
               return (
                 <div key={project.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 hover:border-slate-700/80 transition group">
                   <div className="flex items-start justify-between gap-4">
@@ -242,7 +376,7 @@ export const ProjectsPage = () => {
                       {project.description && (
                         <p className="text-xs text-slate-400 mb-2 line-clamp-2">{project.description}</p>
                       )}
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                         {project.location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" />
@@ -251,8 +385,20 @@ export const ProjectsPage = () => {
                         )}
                         <span className="flex items-center gap-1">
                           <Layers className="w-3.5 h-3.5" />
-                          {project.buildings_count || 0} مبنى
+                          {project.buildings_count || 0} مبنى · {project.stages_count || 0} مرحلة
                         </span>
+                        {fmtDate(project.created_at) && (
+                          <span className="flex items-center gap-1">
+                            <CalendarDays className="w-3.5 h-3.5" />
+                            {fmtDate(project.created_at)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden max-w-64">
+                          <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-xs font-bold ${pct >= 100 ? 'text-emerald-400' : 'text-blue-400'}`}>{pct}%</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -286,6 +432,29 @@ export const ProjectsPage = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setListPage(p => Math.max(1, p - 1))}
+              disabled={listPage <= 1 || loading}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-xl text-xs font-bold transition"
+            >
+              السابق
+            </button>
+            <span className="text-xs text-slate-400 px-2">
+              صفحة {page} من {totalPages} · الإجمالي {total}
+            </span>
+            <button
+              onClick={() => setListPage(p => Math.min(totalPages, p + 1))}
+              disabled={listPage >= totalPages || loading}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-xl text-xs font-bold transition"
+            >
+              التالي
+            </button>
           </div>
         )}
       </div>

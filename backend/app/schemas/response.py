@@ -10,12 +10,13 @@ class ErrorDetail(BaseModel):
 class APIResponse(BaseModel, Generic[T]):
     success: bool = True
     data: Optional[T] = None
+    meta: Optional[dict] = None
     message: Optional[str] = "تم بنجاح"
     error: Optional[ErrorDetail] = None
 
     @classmethod
-    def ok(cls, data: Any = None, message: str = "تم بنجاح"):
-        return cls(success=True, data=data, message=message, error=None)
+    def ok(cls, data: Any = None, message: str = "تم بنجاح", meta: Optional[dict] = None):
+        return cls(success=True, data=data, meta=meta, message=message, error=None)
 
     @classmethod
     def fail(cls, code: str, message: str):
