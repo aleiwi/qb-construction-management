@@ -33,8 +33,15 @@ class AuthService:
         self.audit_service = AuditLogService(db)
 
     async def _check_lockout(self, user: User) -> None:
-        if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-            remaining = (user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60
+        if not user.locked_until:
+            return
+        locked_until = user.locked_until
+        if locked_until.tzinfo is None:
+            # SQLite يعيد تواريخ naive — نعتبرها UTC (كما كُتبت عند القفل)
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        if locked_until > now:
+            remaining = (locked_until - now).total_seconds() / 60
             raise AccountLockedException(
                 f"تم قفل الحساب مؤقتاً بسبب محاولات فاشلة متكررة، حاول بعد {int(remaining) + 1} دقيقة"
             )

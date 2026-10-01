@@ -43,7 +43,7 @@ class RetentionReleaseService:
         return release
 
     async def release_retention(self, release: RetentionRelease, user_id: int) -> RetentionRelease:
-        from datetime import datetime
+        from datetime import datetime, timezone
         release.release_status = ReleaseStatus.RELEASED
         release.released_at = datetime.now(timezone.utc)
         release.released_by = user_id

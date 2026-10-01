@@ -114,7 +114,7 @@ class PaymentService:
 
     async def mark_paid(self, payment, user_id: int) -> dict:
         from app.models.payment import PaymentStatus
-        from datetime import datetime
+        from datetime import datetime, timezone
         old_status = payment.status
         payment.status = PaymentStatus.PAID
         payment.paid_at = datetime.now(timezone.utc)
