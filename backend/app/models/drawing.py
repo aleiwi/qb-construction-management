@@ -35,4 +35,4 @@ class Drawing(Base):
     building: Mapped["Building"] = relationship("Building")
     batch_job: Mapped["BatchJob"] = relationship("BatchJob", back_populates="drawings")
     uploaded_by_user: Mapped["User"] = relationship("User")
-    boq_elements: Mapped[list["BOQElement"]] = relationship("BOQElement", back_populates="drawing")
+    boq_elements: Mapped[list["BOQElement"]] = relationship("BOQElement", back_populates="drawing", cascade="all, delete-orphan")

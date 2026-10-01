@@ -61,4 +61,4 @@ class BOQElement(Base):
 
     drawing: Mapped["Drawing"] = relationship("Drawing", back_populates="boq_elements", lazy="selectin")
     classifier: Mapped["User"] = relationship("User", lazy="selectin")
-    boq_items: Mapped[list["BOQItem"]] = relationship("BOQItem", back_populates="boq_element", lazy="selectin")
+    boq_items: Mapped[list["BOQItem"]] = relationship("BOQItem", back_populates="boq_element", lazy="selectin", cascade="all, delete-orphan")

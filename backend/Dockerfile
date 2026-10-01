@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 COPY . .
 
+# Pure-Python ezdxf: C extensions are blocked by Application Control policies
+# on locked-down hosts — the app sets the same default at startup (main.py).
+ENV EZDXF_DISABLE_C_EXT=1
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

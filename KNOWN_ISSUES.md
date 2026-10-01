@@ -78,6 +78,10 @@
 - `docker compose config`: صالح (فشل `SECRET_KEY` بدونه مقصود fail-closed)
 - `docker compose up --build`: متعذر في هذه البيئة — الحاويات بلا إنترنت (`pip` يفشل بـ Network unreachable). البناء نفسه سليم ويحتاج بيئة فيها registry/PyPI.
 
+### التحقق الحي E2E (Oct 2026 — رفع test_boq2.dxf عبر المتصفح)
+- **E1**: أي رفع جديد كان يفشل (`failed: DLL load failed ... matrix44 ... Application Control policy`) — امتدادات ezdxf المترجمة بلغة C محظورة على هذا الجهاز. الإصلاح: `EZDXF_DISABLE_C_EXT=1` (وضع pure-Python الرسمي) في `app/main.py` + `backend/Dockerfile`. أُعيد الرفع حيًا: **تم بنجاح — 3 عناصر (2 عمود + 1 جدار) في 0.4 ث**، والعارض رسمها والقائمة أظهرت `3 من 3` بصفر أخطاء كونسول
+- **E2**: حذف مخطط **يمتلك عناصر** كان يسقط 500 (`NOT NULL constraint failed: boq_elements.drawing_id`) — علاقة بلا cascade وSQLite لا يفرض `ON DELETE CASCADE` (بلا PRAGMA). الإصلاح: حذف صريح مرتب (بنود BOQ ← عناصر ← مخطط) في `drawing_service.delete` + `cascade="all, delete-orphan"` على العلاقتين. متحقق حيًا: حذف + عناصر صفر + القائمة عادت 5
+
 ## ملاحظات هامة
 
 - جميع الاختبارات (111 اختبار) خضراء (100%) وتقع على قاعدة بيانات معزولة `qb_test.db`

@@ -220,6 +220,8 @@ class DrawingService:
         await self.db.commit()
 
     async def delete(self, drawing_id: int) -> bool:
+        from sqlalchemy import delete as sa_delete
+        from app.models.boq_item import BOQItem
         drawing = await self.get_by_id(drawing_id)
         if not drawing:
             return False
@@ -232,6 +234,12 @@ class DrawingService:
                     os.remove(sidecar)
             except OSError:
                 pass
+        # حذف صريح بالترتيب (عناصر BOQ ثم بنودها): SQLite-dev لا يفرض
+        # ON DELETE CASCADE (بلا PRAGMA foreign_keys)، فالحذف المباشر للمخطط
+        # يسقط بـ IntegrityError متى امتلك عناصر. يعمل على كلتا القاعدتين.
+        element_ids = select(BOQElement.id).where(BOQElement.drawing_id == drawing_id)
+        await self.db.execute(sa_delete(BOQItem).where(BOQItem.boq_element_id.in_(element_ids)))
+        await self.db.execute(sa_delete(BOQElement).where(BOQElement.drawing_id == drawing_id))
         await self.db.delete(drawing)
         await self.db.commit()
         return True

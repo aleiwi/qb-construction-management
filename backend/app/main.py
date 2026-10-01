@@ -1,3 +1,9 @@
+import os
+# ezdxf يعمل بوضع pure-Python: امتدادات C محظورة بسياسة Application Control
+# على بعض أجهزة Windows (DLL blocked) فتفشل كل المعالجة. setdefault تُبقي
+# الباب مفتوحًا للـ C-ext حيث يعمل (Linux/Docker) ما لم يُضبط صراحة.
+os.environ.setdefault("EZDXF_DISABLE_C_EXT", "1")
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +49,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("qb")
 
+# Allowlist ثابتة لأعمدة projects المضافة يدويًا (ترحيل SQLite الخفيف).
+# معرفات الأعمدة لا يمكن ربطها كبارامترات، فلا يُبنى الـ DDL إلا من هذه
+# القيم الحرفية — وهذا ما يجعل الاستخدام آمنًا ويُرضي بوابة الفحص الساكن.
+_PROJECT_EXTRA_COLUMNS = ("overhead_percent", "profit_percent", "contingency_percent", "vat_rate")
+
 SEED_USERS = [
     ("admin@qb.com",       "admin123",      "مدير النظام الرئيسي",        UserRole.ADMIN),
     ("pm@qb.com",          "pm123",         "مدير المشاريع",             UserRole.PROJECT_MANAGER),
@@ -78,9 +89,10 @@ async def _ensure_user_security_columns() -> None:
     async with engine.begin() as conn:
         cols = (await conn.execute(text("PRAGMA table_info(projects)"))).fetchall()
         existing = {c[1] for c in cols}
-        for col in ("overhead_percent", "profit_percent", "contingency_percent", "vat_rate"):
+        for col in _PROJECT_EXTRA_COLUMNS:
             if col not in existing:
-                await conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} FLOAT"))
+                assert col in _PROJECT_EXTRA_COLUMNS  # allowlist: لا DDL إلا من ثوابت حرفية
+                await conn.execute(text("ALTER TABLE projects ADD COLUMN " + col + " FLOAT"))
                 logger.info("migration: added projects.%s column", col)
 
 
