@@ -44,6 +44,7 @@ const AIPredictiveCenter = lazy(() => import('./components/qb/AIPredictiveCenter
 const AdvancedCostMonitor = lazy(() => import('./components/qb/AdvancedCostMonitor').then(m => ({ default: m.AdvancedCostMonitor })));
 const MaterialsManager = lazy(() => import('./components/qb/MaterialsManager').then(m => ({ default: m.MaterialsManager })));
 const SmartAssistant = lazy(() => import('./components/qb/SmartAssistant').then(m => ({ default: m.SmartAssistant })));
+const EnhancedCADAnalyzer = lazy(() => import('./components/qb/EnhancedCADAnalyzer').then(m => ({ default: m.EnhancedCADAnalyzer })));
 const ProgressTracker = lazy(() => import('./components/qb/ProgressTracker').then(m => ({ default: m.ProgressTracker })));
 const QbErrorBoundary = lazy(() => import('./components/qb/ErrorBoundary').then(m => ({ default: m.ErrorBoundary })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));

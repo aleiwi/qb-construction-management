@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import DxfParser from 'dxf-parser';
 
 const ACI_COLORS = {
@@ -29,6 +29,32 @@ function colorFor(entity, layerColorMap) {
 }
 
 const TEXT_HEIGHT = 0.3;
+
+// نطاق قوي ضد الخردة بعيدة (largest-gap clustering): بعض الملفات تحمل عناقيد
+// نقاط عند إحداثيات بعيدة جدًا (قوالب/كيانات داخل INSERT) تشكّل >10% من النقاط،
+// فتفشل اقتصاد المئينات ويصبح الإطار ضخمًا فيُصغَّر المخطط الحقيقي إلى نقطة سوداء.
+// الخوارزمية: افصل عند أكبر فرجة إن بلغت 20% من مدى القطعة مع الاحتفاظ بالجانب
+// الأكثر نقاطًا (حتى 3 مرات)، ثم امتص الأجنحة الحقيقية الملاصقة (فرجات صغيرة فقط).
+function robustExtents(sorted) {
+  const n = sorted.length;
+  if (!n) return null;
+  let lo = 0, hi = n - 1;
+  for (let round = 0; round < 6; round++) {
+    const span = sorted[hi] - sorted[lo];
+    if (span <= 0) break;
+    let maxGap = 0, gapIdx = -1;
+    for (let i = lo; i < hi; i++) {
+      const gap = sorted[i + 1] - sorted[i];
+      if (gap > maxGap) { maxGap = gap; gapIdx = i; }
+    }
+    if (maxGap < span * 0.2) break;
+    if (hi - gapIdx > gapIdx - lo + 1) lo = gapIdx + 1; else hi = gapIdx;
+  }
+  const tol = Math.max(sorted[hi] - sorted[lo], 1e-9) * 0.25;
+  while (hi + 1 < n && sorted[hi + 1] - sorted[hi] <= tol) hi++;
+  while (lo > 0 && sorted[lo] - sorted[lo - 1] <= tol) lo--;
+  return { min: sorted[lo], max: sorted[hi] };
+}
 
 export function computeDxfViewBox(dxfText) {
   let parsed;
@@ -92,8 +118,10 @@ export function computeDxfViewBox(dxfText) {
         case 'TEXT':
         case 'MTEXT':
         case 'POINT': {
-          if (!ent.position) break;
-          const [x, y] = t(ent.position.x, ent.position.y);
+          // dxf-parser: TEXT يرمّز نقطة المحاذاة الأولى كـ startPoint وليس position
+          const p = ent.startPoint || ent.position;
+          if (!p) break;
+          const [x, y] = t(p.x, p.y);
           add(x, y);
           break;
         }
@@ -112,13 +140,12 @@ export function computeDxfViewBox(dxfText) {
   };
   walk(parsed.entities);
   if (!xs.length) return null;
-  let minX = xs[0], maxX = xs[0], minY = ys[0], maxY = ys[0];
-  for (let i = 1; i < xs.length; i++) {
-    if (xs[i] < minX) minX = xs[i];
-    if (xs[i] > maxX) maxX = xs[i];
-    if (ys[i] < minY) minY = ys[i];
-    if (ys[i] > maxY) maxY = ys[i];
-  }
+  const sortedX = [...xs].sort((a, b) => a - b);
+  const sortedY = [...ys].sort((a, b) => a - b);
+  const rx = robustExtents(sortedX);
+  const ry = robustExtents(sortedY);
+  if (!rx || !ry) return null;
+  let minX = rx.min, maxX = rx.max, minY = ry.min, maxY = ry.max;
   let w = maxX - minX, h = maxY - minY;
   if (w < 1e-9) { w = 1; minX -= 0.5; }
   if (h < 1e-9) { h = 1; minY -= 0.5; }
@@ -147,6 +174,20 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
   const boxRef = useRef(viewBox);
   boxRef.current = viewBox;
 
+  // حلّل الملف مرة واحدة فقط لكل نص — إعادة التحليل الكامل عند كل تكبير/إخفاء
+  // طبقة كانت تجمّد الصفحة ثواني طويلة للملفات الكبيرة (msg.dwg = 147MB محوّلًا).
+  const { parsed, parseError } = useMemo(() => {
+    if (!dxfText) return { parsed: null, parseError: false };
+    try {
+      const p = new DxfParser().parseSync(dxfText);
+      console.log('[DxfCanvas] Parsed DXF:', { entities: p.entities?.length, types: p.entities?.slice(0, 3).map(e => e.type) });
+      return { parsed: p, parseError: false };
+    } catch (e) {
+      console.error('[DxfCanvas] Parse error:', e);
+      return { parsed: null, parseError: true };
+    }
+  }, [dxfText]);
+
   useEffect(() => {
 
 
@@ -163,13 +204,7 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
       ctx.fillText('جارٍ تحميل المعاينة...', canvas.width / 2, canvas.height / 2);
       return;
     }
-    let parsed;
-    try {
-      parsed = new DxfParser().parseSync(dxfText);
-      console.log('[DxfCanvas] Parsed DXF:', { entities: parsed.entities?.length, types: parsed.entities?.slice(0,3).map(e => e.type) });
-    } catch (e) {
-      console.error('[DxfCanvas] Parse error:', e);
-      // Draw fallback: show error text on canvas
+    if (parseError) {
       ctx.fillStyle = '#ef4444';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
@@ -289,10 +324,12 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
           }
           case 'TEXT':
           case 'MTEXT': {
-            if (!ent.position) break;
-            const [tx1, ty1] = tx(ent.position.x, ent.position.y);
+            // dxf-parser: TEXT يرمّز نقطة المحاذاة الأولى كـ startPoint وليس position
+            const p = ent.startPoint || ent.position;
+            if (!p) break;
+            const [tx1, ty1] = tx(p.x, p.y);
             ctx.fillStyle = color;
-            ctx.font = `${TEXT_HEIGHT}px monospace`;
+            ctx.font = `${ent.textHeight || TEXT_HEIGHT}px monospace`;
             ctx.fillText((ent.text || '').replace(/\\n/g, ' '), tx1, ty1);
             break;
           }
@@ -333,19 +370,22 @@ export default function DxfCanvas({ dxfText, viewBox, layerVisibility = null, zo
       const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
       const ox = (rect.width - vb.width * scale) / 2;
       const oy = (rect.height - vb.height * scale) / 2;
-      ctx.setTransform(dpr * scale * zoom, 0, 0, dpr * scale * zoom, dpr * ox, dpr * oy);
+      // شاشة = (عالم - min) * scale * zoom + o — تمركز صحيح حتى عندما min ≠ 0
+      // (سابقًا كان يفترض min≈0 فينزاح المخطط خارج الكادر)
+      const a = dpr * scale * zoom;
+      const e = dpr * (ox - vb.minX * scale * zoom);
+      const f = dpr * (oy - vb.minY * scale * zoom);
+      ctx.setTransform(a, 0, 0, a, e, f);
       ctx.fillStyle = '#020617';
-      ctx.fillRect(
-        -ox / scale, -oy / scale,
-        rect.width / scale, rect.height / scale
-      );
+      // تعبئة كامل منطقة الرؤية بالخلفية (بالوحدات العالمية عبر معكوس التحويل)
+      ctx.fillRect((0 - e) / a, (0 - f) / a, canvas.width / a, canvas.height / a);
       walk(parsed.entities);
     };
     fitToSize();
     const ro = new ResizeObserver(fitToSize);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [dxfText, layerVisibility, zoom]);
+  }, [dxfText, parsed, parseError, layerVisibility, zoom]);
 
   return (
     <canvas

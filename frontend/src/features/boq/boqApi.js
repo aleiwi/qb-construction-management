@@ -178,7 +178,8 @@ export const priceLibraryApi = {
 
 export const boqSummaryApi = {
   getByProject: async (projectId) => {
-    const res = await api.get(`/boq-summary/project/${projectId}`);
+    // تجميع مشروع ضخم (مليون+ عنصر) يتجاوز مهلة 30ث الافتراضية — سابقة 300ث معتمدة
+    const res = await api.get(`/boq-summary/project/${projectId}`, { timeout: 300000 });
     return res.data;
   },
 };

@@ -75,8 +75,9 @@ async def aggregate_project_boq(
     # thousands of elements — loading them + all BOQItems in two giant
     # queries OOMs the worker; per-chunk aggregation keeps memory bounded
     # while producing byte-identical totals). IN-clauses are sub-chunked at
-    # 500 to stay under SQLite's variable limit.
-    ELEMENT_CHUNK = 2000
+    # 500 to stay under SQLite's variable limit. expunge_all per chunk keeps
+    # the session identity-map flat (else 1M+ tracked objects → GC crawl).
+    ELEMENT_CHUNK = 10000
     IN_CHUNK = 500
 
     # Get price library for unit prices (small table — single query)
@@ -161,19 +162,27 @@ async def aggregate_project_boq(
             by_drawing[d_id]["base_cost"] += float(item.total_price or 0)
 
     offset = 0
+    # Keyset pagination (WHERE id > last) — OFFSET يعيد مسح الجدول من البداية
+    # كل دفعة (O(n²) على مليون+ صف). أعمدة فقط بلا ORM: بلا تتبع هوية وبلا
+    # تحميل علاقات، وبدون expunge لأن لا كائنات معلقة أصلًا.
+    cols = (
+        BOQElement.id, BOQElement.drawing_id, BOQElement.element_type,
+        BOQElement.classification_status, BOQElement.quantity,
+        BOQElement.unit, BOQElement.dimensions_json,
+    )
+    last_id = 0
     while True:
-        chunk = (
+        rows = (
             await db.execute(
-                select(BOQElement)
-                .filter(BOQElement.drawing_id.in_(drawing_ids))
+                select(*cols)
+                .filter(BOQElement.drawing_id.in_(drawing_ids), BOQElement.id > last_id)
                 .order_by(BOQElement.id)
-                .offset(offset)
                 .limit(ELEMENT_CHUNK)
             )
-        ).scalars().all()
-        if not chunk:
+        ).mappings().all()
+        if not rows:
             break
-        chunk_ids = [e.id for e in chunk]
+        chunk_ids = [r["id"] for r in rows]
         chunk_items = {}
         for i in range(0, len(chunk_ids), IN_CHUNK):
             sub = chunk_ids[i:i + IN_CHUNK]
@@ -182,11 +191,11 @@ async def aggregate_project_boq(
             )
             for it in res.scalars().all():
                 chunk_items[it.boq_element_id] = it
-        for el in chunk:
-            _track_element(el, chunk_items.get(el.id))
-        if len(chunk) < ELEMENT_CHUNK:
+        for r in rows:
+            _track_element(r, chunk_items.get(r["id"]))
+        last_id = rows[-1]["id"]
+        if len(rows) < ELEMENT_CHUNK:
             break
-        offset += ELEMENT_CHUNK
 
     # Calculate markup (project overrides resolved over global defaults;
     # effective rates are echoed so the UI can label them honestly).

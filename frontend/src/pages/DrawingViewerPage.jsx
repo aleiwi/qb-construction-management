@@ -900,7 +900,7 @@ const handlePrint = useCallback(() => {
                 <p className="text-xs text-slate-500">جارٍ إنشاء المعاينة...</p>
               </div>
             </div>
-          ) : !svgLoading && !dxfText && !processing ? (
+          ) : !svgLoading && !dxfText && !svgContent ? (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm">
               <div className="text-center p-8 max-w-md">
                 <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">

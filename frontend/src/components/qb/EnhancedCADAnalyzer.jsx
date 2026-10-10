@@ -28,7 +28,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
-import api from '../../utils/qb/api';
+import api from '../../services/qb/api';
 import DataPreviewTabContent from './DataPreviewTabContent';
 import CalculationsTabContent from './CalculationsTabContent';
 import SettingsTabContent from './SettingsTabContent';
